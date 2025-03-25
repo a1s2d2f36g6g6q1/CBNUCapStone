@@ -7,11 +7,13 @@ public class MainMenu : MonoBehaviour
     
     public void StartGame()
     {
+        Debug.Log("▶ StartGame 호출됨");
         fadeController.FadeToScene("G001_TagInput");
     }
 
     public void OpenFriends()
     {
+        Debug.Log("▶ OpenFriends 호출됨");
         fadeController.FadeToScene("002_Friend");
     }
 
