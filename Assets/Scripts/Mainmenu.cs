@@ -5,12 +5,12 @@ public class MainMenu : MonoBehaviour
 {
     public void StartGame()
     {
-        SceneManager.LoadScene("Planet");
+        SceneManager.LoadScene("001_Planet");
     }
 
     public void OpenFriends()
     {
-        SceneManager.LoadScene("Friends");
+        SceneManager.LoadScene("002_Friend");
     }
 
     public void QuitGame()
