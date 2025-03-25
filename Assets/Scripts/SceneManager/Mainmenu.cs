@@ -3,14 +3,16 @@ using UnityEngine.SceneManagement;
 
 public class MainMenu : MonoBehaviour
 {
+    public FadeController fadeController;
+    
     public void StartGame()
     {
-        SceneManager.LoadScene("001_Planet");
+        fadeController.FadeToScene("G001_TagInput");
     }
 
     public void OpenFriends()
     {
-        SceneManager.LoadScene("002_Friend");
+        fadeController.FadeToScene("002_Friend");
     }
 
     public void QuitGame()
