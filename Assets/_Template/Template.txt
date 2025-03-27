@@ -1,0 +1,5 @@
+1. Background Image 1920 * 3000 (Background Test_2)
+
+2. 화면 전환 효과 위로 스윕하는 느낌
+
+3. 
