@@ -1,64 +1,64 @@
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 using System.Collections;
 
 public class FadeController : MonoBehaviour
 {
-    public RectTransform fadePanel; // 검정 패널 (UI Image)
-    public float transitionTime = 1.0f;
-
-    // 🎢 EaseOut 커브 (인스펙터에서 연결 가능)
-    public AnimationCurve easeOutCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
+    public Image fadeImage;              // FadePanel의 Image
+    public float fadeDuration = 1f;      // 페이드 시간
 
     private void Start()
     {
-        // 시작할 때 화면을 아래에서 위로 쓱 올라오게
-        fadePanel.anchoredPosition = new Vector2(0, -Screen.height);
-        StartCoroutine(SlideIn());
+        if (fadeImage == null)
+        {
+            Debug.LogError("fadeImage가 연결되지 않았습니다!");
+            return;
+        }
+
+        // 검정 상태로 시작 후 → 서서히 사라지기
+        fadeImage.color = new Color(0, 0, 0, 1);
+        StartCoroutine(FadeIn());
     }
 
     public void FadeToScene(string sceneName)
     {
-        StartCoroutine(SlideOut(sceneName));
+        StartCoroutine(FadeOut(sceneName));
     }
 
-    IEnumerator SlideIn()
+    IEnumerator FadeIn()
     {
-        float elapsed = 0f;
-        Vector2 startPos = new Vector2(0, -Screen.height);
-        Vector2 endPos = Vector2.zero;
-
-        while (elapsed < transitionTime)
+        float t = 0f;
+        while (t < fadeDuration)
         {
-            float t = elapsed / transitionTime;
-            float curvedT = easeOutCurve.Evaluate(t);
-            fadePanel.anchoredPosition = Vector2.Lerp(startPos, endPos, curvedT);
-            elapsed += Time.deltaTime;
+            t += Time.deltaTime;
+            float a = Mathf.Lerp(1f, 0f, t / fadeDuration);
+            fadeImage.color = new Color(0, 0, 0, a);
             yield return null;
         }
 
-        fadePanel.anchoredPosition = endPos;
+        // 페이드 끝났으니 안 가리게 처리
+        fadeImage.color = new Color(0, 0, 0, 0);
+        fadeImage.gameObject.SetActive(false); // 또는 알파만 0으로 남겨도 OK
     }
 
-    IEnumerator SlideOut(string sceneName)
+    IEnumerator FadeOut(string sceneName)
     {
-        float elapsed = 0f;
-        Vector2 startPos = Vector2.zero;
-        Vector2 endPos = new Vector2(0, Screen.height);
+        fadeImage.gameObject.SetActive(true);
+        float t = 0f;
 
-        while (elapsed < transitionTime)
+        while (t < fadeDuration)
         {
-            float t = elapsed / transitionTime;
-            float curvedT = easeOutCurve.Evaluate(t);
-            fadePanel.anchoredPosition = Vector2.Lerp(startPos, endPos, curvedT);
-            elapsed += Time.deltaTime;
+            t += Time.deltaTime;
+            float linear = Mathf.Clamp01(t / fadeDuration);
+            float eased = 1f - Mathf.Pow(1f - linear, 2f); // Ease Out
+
+            fadeImage.color = new Color(0, 0, 0, eased);
             yield return null;
         }
 
-        fadePanel.anchoredPosition = endPos;
-
-        // 다음 씬 로딩
+        fadeImage.color = new Color(0, 0, 0, 1);
         SceneManager.LoadScene(sceneName);
     }
+
 }
