@@ -1,61 +1,64 @@
 using UnityEngine;
-using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 using System.Collections;
 
 public class FadeController : MonoBehaviour
 {
-    public Image fadeImage;
-    public float fadeDuration = 0.01f;
+    public RectTransform fadePanel; // 검정 패널 (UI Image)
+    public float transitionTime = 1.0f;
+
+    // 🎢 EaseOut 커브 (인스펙터에서 연결 가능)
+    public AnimationCurve easeOutCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
 
     private void Start()
     {
-        StartCoroutine(FadeIn());
+        // 시작할 때 화면을 아래에서 위로 쓱 올라오게
+        fadePanel.anchoredPosition = new Vector2(0, -Screen.height);
+        StartCoroutine(SlideIn());
     }
 
     public void FadeToScene(string sceneName)
     {
-        StartCoroutine(FadeOut(sceneName));
+        StartCoroutine(SlideOut(sceneName));
     }
 
-    IEnumerator FadeIn()
+    IEnumerator SlideIn()
     {
-        float time = 0f;
-        Color color = fadeImage.color;
+        float elapsed = 0f;
+        Vector2 startPos = new Vector2(0, -Screen.height);
+        Vector2 endPos = Vector2.zero;
 
-        while (time < fadeDuration)
+        while (elapsed < transitionTime)
         {
-            float t = time / fadeDuration;
-            float easedT = t * t * t;
-            color.a = 1f - easedT;
-            fadeImage.color = color;
-            time += Time.deltaTime;
+            float t = elapsed / transitionTime;
+            float curvedT = easeOutCurve.Evaluate(t);
+            fadePanel.anchoredPosition = Vector2.Lerp(startPos, endPos, curvedT);
+            elapsed += Time.deltaTime;
             yield return null;
         }
 
-        color.a = 0f;
-        fadeImage.color = color;
+        fadePanel.anchoredPosition = endPos;
     }
 
-    IEnumerator FadeOut(string sceneName)
+    IEnumerator SlideOut(string sceneName)
     {
-        float time = 0f;
-        Color color = fadeImage.color;
+        float elapsed = 0f;
+        Vector2 startPos = Vector2.zero;
+        Vector2 endPos = new Vector2(0, Screen.height);
 
-        while (time < fadeDuration)
+        while (elapsed < transitionTime)
         {
-            float t = time / fadeDuration;
-            float easedT = t * t; // 💡 점점 빨라지게
-            color.a = easedT;
-            fadeImage.color = color;
-            time += Time.deltaTime;
+            float t = elapsed / transitionTime;
+            float curvedT = easeOutCurve.Evaluate(t);
+            fadePanel.anchoredPosition = Vector2.Lerp(startPos, endPos, curvedT);
+            elapsed += Time.deltaTime;
             yield return null;
         }
 
-        color.a = 1f;
-        fadeImage.color = color;
+        fadePanel.anchoredPosition = endPos;
 
+        // 다음 씬 로딩
         SceneManager.LoadScene(sceneName);
     }
-
 }
