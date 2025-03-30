@@ -2,12 +2,19 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using System.Collections;
+using System.Collections.Generic;
 
 public class FadeController : MonoBehaviour
 {
     public Image fadeImage;              // FadePanel의 Image
     public float fadeDuration = 1f;      // 페이드 시간
 
+    public static class SceneHistory
+    {
+        public static Stack<string> history = new Stack<string>();
+    }
+
+    
     private void Start()
     {
         if (fadeImage == null)
@@ -20,11 +27,29 @@ public class FadeController : MonoBehaviour
         fadeImage.color = new Color(0, 0, 0, 1);
         StartCoroutine(FadeIn());
     }
+    
+    public void GoBack()
+    {
+        if (SceneHistory.history.Count > 0)
+        {
+            string previousScene = SceneHistory.history.Pop();
+            StartCoroutine(FadeOut(previousScene));
+        }
+        else
+        {
+            Debug.Log("뒤로 갈 씬이 없습니다!");
+        }
+    }
+
+    
 
     public void FadeToScene(string sceneName)
     {
+        string currentScene = SceneManager.GetActiveScene().name;
+        SceneHistory.history.Push(currentScene); // 현재 씬 저장
         StartCoroutine(FadeOut(sceneName));
     }
+
 
     IEnumerator FadeIn()
     {
