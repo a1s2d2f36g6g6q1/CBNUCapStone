@@ -1,49 +1,45 @@
 using UnityEngine;
-using UnityEngine.UI;
 
 public class Tile : MonoBehaviour
 {
-    private int correctX, correctY;
-    private int currentX, currentY;
+    public Vector2Int gridPosition;
+    public Vector2Int correctPosition;
+    public bool isEmpty = false;
 
     private PuzzleManager puzzleManager;
-    private Image image;
 
-    public void Init(PuzzleManager manager, int x, int y, Texture2D texture, int width, int height)
+    public void Init(PuzzleManager manager, int x, int y, int correctX, int correctY, Texture2D puzzleImage, int width, int height)
     {
         puzzleManager = manager;
+        gridPosition = new Vector2Int(x, y);
+        correctPosition = new Vector2Int(correctX, correctY);
 
-        correctX = x;
-        correctY = y;
-        currentX = x;
-        currentY = y;
+        Material mat = GetComponent<Renderer>().material;
+        mat.mainTexture = puzzleImage;
 
-        image = GetComponent<Image>();
-
-        Rect rect = new Rect(
-            (float)x / width * texture.width,
-            (float)y / height * texture.height,
-            texture.width / width,
-            texture.height / height
+        mat.mainTextureScale = new Vector2(1f / width, 1f / height);
+        mat.mainTextureOffset = new Vector2(
+            1f / width * correctX,
+            1f / height * (height - 1 - correctY) // 🔄 이미지 위아래 반전
         );
-
-        Sprite sprite = Sprite.Create(texture, rect, new Vector2(0.5f, 0.5f));
-        image.sprite = sprite;
-
-        Button button = GetComponent<Button>();
-        button.onClick.AddListener(() => puzzleManager.TryMove(currentX, currentY));
     }
 
-    public void MoveTo(int newX, int newY)
+    void OnMouseDown()
     {
-        currentX = newX;
-        currentY = newY;
+        if (!isEmpty)
+        {
+            puzzleManager.TryMove(this);
+        }
+    }
 
-        // 자동으로 GridLayoutGroup 내에서 정렬되므로 별도 위치이동 불필요!
+    public void MoveTo(Vector2Int newPosition)
+    {
+        gridPosition = newPosition;
+        transform.localPosition = puzzleManager.GetTilePosition(newPosition.x, newPosition.y);
     }
 
     public bool IsCorrect()
     {
-        return currentX == correctX && currentY == correctY;
+        return gridPosition == correctPosition;
     }
 }
