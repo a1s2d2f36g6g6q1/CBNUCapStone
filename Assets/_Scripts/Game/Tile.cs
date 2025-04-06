@@ -1,64 +1,49 @@
 using UnityEngine;
+using UnityEngine.UI;
 
 public class Tile : MonoBehaviour
 {
-    private PuzzleManager manager;
     private int correctX, correctY;
     private int currentX, currentY;
 
-    public void Init(PuzzleManager _manager, int x, int y, Texture2D texture, int w, int h)
+    private PuzzleManager puzzleManager;
+    private Image image;
+
+    public void Init(PuzzleManager manager, int x, int y, Texture2D texture, int width, int height)
     {
-        manager = _manager;
+        puzzleManager = manager;
+
         correctX = x;
         correctY = y;
         currentX = x;
         currentY = y;
 
-        MeshRenderer renderer = GetComponent<MeshRenderer>();
-        Material mat = new Material(Shader.Find("Unlit/Texture"));
-        mat.mainTexture = texture;
+        image = GetComponent<Image>();
 
-        Vector2 offset = new Vector2((float)x / w, (float)y / h);
-        Vector2 scale = new Vector2(1f / w, 1f / h);
-
-        mat.mainTextureOffset = offset;
-        mat.mainTextureScale = scale;
-
-        renderer.material = mat;
-    }
-
-    public void MoveTo(int x, int y)
-    {
-        currentX = x;
-        currentY = y;
-
-        Vector3 targetPos = new Vector3(
-            -(manager.width - 1) / 2f + x * (1 + manager.spacing),
-            0,
-            -(manager.height - 1) / 2f + y * (1 + manager.spacing)
+        Rect rect = new Rect(
+            (float)x / width * texture.width,
+            (float)y / height * texture.height,
+            texture.width / width,
+            texture.height / height
         );
 
-        StopAllCoroutines();
-        StartCoroutine(MoveSmooth(targetPos));
+        Sprite sprite = Sprite.Create(texture, rect, new Vector2(0.5f, 0.5f));
+        image.sprite = sprite;
+
+        Button button = GetComponent<Button>();
+        button.onClick.AddListener(() => puzzleManager.TryMove(currentX, currentY));
     }
 
-    System.Collections.IEnumerator MoveSmooth(Vector3 target)
+    public void MoveTo(int newX, int newY)
     {
-        while (Vector3.Distance(transform.localPosition, target) > 0.01f)
-        {
-            transform.localPosition = Vector3.Lerp(transform.localPosition, target, 10f * Time.deltaTime);
-            yield return null;
-        }
-        transform.localPosition = target;
+        currentX = newX;
+        currentY = newY;
+
+        // 자동으로 GridLayoutGroup 내에서 정렬되므로 별도 위치이동 불필요!
     }
 
     public bool IsCorrect()
     {
         return currentX == correctX && currentY == correctY;
-    }
-
-    void OnMouseDown()
-    {
-        manager.TryMove(currentX, currentY);
     }
 }

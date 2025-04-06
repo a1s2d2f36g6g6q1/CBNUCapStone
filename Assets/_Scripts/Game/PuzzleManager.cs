@@ -1,6 +1,6 @@
-using UnityEngine;
 using System.Collections;
-using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
 
 public class PuzzleManager : MonoBehaviour
 {
@@ -8,8 +8,9 @@ public class PuzzleManager : MonoBehaviour
     public Texture2D puzzleTexture;
     public int width = 3;
     public int height = 3;
-    public float spacing = 0.1f;
+    public float spacing = 5f;
     public GameObject tilePrefab;
+    public Transform boardParent;
 
     [Header("게임 상태")]
     public bool isComplete = false;
@@ -22,54 +23,53 @@ public class PuzzleManager : MonoBehaviour
         GeneratePuzzle();
         StartCoroutine(ShufflePuzzle());
     }
-    
 
     void GeneratePuzzle()
     {
         tiles = new Tile[width, height];
-        float tileSize = 1f / Mathf.Max(width, height);
-        Vector3 startPos = new Vector3(-(width - 1) / 2f, 0, -(height - 1) / 2f);
 
         for (int y = 0; y < height; y++)
         {
             for (int x = 0; x < width; x++)
             {
-                if (x == 0 && y == 0)
+                if (x == width - 1 && y == height - 1)
                 {
                     emptyPos = new Vector2(x, y);
                     continue;
                 }
 
-                GameObject obj = Instantiate(tilePrefab, transform);
+                GameObject obj = Instantiate(tilePrefab, boardParent);
                 Tile tile = obj.GetComponent<Tile>();
 
-                Vector3 pos = startPos + new Vector3(x * (1 + spacing), 0, y * (1 + spacing));
-                obj.transform.localPosition = pos;
-
                 tile.Init(this, x, y, puzzleTexture, width, height);
-
                 tiles[x, y] = tile;
             }
         }
+
+        GridLayoutGroup layout = boardParent.GetComponent<GridLayoutGroup>();
+        layout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        layout.constraintCount = width;
+        layout.spacing = new Vector2(spacing, spacing);
     }
 
     IEnumerator ShufflePuzzle()
     {
         yield return new WaitForSeconds(1f);
 
-        for (int i = 0; i < 30; i++)
+        for (int i = 0; i < 100; i++)
         {
             int x = Random.Range(0, width);
             int y = Random.Range(0, height);
 
             TryMove(x, y);
-            yield return new WaitForSeconds(0.05f);
+            yield return new WaitForSeconds(0.01f);
         }
     }
 
     public void TryMove(int x, int y)
     {
-        if (Mathf.Abs(x - emptyPos.x) + Mathf.Abs(y - emptyPos.y) != 1) return;
+        if (Mathf.Abs(x - emptyPos.x) + Mathf.Abs(y - emptyPos.y) != 1)
+            return;
 
         Tile tile = tiles[x, y];
         if (tile == null) return;
@@ -80,7 +80,6 @@ public class PuzzleManager : MonoBehaviour
         tile.MoveTo((int)emptyPos.x, (int)emptyPos.y);
 
         emptyPos = new Vector2(x, y);
-
         CheckComplete();
     }
 
@@ -96,6 +95,6 @@ public class PuzzleManager : MonoBehaviour
         }
 
         isComplete = true;
-        Debug.Log("퍼즐 완료!! 🎉");
+        Debug.Log("🎉 퍼즐 완성!! 🎉");
     }
 }
