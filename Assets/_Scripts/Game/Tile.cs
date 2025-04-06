@@ -1,27 +1,64 @@
 using UnityEngine;
-using TMPro;
 
 public class Tile : MonoBehaviour
 {
-    public PuzzleManager manager;
-    public int x, y;
-    public int number;
+    private PuzzleManager manager;
+    private int correctX, correctY;
+    private int currentX, currentY;
 
-    public void SetNumber(int num)
+    public void Init(PuzzleManager _manager, int x, int y, Texture2D texture, int w, int h)
     {
-        number = num;
-        GetComponentInChildren<TextMeshProUGUI>().text = number.ToString();
+        manager = _manager;
+        correctX = x;
+        correctY = y;
+        currentX = x;
+        currentY = y;
+
+        MeshRenderer renderer = GetComponent<MeshRenderer>();
+        Material mat = new Material(Shader.Find("Unlit/Texture"));
+        mat.mainTexture = texture;
+
+        Vector2 offset = new Vector2((float)x / w, (float)y / h);
+        Vector2 scale = new Vector2(1f / w, 1f / h);
+
+        mat.mainTextureOffset = offset;
+        mat.mainTextureScale = scale;
+
+        renderer.material = mat;
     }
 
-    public void SetPosition(int newX, int newY)
+    public void MoveTo(int x, int y)
     {
-        x = newX;
-        y = newY;
-        transform.SetSiblingIndex(y * manager.gridSize + x);
+        currentX = x;
+        currentY = y;
+
+        Vector3 targetPos = new Vector3(
+            -(manager.width - 1) / 2f + x * (1 + manager.spacing),
+            0,
+            -(manager.height - 1) / 2f + y * (1 + manager.spacing)
+        );
+
+        StopAllCoroutines();
+        StartCoroutine(MoveSmooth(targetPos));
     }
 
-    public void OnClick()
+    System.Collections.IEnumerator MoveSmooth(Vector3 target)
     {
-        manager.TryMoveTile(x, y);
+        while (Vector3.Distance(transform.localPosition, target) > 0.01f)
+        {
+            transform.localPosition = Vector3.Lerp(transform.localPosition, target, 10f * Time.deltaTime);
+            yield return null;
+        }
+        transform.localPosition = target;
+    }
+
+    public bool IsCorrect()
+    {
+        return currentX == correctX && currentY == correctY;
+    }
+
+    void OnMouseDown()
+    {
+        manager.TryMove(currentX, currentY);
     }
 }

@@ -1,71 +1,101 @@
 using UnityEngine;
+using System.Collections;
+using System.Collections.Generic;
 
 public class PuzzleManager : MonoBehaviour
 {
-    [Header("설정")]
-    public int gridSize = 3;
+    [Header("퍼즐 설정")]
+    public Texture2D puzzleTexture;
+    public int width = 3;
+    public int height = 3;
+    public float spacing = 0.1f;
     public GameObject tilePrefab;
-    public Transform boardParent;
 
-    [Header("게임 데이터")]
+    [Header("게임 상태")]
+    public bool isComplete = false;
+
     private Tile[,] tiles;
-    private Vector2Int emptyPos;
+    private Vector2 emptyPos;
 
     void Start()
     {
-        InitBoard();
+        GeneratePuzzle();
+        StartCoroutine(ShufflePuzzle());
     }
+    
 
-    void InitBoard()
+    void GeneratePuzzle()
     {
-        tiles = new Tile[gridSize, gridSize];
-        int number = 1;
+        tiles = new Tile[width, height];
+        float tileSize = 1f / Mathf.Max(width, height);
+        Vector3 startPos = new Vector3(-(width - 1) / 2f, 0, -(height - 1) / 2f);
 
-        for (int y = 0; y < gridSize; y++)
+        for (int y = 0; y < height; y++)
         {
-            for (int x = 0; x < gridSize; x++)
+            for (int x = 0; x < width; x++)
             {
-                // 마지막 칸은 빈칸!
-                if (number == gridSize * gridSize)
+                if (x == 0 && y == 0)
                 {
-                    emptyPos = new Vector2Int(x, y);
+                    emptyPos = new Vector2(x, y);
                     continue;
                 }
 
-                GameObject tileObj = Instantiate(tilePrefab, boardParent);
-                Tile tile = tileObj.GetComponent<Tile>();
+                GameObject obj = Instantiate(tilePrefab, transform);
+                Tile tile = obj.GetComponent<Tile>();
 
-                tile.manager = this;
-                tile.SetNumber(number);
-                tile.SetPosition(x, y);
+                Vector3 pos = startPos + new Vector3(x * (1 + spacing), 0, y * (1 + spacing));
+                obj.transform.localPosition = pos;
+
+                tile.Init(this, x, y, puzzleTexture, width, height);
 
                 tiles[x, y] = tile;
-
-                number++;
             }
         }
     }
 
-    public void TryMoveTile(int x, int y)
+    IEnumerator ShufflePuzzle()
     {
-        // 인접한 경우만 이동 가능
-        if (IsAdjacent(x, y, emptyPos.x, emptyPos.y))
+        yield return new WaitForSeconds(1f);
+
+        for (int i = 0; i < 30; i++)
         {
-            Tile tile = tiles[x, y];
+            int x = Random.Range(0, width);
+            int y = Random.Range(0, height);
 
-            // 빈칸으로 자리 바꾸기
-            tiles[emptyPos.x, emptyPos.y] = tile;
-            tiles[x, y] = null;
-
-            tile.SetPosition(emptyPos.x, emptyPos.y);
-
-            // 새 빈 칸 위치 갱신
-            emptyPos = new Vector2Int(x, y);
+            TryMove(x, y);
+            yield return new WaitForSeconds(0.05f);
         }
     }
 
-    bool IsAdjacent(int x1, int y1, int x2, int y2)
+    public void TryMove(int x, int y)
     {
-        return Mathf.Abs(x1 - x2) + Mathf.Abs(y1 - y2) == 1;
+        if (Mathf.Abs(x - emptyPos.x) + Mathf.Abs(y - emptyPos.y) != 1) return;
+
+        Tile tile = tiles[x, y];
+        if (tile == null) return;
+
+        tiles[(int)emptyPos.x, (int)emptyPos.y] = tile;
+        tiles[x, y] = null;
+
+        tile.MoveTo((int)emptyPos.x, (int)emptyPos.y);
+
+        emptyPos = new Vector2(x, y);
+
+        CheckComplete();
+    }
+
+    void CheckComplete()
+    {
+        foreach (Tile tile in tiles)
+        {
+            if (tile != null && !tile.IsCorrect())
+            {
+                isComplete = false;
+                return;
+            }
+        }
+
+        isComplete = true;
+        Debug.Log("퍼즐 완료!! 🎉");
     }
 }
