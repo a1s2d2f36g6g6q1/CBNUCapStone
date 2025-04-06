@@ -1,8 +1,8 @@
 using UnityEngine;
 
-public class UIParallax : MonoBehaviour
+public class UIParallax_Canvas : MonoBehaviour
 {
-    public float moveAmount = 10f; // 감도
+    public float moveAmount = 10f;
     private Vector2 originalPosition;
     private RectTransform rectTransform;
 
