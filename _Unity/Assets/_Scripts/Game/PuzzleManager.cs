@@ -1,69 +1,105 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using TMPro;
 
 public class PuzzleManager : MonoBehaviour
 {
     public Texture2D puzzleImage;
     public GameObject tilePrefab;
-    public GameObject emptyTilePrefab;
-    public GameObject blindTilePrefab;
     public int width = 3;
     public int height = 3;
     public float spacing = 0.1f;
     public float fadeDuration = 0.4f;
-    public TMP_Text timerText;
+    private Material[] puzzleMaterials;
 
     private Tile[,] tiles;
-    private GameObject[,] blindTiles;
     private Vector2Int emptyPos;
     private bool isShuffling = true;
-    private bool isGameStarted = false;
-    private bool isGameCompleted = false;
-    private bool isPendingClear = false;
-    private float elapsedTime = 0f;
 
     void Start()
     {
         if (GameData.difficulty < 2 || GameData.difficulty > 5)
-            GameData.difficulty = 3;
+        {
+            GameData.difficulty = 3; // 기본값
+        }
 
         width = GameData.difficulty;
         height = GameData.difficulty;
 
         GeneratePuzzle();
+        CacheMaterials();
+        StartCoroutine(FadeInTiles());
         StartCoroutine(ShufflePuzzle());
     }
 
-    void Update()
+    // 퍼즐 페이드 관련
+    void CacheMaterials()
     {
-        if (isGameStarted && !isGameCompleted)
+        Renderer[] renderers = GetComponentsInChildren<Renderer>();
+        List<Material> mats = new List<Material>();
+        foreach (Renderer r in renderers)
         {
-            elapsedTime += Time.deltaTime;
-            int minutes = Mathf.FloorToInt(elapsedTime / 60f);
-            int seconds = Mathf.FloorToInt(elapsedTime % 60f);
-            int milliseconds = Mathf.FloorToInt((elapsedTime * 1000f) % 1000f);
+            if (r.material != null)
+                mats.Add(r.material);
+        }
+        puzzleMaterials = mats.ToArray();
+    }
 
-            timerText.text = $"{minutes:00} : {seconds:00} : {milliseconds:000}";
+    IEnumerator FadeInTiles()
+    {
+        foreach (Material mat in puzzleMaterials)
+        {
+            Color c = mat.color;
+            mat.color = new Color(c.r, c.g, c.b, 0f);
         }
 
-        if (isPendingClear && (Input.GetKeyDown(KeyCode.Space) || Input.GetMouseButtonDown(0)))
+        float t = 0f;
+        while (t < fadeDuration)
         {
-            isGameCompleted = true;
-            isGameStarted = false;
-            isPendingClear = false;
-            Debug.Log("퍼즐 최종 완료 처리됨");
+            t += Time.deltaTime;
+            float a = Mathf.Lerp(0f, 1f, t / fadeDuration);
+            foreach (Material mat in puzzleMaterials)
+            {
+                Color c = mat.color;
+                mat.color = new Color(c.r, c.g, c.b, a);
+            }
+            yield return null;
         }
     }
 
+    public IEnumerator FadeOutTiles(Material[] materials, float duration)
+    {
+        float t = 0f;
+        while (t < duration)
+        {
+            t += Time.deltaTime;
+            float alpha = Mathf.Lerp(1f, 0f, t / duration);
+            foreach (Material mat in materials)
+            {
+                Color c = mat.color;
+                c.a = alpha;
+                mat.color = c;
+            }
+            yield return null;
+        }
+
+        // 투명도 0이 되면 타일 숨김
+        foreach (Tile tile in GetComponentsInChildren<Tile>())
+        {
+            tile.gameObject.SetActive(false);
+        }
+    }
+
+
     void GeneratePuzzle()
     {
+        // 기존 타일이 있으면 삭제
         foreach (Transform child in transform)
+        {
             Destroy(child.gameObject);
+        }
 
         tiles = new Tile[width, height];
-        blindTiles = new GameObject[width, height];
 
         for (int y = 0; y < height; y++)
         {
@@ -72,8 +108,6 @@ public class PuzzleManager : MonoBehaviour
                 if (x == 0 && y == 0)
                 {
                     emptyPos = new Vector2Int(x, y);
-                    GameObject empty = Instantiate(emptyTilePrefab, transform);
-                    empty.transform.localPosition = GetTilePosition(x, y);
                     continue;
                 }
 
@@ -83,110 +117,49 @@ public class PuzzleManager : MonoBehaviour
                 Tile tile = obj.GetComponent<Tile>();
                 tile.Init(this, x, y, x, y, puzzleImage, width, height);
                 tiles[x, y] = tile;
-
-                GameObject blind = Instantiate(blindTilePrefab, transform);
-                blind.transform.localPosition = GetTilePosition(x, y);
-                SetAlpha(blind, 0f);
-                blindTiles[x, y] = blind;
             }
         }
+
+        Debug.Log("퍼즐 생성!!");
     }
 
     public Vector3 GetTilePosition(int x, int y)
     {
         Vector3 centerOffset = new Vector3((width - 1) / 2f, (height - 1) / 2f, 0);
-        return new Vector3((x - centerOffset.x) * (1 + spacing), (centerOffset.y - y) * (1 + spacing), 0f);
+        return new Vector3(
+            (x - centerOffset.x) * (1 + spacing),
+            (centerOffset.y - y) * (1 + spacing),  // 위에서 아래로 Y축 정렬
+            0f
+        );
     }
 
     IEnumerator ShufflePuzzle()
     {
         isShuffling = true;
-        yield return new WaitForSeconds(0.3f);
+        yield return new WaitForSeconds(0.5f);
 
-        int shuffleCount = width * height * 5;
-        Vector2Int lastPos = emptyPos;
-
-        for (int i = 0; i < shuffleCount; i++)
+        for (int i = 0; i < 80; i++)
         {
-            List<Vector2Int> possibleMoves = new List<Vector2Int>();
-            Vector2Int[] directions = {
-                new Vector2Int(0, 1), new Vector2Int(0, -1), new Vector2Int(1, 0), new Vector2Int(-1, 0)
-            };
-
-            foreach (var dir in directions)
-            {
-                Vector2Int target = emptyPos + dir;
-                if (target.x >= 0 && target.x < width && target.y >= 0 && target.y < height && target != lastPos)
-                    possibleMoves.Add(target);
-            }
-
-            if (possibleMoves.Count > 0)
-            {
-                Vector2Int chosen = possibleMoves[Random.Range(0, possibleMoves.Count)];
-                TryMove(chosen.x, chosen.y);
-                lastPos = emptyPos;
-            }
-
-            if (i == 80)
-            {
-                Debug.Log("블라인드 타일 등장");
-                StartCoroutine(FadeInBlindTiles());
-            }
-
-            yield return new WaitForSeconds(0.015f);
+            int x = Random.Range(0, width);
+            int y = Random.Range(0, height);
+            TryMove(x, y);
+            yield return new WaitForSeconds(0.03f);
         }
 
-        yield return new WaitForSeconds(0.2f);
+        // 이동이 끝났을 시간만큼 대기 후 검사
+        yield return new WaitForSeconds(0.5f);
         isShuffling = false;
-        isGameStarted = true;
-        Debug.Log("셔플 완료, 게임 준비됨!");
+
+        CheckComplete();
     }
 
-    IEnumerator FadeInBlindTiles()
+    public void TryMove(Tile tile)
     {
-        float t = 0f;
-        while (t < 0.5f)
-        {
-            t += Time.deltaTime;
-            float alpha = Mathf.Lerp(0f, 1f, t / 0.5f);
-            for (int y = 0; y < height; y++)
-            {
-                for (int x = 0; x < width; x++)
-                {
-                    if (blindTiles[x, y] != null)
-                        SetAlpha(blindTiles[x, y], alpha);
-                }
-            }
-            yield return null;
-        }
+        TryMove(tile.gridPosition.x, tile.gridPosition.y);
     }
-
-    void SetAlpha(GameObject obj, float alpha)
-    {
-        var mat = obj.GetComponent<Renderer>().material;
-        Color c = mat.color;
-        c.a = alpha;
-        mat.color = c;
-    }
-
-    public void OnTileClicked(Tile tile)
-    {
-        if (!isGameStarted || isGameCompleted) return;
-
-        if (tile.gridPosition == emptyPos)
-        {
-            CheckComplete();
-            return;
-        }
-
-        TryMove(tile);
-    }
-
-    public void TryMove(Tile tile) => TryMove(tile.gridPosition.x, tile.gridPosition.y);
 
     public void TryMove(int x, int y)
     {
-        if (!isGameStarted || isGameCompleted) return;
         if (Mathf.Abs(x - emptyPos.x) + Mathf.Abs(y - emptyPos.y) != 1) return;
 
         Tile tile = tiles[x, y];
@@ -197,21 +170,24 @@ public class PuzzleManager : MonoBehaviour
 
         Vector2Int oldEmpty = emptyPos;
         emptyPos = new Vector2Int(x, y);
+
         tile.MoveTo(oldEmpty);
 
         if (!isShuffling)
+        {
             CheckComplete();
+        }
     }
 
     void CheckComplete()
     {
-        if (emptyPos != new Vector2Int(0, 0)) return;
-
         foreach (Tile tile in tiles)
-            if (tile != null && !tile.IsCorrect()) return;
+        {
+            if (tile != null && !tile.IsCorrect())
+                return;
+        }
 
-        isPendingClear = true;
-        Debug.Log("퍼즐 클리어 조건 충족. 확정 대기 중");
+        Debug.Log("퍼즐 완료!! 🎉");
     }
 
     public void FadeAndBack(FadeController fadeController)
@@ -221,7 +197,7 @@ public class PuzzleManager : MonoBehaviour
 
     IEnumerator FadeAndLoad(FadeController fadeController)
     {
-        yield return new WaitForSeconds(0.2f);
+        yield return StartCoroutine(FadeOutTiles(puzzleMaterials, fadeDuration));
         fadeController.GoBack();
     }
 }

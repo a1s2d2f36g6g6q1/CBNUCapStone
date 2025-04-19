@@ -1,5 +1,5 @@
-using System.Collections;
 using UnityEngine;
+using System.Collections;
 
 public class Tile : MonoBehaviour
 {
@@ -9,42 +9,30 @@ public class Tile : MonoBehaviour
     private PuzzleManager puzzleManager;
     private Coroutine moveCoroutine;
 
-    private Material mat;
-    private Texture2D storedTexture;
-    private Vector2 textureScale;
-    private Vector2 textureOffset;
-
     public void Init(PuzzleManager manager, int x, int y, int correctX, int correctY, Texture2D puzzleImage, int width, int height)
     {
         puzzleManager = manager;
         gridPosition = new Vector2Int(x, y);
         correctPosition = new Vector2Int(correctX, correctY);
 
-        mat = GetComponent<Renderer>().material;
-        storedTexture = puzzleImage;
-        textureScale = new Vector2(1f / width, 1f / height);
-        textureOffset = new Vector2(
+        // ✅ 머티리얼을 새로 복제해서 개별 인스턴스 적용 (가장 중요!)
+        Renderer renderer = GetComponent<Renderer>();
+        renderer.material = new Material(renderer.material);
+
+        // 이미지 설정
+        Material mat = renderer.material;
+        mat.mainTexture = puzzleImage;
+
+        mat.mainTextureScale = new Vector2(1f / width, 1f / height);
+        mat.mainTextureOffset = new Vector2(
             1f / width * correctX,
-            1f - 1f / height * (correctY + 1)
+            1f - 1f / height * (correctY + 1) // 뒤집힘 보정!
         );
-
-        ApplyImage();
-    }
-
-    public void ApplyImage()
-    {
-        if (mat != null && storedTexture != null)
-        {
-            mat.mainTexture = storedTexture;
-            mat.mainTextureScale = textureScale;
-            mat.mainTextureOffset = textureOffset;
-            mat.color = Color.white;
-        }
     }
 
     void OnMouseDown()
     {
-        puzzleManager.OnTileClicked(this);
+        puzzleManager.TryMove(this);
     }
 
     public void MoveTo(Vector2Int newPos)
@@ -53,7 +41,6 @@ public class Tile : MonoBehaviour
 
         if (moveCoroutine != null)
             StopCoroutine(moveCoroutine);
-
         moveCoroutine = StartCoroutine(MoveSmooth(puzzleManager.GetTilePosition(newPos.x, newPos.y)));
     }
 
