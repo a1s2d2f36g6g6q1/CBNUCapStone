@@ -35,7 +35,7 @@ public class MainMenuUIController : MonoBehaviour
     public Button signupButton;
     
     [Header("TR 버튼 그룹")]
-    public GameObject[] loginOnlyButtons;    // 친구, 유저정보 버튼 (로그인 후)
+    public GameObject[] loginOnlyButtons;    // 친구, 유저정보 버튼 (로그인 후) + 로그아웃버튼
     public GameObject[] guestOnlyButtons;    // 로그인, 회원가입 버튼 (비로그인 상태)
     public GameObject settingsButton;        // 항상 보이는 설정 버튼
 
@@ -204,7 +204,7 @@ public class MainMenuUIController : MonoBehaviour
         string id = loginIdField.text;
         string pw = loginPwField.text;
 
-        if (id == "admin" && pw == "1234")
+        if (id == "asdf" && pw == "asdf")
         {
             isLoggedIn = true;
             UpdateTopRightButtons();
