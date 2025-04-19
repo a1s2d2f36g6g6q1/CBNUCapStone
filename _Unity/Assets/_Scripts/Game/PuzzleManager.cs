@@ -4,7 +4,11 @@ using UnityEngine;
 
 public class PuzzleManager : MonoBehaviour
 {
+    public TimerManager timerManager;
+
     public Texture2D puzzleImage;
+    private bool waitingForClickToRestore = false;
+
     public GameObject tilePrefab;
     public int width = 3;
     public int height = 3;
@@ -31,6 +35,19 @@ public class PuzzleManager : MonoBehaviour
         StartCoroutine(FadeInTiles());
         StartCoroutine(ShufflePuzzle());
     }
+    
+    void Update()
+    {
+        if (waitingForClickToRestore && Input.GetMouseButtonDown(0))
+        {
+            foreach (Tile tile in tiles)
+                if (tile != null)
+                    tile.Restore();
+
+            waitingForClickToRestore = false;
+        }
+    }
+
 
     // 퍼즐 페이드 관련
     void CacheMaterials()
@@ -138,33 +155,28 @@ public class PuzzleManager : MonoBehaviour
         isShuffling = true;
         yield return new WaitForSeconds(0.5f);
 
-        Vector2Int[] directions = {
-            new Vector2Int(0, 1),   // 위
-            new Vector2Int(1, 0),   // 오른쪽
-            new Vector2Int(0, -1),  // 아래
-            new Vector2Int(-1, 0)   // 왼쪽
-        };
-
         Vector2Int previousMove = Vector2Int.zero;
+        Vector2Int[] directions = {
+            new Vector2Int(0, 1),
+            new Vector2Int(1, 0),
+            new Vector2Int(0, -1),
+            new Vector2Int(-1, 0)
+        };
 
         for (int i = 0; i < 100; i++)
         {
+            // 유효 방향 계산
             List<Vector2Int> validMoves = new List<Vector2Int>();
-
             foreach (var dir in directions)
             {
                 Vector2Int next = emptyPos + dir;
-
-                if (next.x < 0 || next.x >= width || next.y < 0 || next.y >= height)
-                    continue;
-
-                if (dir == -previousMove)
-                    continue; // 바로 이전 방향의 반대는 제외
-
+                if (next.x < 0 || next.x >= width || next.y < 0 || next.y >= height) continue;
+                if (dir == -previousMove) continue;
                 if (tiles[next.x, next.y] != null)
                     validMoves.Add(dir);
             }
 
+            // 이동
             if (validMoves.Count > 0)
             {
                 Vector2Int move = validMoves[Random.Range(0, validMoves.Count)];
@@ -173,14 +185,25 @@ public class PuzzleManager : MonoBehaviour
                 previousMove = move;
             }
 
+            // 페이드 처리
+            if (i >= 60)
+            {
+                float fadeT = Mathf.InverseLerp(60, 80, i); // 0~1 범위
+                foreach (Tile tile in tiles)
+                    if (tile != null)
+                        tile.SetFadeGray(fadeT);
+            }
+
             yield return new WaitForSeconds(0.02f);
         }
 
-        yield return new WaitForSeconds(0.3f);
         isShuffling = false;
-
+        timerManager.StartTimer();
         CheckComplete();
+
+        waitingForClickToRestore = true; // 클릭 감지 대기 시작
     }
+
 
 
     public void TryMove(Tile tile)
