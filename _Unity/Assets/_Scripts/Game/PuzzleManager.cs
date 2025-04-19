@@ -138,20 +138,50 @@ public class PuzzleManager : MonoBehaviour
         isShuffling = true;
         yield return new WaitForSeconds(0.5f);
 
-        for (int i = 0; i < 80; i++)
+        Vector2Int[] directions = {
+            new Vector2Int(0, 1),   // 위
+            new Vector2Int(1, 0),   // 오른쪽
+            new Vector2Int(0, -1),  // 아래
+            new Vector2Int(-1, 0)   // 왼쪽
+        };
+
+        Vector2Int previousMove = Vector2Int.zero;
+
+        for (int i = 0; i < 100; i++)
         {
-            int x = Random.Range(0, width);
-            int y = Random.Range(0, height);
-            TryMove(x, y);
-            yield return new WaitForSeconds(0.03f);
+            List<Vector2Int> validMoves = new List<Vector2Int>();
+
+            foreach (var dir in directions)
+            {
+                Vector2Int next = emptyPos + dir;
+
+                if (next.x < 0 || next.x >= width || next.y < 0 || next.y >= height)
+                    continue;
+
+                if (dir == -previousMove)
+                    continue; // 바로 이전 방향의 반대는 제외
+
+                if (tiles[next.x, next.y] != null)
+                    validMoves.Add(dir);
+            }
+
+            if (validMoves.Count > 0)
+            {
+                Vector2Int move = validMoves[Random.Range(0, validMoves.Count)];
+                Vector2Int targetPos = emptyPos + move;
+                TryMove(targetPos.x, targetPos.y);
+                previousMove = move;
+            }
+
+            yield return new WaitForSeconds(0.02f);
         }
 
-        // 이동이 끝났을 시간만큼 대기 후 검사
-        yield return new WaitForSeconds(0.5f);
+        yield return new WaitForSeconds(0.3f);
         isShuffling = false;
 
         CheckComplete();
     }
+
 
     public void TryMove(Tile tile)
     {
