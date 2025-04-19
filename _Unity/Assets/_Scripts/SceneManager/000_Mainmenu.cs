@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using TMPro;
+using UnityEngine.UI;
 
 public class MainMenuUIController : MonoBehaviour
 {
@@ -24,7 +25,15 @@ public class MainMenuUIController : MonoBehaviour
 
     [Header("중복확인 관련")]
     public TMP_Text idCheckResultText;
+    
+    [Header("ID 체크 상태 텍스트들")]
+    public GameObject idCheck_Default;      // '_'
+    public GameObject idCheck_Checked;      // '✔'
+    public GameObject idCheck_Duplicated;   // 'X'
 
+    [Header("회원가입 버튼")]
+    public Button signupButton;
+    
     [Header("TR 버튼 그룹")]
     public GameObject[] loginOnlyButtons;    // 친구, 유저정보 버튼 (로그인 후)
     public GameObject[] guestOnlyButtons;    // 로그인, 회원가입 버튼 (비로그인 상태)
@@ -35,8 +44,66 @@ public class MainMenuUIController : MonoBehaviour
     void Start()
     {
         UpdateTopRightButtons();
+        
+        signupIdField.onValueChanged.AddListener(OnIDInputChanged);
+        SetIDCheckState_Default();
+        UpdateSignupButtonInteractable();
+    }
+    // ========================
+    // ID 중복 검사
+    // ========================
+    private void OnIDInputChanged(string newText)
+    {
+        SetIDCheckState_Default();
+        UpdateSignupButtonInteractable();
+    }
+    
+    public void CheckDuplicateID()
+    {
+        string id = signupIdField.text;
+
+        if (id == "test123")
+        {
+            SetIDCheckState_Duplicated();
+        }
+        else
+        {
+            SetIDCheckState_Checked();
+        }
+
+        UpdateSignupButtonInteractable();
+    }
+    
+    private void SetIDCheckState_Default()
+    {
+        idCheck_Default.SetActive(true);
+        idCheck_Checked.SetActive(false);
+        idCheck_Duplicated.SetActive(false);
     }
 
+    private void SetIDCheckState_Checked()
+    {
+        idCheck_Default.SetActive(false);
+        idCheck_Checked.SetActive(true);
+        idCheck_Duplicated.SetActive(false);
+        idCheckResultText.text = "ID available";
+    }
+
+    private void SetIDCheckState_Duplicated()
+    {
+        idCheck_Default.SetActive(false);
+        idCheck_Checked.SetActive(false);
+        idCheck_Duplicated.SetActive(true);
+        idCheckResultText.text = "ID already in use";
+    }
+
+    private void UpdateSignupButtonInteractable()
+    {
+        signupButton.interactable = idCheck_Checked.activeSelf;
+    }
+
+    
+    
     // ========================
     // Static 버튼 동작
     // ========================
@@ -44,6 +111,7 @@ public class MainMenuUIController : MonoBehaviour
     {
         fadeController.FadeToScene("G001_TagInput");
     }
+
 
     public void OnClick_CreateParty()
     {
@@ -83,6 +151,11 @@ public class MainMenuUIController : MonoBehaviour
     {
         OpenPanel(signupPanel);
     }
+    public void OnClick_OpenSettings()
+    {
+        OpenPanel(settingsPanel);
+    }
+
     public void UpdateTopRightButtons()
     {
         foreach (GameObject go in guestOnlyButtons)
@@ -97,8 +170,16 @@ public class MainMenuUIController : MonoBehaviour
     public void OpenPanel(GameObject panel)
     {
         CloseAllPanels();
-        panel.SetActive(true);
+        if (panel != null)
+        {
+            panel.SetActive(true);
+        }
+        else
+        {
+            Debug.LogWarning("⚠ panel is NULL");
+        }
     }
+
 
     public void CloseAllPanels()
     {
@@ -153,19 +234,7 @@ public class MainMenuUIController : MonoBehaviour
         signupPanel.SetActive(false);
     }
 
-    public void CheckDuplicateID()
-    {
-        string id = signupIdField.text;
 
-        if (id == "test123")
-        {
-            idCheckResultText.text = "❌ 이미 사용 중입니다.";
-        }
-        else
-        {
-            idCheckResultText.text = "✅ 사용 가능합니다!";
-        }
-    }
 
     void Update()
     {
