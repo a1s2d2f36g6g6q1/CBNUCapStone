@@ -25,13 +25,26 @@ public class MainMenuUIController : MonoBehaviour
     [Header("중복확인 관련")]
     public TMP_Text idCheckResultText;
 
+    [Header("TR 버튼 그룹")]
+    public GameObject[] loginOnlyButtons;    // 친구, 유저정보 버튼 (로그인 후)
+    public GameObject[] guestOnlyButtons;    // 로그인, 회원가입 버튼 (비로그인 상태)
+    public GameObject settingsButton;        // 항상 보이는 설정 버튼
+
     private bool isLoggedIn = false;
 
-    // static 고정 버튼
+    void Start()
+    {
+        UpdateTopRightButtons();
+    }
+
+    // ========================
+    // Static 버튼 동작
+    // ========================
     public void OnClick_SinglePlay()
     {
         fadeController.FadeToScene("G001_TagInput");
     }
+
     public void OnClick_CreateParty()
     {
         fadeController.FadeToScene("B001_CreateParty");
@@ -58,46 +71,64 @@ public class MainMenuUIController : MonoBehaviour
         Debug.Log("게임 종료!");
     }
 
-    // TR 우측 상단 버튼
+    // ========================
+    // TR 버튼 관련
+    // ========================
 
-    public void OnClick_Settings()
+    public void OnClick_OpenLogin()
     {
-        if (settingsPanel.activeSelf)
-        {
-            settingsPanel.SetActive(false);
-        }
-        else
-        {
-            settingsPanel.SetActive(true);
-        }
+        OpenPanel(loginPanel);
     }
-    public void OnClick_Friends()
+    public void OnClick_OpenSignup()
     {
-        fadeController.FadeToScene("F001_Friend");
+        OpenPanel(signupPanel);
+    }
+    public void UpdateTopRightButtons()
+    {
+        foreach (GameObject go in guestOnlyButtons)
+            go.SetActive(!isLoggedIn);
+
+        foreach (GameObject go in loginOnlyButtons)
+            go.SetActive(isLoggedIn);
+
+        settingsButton.SetActive(true);
     }
 
+    public void OpenPanel(GameObject panel)
+    {
+        CloseAllPanels();
+        panel.SetActive(true);
+    }
 
+    public void CloseAllPanels()
+    {
+        loginPanel.SetActive(false);
+        signupPanel.SetActive(false);
+        settingsPanel.SetActive(false);
+    }
 
+    public void Logout()
+    {
+        isLoggedIn = false;
+        UpdateTopRightButtons();
+        CloseAllPanels();
+        Debug.Log("로그아웃 완료!");
+    }
 
-    // ========= 패널 열고 닫기 =========
-    public void OpenLoginPanel() => loginPanel.SetActive(true);
-    public void OpenSignupPanel() => signupPanel.SetActive(true);
-    public void OpenSettingsPanel() => settingsPanel.SetActive(true);
-    public void ClosePanel(GameObject panel) => panel.SetActive(false);
-
-    // ========= 로그인 / 회원가입 =========
+    // ========================
+    // 로그인 / 회원가입
+    // ========================
     public void TryLogin()
     {
         string id = loginIdField.text;
         string pw = loginPwField.text;
 
-        // 나중에 서버 인증으로 대체
         if (id == "admin" && pw == "1234")
         {
             isLoggedIn = true;
+            UpdateTopRightButtons();
+            CloseAllPanels();
             Debug.Log("로그인 성공!");
-            loginPanel.SetActive(false);
-            // 로그인 상태 반영 추가로 구현 가능
         }
         else
         {
@@ -122,7 +153,6 @@ public class MainMenuUIController : MonoBehaviour
         signupPanel.SetActive(false);
     }
 
-    // ========= 아이디 중복 확인 (임시 더미) =========
     public void CheckDuplicateID()
     {
         string id = signupIdField.text;
@@ -134,6 +164,14 @@ public class MainMenuUIController : MonoBehaviour
         else
         {
             idCheckResultText.text = "✅ 사용 가능합니다!";
+        }
+    }
+
+    void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            CloseAllPanels();
         }
     }
 }
