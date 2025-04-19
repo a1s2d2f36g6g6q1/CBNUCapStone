@@ -7,11 +7,16 @@ using System.Collections.Generic;
 public class FadeController : MonoBehaviour
 {
     public Image fadeImage;              // FadePanel의 Image
-    public float fadeDuration = 1f;      // 페이드 시간
+    public float fadeDuration = 0.4f; // 페이드 시간
 
     public static class SceneHistory
     {
         public static Stack<string> history = new Stack<string>();
+    }
+    
+    void Awake()
+    {
+        fadeDuration = 0.4f; // Inspector 값 무시하고 코드로 덮어쓰기
     }
 
     
@@ -23,10 +28,14 @@ public class FadeController : MonoBehaviour
             return;
         }
 
-        // 검정 상태로 시작 후 → 서서히 사라지기
+        // 꺼져있으면 먼저 켜주기 (혹시 비활성화된 상태로 저장되어있을 수도 있어서)
+        fadeImage.gameObject.SetActive(true);
+
+        // 처음에 검정색 → 점점 사라지기
         fadeImage.color = new Color(0, 0, 0, 1);
         StartCoroutine(FadeIn());
     }
+
     
     public void GoBack()
     {
@@ -53,19 +62,22 @@ public class FadeController : MonoBehaviour
 
     IEnumerator FadeIn()
     {
+        fadeImage.gameObject.SetActive(true);
+
         float t = 0f;
         while (t < fadeDuration)
         {
-            t += Time.deltaTime;
+            t += Time.unscaledDeltaTime; // <- unscaledDeltaTime 추천
             float a = Mathf.Lerp(1f, 0f, t / fadeDuration);
             fadeImage.color = new Color(0, 0, 0, a);
             yield return null;
         }
 
-        // 페이드 끝났으니 안 가리게 처리
         fadeImage.color = new Color(0, 0, 0, 0);
-        fadeImage.gameObject.SetActive(false); // 또는 알파만 0으로 남겨도 OK
+        fadeImage.gameObject.SetActive(false);
     }
+
+
 
     IEnumerator FadeOut(string sceneName)
     {

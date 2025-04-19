@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class PuzzleManager : MonoBehaviour
@@ -8,6 +9,8 @@ public class PuzzleManager : MonoBehaviour
     public int width = 3;
     public int height = 3;
     public float spacing = 0.1f;
+    public float fadeDuration = 0.4f;
+    private Material[] puzzleMaterials;
 
     private Tile[,] tiles;
     private Vector2Int emptyPos;
@@ -15,12 +18,87 @@ public class PuzzleManager : MonoBehaviour
 
     void Start()
     {
+        if (GameData.difficulty < 2 || GameData.difficulty > 5)
+        {
+            GameData.difficulty = 3; // 기본값
+        }
+
+        width = GameData.difficulty;
+        height = GameData.difficulty;
+
         GeneratePuzzle();
+        CacheMaterials();
+        StartCoroutine(FadeInTiles());
         StartCoroutine(ShufflePuzzle());
     }
 
+    // 퍼즐 페이드 관련
+    void CacheMaterials()
+    {
+        Renderer[] renderers = GetComponentsInChildren<Renderer>();
+        List<Material> mats = new List<Material>();
+        foreach (Renderer r in renderers)
+        {
+            if (r.material != null)
+                mats.Add(r.material);
+        }
+        puzzleMaterials = mats.ToArray();
+    }
+
+    IEnumerator FadeInTiles()
+    {
+        foreach (Material mat in puzzleMaterials)
+        {
+            Color c = mat.color;
+            mat.color = new Color(c.r, c.g, c.b, 0f);
+        }
+
+        float t = 0f;
+        while (t < fadeDuration)
+        {
+            t += Time.deltaTime;
+            float a = Mathf.Lerp(0f, 1f, t / fadeDuration);
+            foreach (Material mat in puzzleMaterials)
+            {
+                Color c = mat.color;
+                mat.color = new Color(c.r, c.g, c.b, a);
+            }
+            yield return null;
+        }
+    }
+
+    public IEnumerator FadeOutTiles(Material[] materials, float duration)
+    {
+        float t = 0f;
+        while (t < duration)
+        {
+            t += Time.deltaTime;
+            float alpha = Mathf.Lerp(1f, 0f, t / duration);
+            foreach (Material mat in materials)
+            {
+                Color c = mat.color;
+                c.a = alpha;
+                mat.color = c;
+            }
+            yield return null;
+        }
+
+        // 투명도 0이 되면 타일 숨김
+        foreach (Tile tile in GetComponentsInChildren<Tile>())
+        {
+            tile.gameObject.SetActive(false);
+        }
+    }
+
+
     void GeneratePuzzle()
     {
+        // 기존 타일이 있으면 삭제
+        foreach (Transform child in transform)
+        {
+            Destroy(child.gameObject);
+        }
+
         tiles = new Tile[width, height];
 
         for (int y = 0; y < height; y++)
@@ -110,5 +188,16 @@ public class PuzzleManager : MonoBehaviour
         }
 
         Debug.Log("퍼즐 완료!! 🎉");
+    }
+
+    public void FadeAndBack(FadeController fadeController)
+    {
+        StartCoroutine(FadeAndLoad(fadeController));
+    }
+
+    IEnumerator FadeAndLoad(FadeController fadeController)
+    {
+        yield return StartCoroutine(FadeOutTiles(puzzleMaterials, fadeDuration));
+        fadeController.GoBack();
     }
 }

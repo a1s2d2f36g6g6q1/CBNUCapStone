@@ -15,8 +15,12 @@ public class Tile : MonoBehaviour
         gridPosition = new Vector2Int(x, y);
         correctPosition = new Vector2Int(correctX, correctY);
 
+        // ✅ 머티리얼을 새로 복제해서 개별 인스턴스 적용 (가장 중요!)
+        Renderer renderer = GetComponent<Renderer>();
+        renderer.material = new Material(renderer.material);
+
         // 이미지 설정
-        Material mat = GetComponent<Renderer>().material;
+        Material mat = renderer.material;
         mat.mainTexture = puzzleImage;
 
         mat.mainTextureScale = new Vector2(1f / width, 1f / height);

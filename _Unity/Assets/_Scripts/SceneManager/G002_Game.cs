@@ -10,7 +10,7 @@ public class Game : MonoBehaviour
     
     public void Back()
     {
-        fadeController.FadeToScene("000_MainMenu");
+        fadeController.FadeToScene("G001_TagInput");
     }
 
 }
