@@ -5,6 +5,9 @@ using UnityEngine;
 public class PuzzleManager : MonoBehaviour
 {
     public TimerManager timerManager;
+    private bool waitingForReveal = false;
+    private bool tilesRevealed = false;
+
 
     public Texture2D puzzleImage;
     private bool waitingForClickToRestore = false;
@@ -38,15 +41,21 @@ public class PuzzleManager : MonoBehaviour
     
     void Update()
     {
-        if (waitingForClickToRestore && Input.GetMouseButtonDown(0))
+        if (waitingForReveal && !tilesRevealed)
         {
-            foreach (Tile tile in tiles)
-                if (tile != null)
-                    tile.Restore();
-
-            waitingForClickToRestore = false;
+            if (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.Space))
+            {
+                foreach (Tile tile in tiles)
+                    if (tile != null)
+                        tile.Restore();
+    
+                tilesRevealed = true;
+                waitingForReveal = false;
+                timerManager.StartTimer(); // 여기서 타이머 시작
+            }
         }
     }
+
 
 
     // 퍼즐 페이드 관련
@@ -198,7 +207,9 @@ public class PuzzleManager : MonoBehaviour
         }
 
         isShuffling = false;
-        timerManager.StartTimer();
+        waitingForReveal = true; // 입력 대기 상태 진입
+        tilesRevealed = false;   // 아직 복원되지 않음
+        
         CheckComplete();
 
         waitingForClickToRestore = true; // 클릭 감지 대기 시작
