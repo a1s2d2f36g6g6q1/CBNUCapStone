@@ -1,0 +1,96 @@
+Forest
+Desert
+Ocean
+Sky
+Mountain
+Cave
+City
+Village
+Temple
+Castle
+Laboratory
+Library
+School
+Space
+Galaxy
+Moon
+Sunset
+Beach
+Snowfield
+Volcano
+Underwater
+Ruins
+Dungeon
+Field
+Bridge
+Tower
+House
+Bedroom
+Kitchen
+Garden
+Graveyard
+Street
+Station
+Market
+Ship
+Train
+Bus
+Highway
+Stadium
+Factory
+Subway
+Canyon
+Cliff
+Hall
+Aquarium
+Circus
+Swamp
+Park
+Museum
+Bakery
+Castle Hall
+Barn
+Skyline
+Mountain Top
+Castle Garden
+Treehouse
+Cloud
+Heaven
+Hell
+Outer Space
+Cyber City
+Garage
+Arcade
+Dreamscape
+Pixel World
+Ice Cave
+Jungle
+Rainforest
+Space Station
+Dimension Rift
+Haunted House
+Tavern
+Alley
+Castle Roof
+Rooftop
+Observatory
+Fountain
+Market Street
+Chapel
+Studio
+Dojo
+Maze
+Field of Flowers
+Mirror World
+Frozen Lake
+Steam Room
+Ship Deck
+Train Cabin
+Bridge of Light
+Puzzle Room
+Shrine
+Underground
+Floating Island
+Sky Island
+Magic Forest
+Dream Island
