@@ -6,10 +6,12 @@ Shader "Hidden/ltspass_dummy"
         Pass
         {
             Name "FORWARD_ADD"
-            Tags {"LightMode" = "ForwardAdd"}
+            Tags
+            {
+                "LightMode" = "ForwardAdd"
+            }
 
             HLSLPROGRAM
-
             //----------------------------------------------------------------------------------------------------------------------
             // Build Option
             #pragma vertex vert
@@ -17,9 +19,8 @@ Shader "Hidden/ltspass_dummy"
 
             //----------------------------------------------------------------------------------------------------------------------
             // Pass
-            float4 vert() : SV_POSITION {return float4(0.0,0.0,0.0,0.0);}
-            float4 frag() : SV_Target {return float4(0.0,0.0,0.0,0.0);}
-
+            float4 vert() : SV_POSITION { return float4(0.0, 0.0, 0.0, 0.0); }
+            float4 frag() : SV_Target { return float4(0.0, 0.0, 0.0, 0.0); }
             ENDHLSL
         }
     }

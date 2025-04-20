@@ -7,7 +7,7 @@
 //------------------------------------------------------------------------------------------------------------------------------
 // Structure
 #if !defined(LIL_CUSTOM_V2F_MEMBER)
-    #define LIL_CUSTOM_V2F_MEMBER(id0,id1,id2,id3,id4,id5,id6,id7)
+#define LIL_CUSTOM_V2F_MEMBER(id0,id1,id2,id3,id4,id5,id6,id7)
 #endif
 
 #define LIL_V2F_POSITION_CS
@@ -15,9 +15,9 @@
 
 struct v2f
 {
-    float4 positionCS   : SV_POSITION;
-    float2 uv0          : TEXCOORD0;
-    LIL_CUSTOM_V2F_MEMBER(1,2,3,4,5,6,7,8)
+    float4 positionCS : SV_POSITION;
+    float2 uv0 : TEXCOORD0;
+    LIL_CUSTOM_V2F_MEMBER(1, 2, 3, 4, 5, 6, 7, 8)
     LIL_VERTEX_INPUT_INSTANCE_ID
     LIL_VERTEX_OUTPUT_STEREO
 };
@@ -42,11 +42,11 @@ float4 frag(v2f input) : SV_Target
     BEFORE_MAIN
     OVERRIDE_MAIN
     #if LIL_RENDER == 1
-        #ifdef LIL_LITE
+    #ifdef LIL_LITE
             clip(fd.col.a - _Cutoff);
-        #else
+    #else
             fd.col.a = saturate((fd.col.a - _Cutoff) / max(fwidth(fd.col.a), 0.0001) + 0.5);
-        #endif
+    #endif
     #elif LIL_RENDER == 2
         clip(fd.col.a - _Cutoff);
     #endif

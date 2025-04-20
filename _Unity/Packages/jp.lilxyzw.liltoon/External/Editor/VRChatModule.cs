@@ -112,14 +112,16 @@ namespace lilToon.External
                 {
                     if(descriptor.CustomSittingAnims != null)
                     {
-                        var overridesSitting = new List<KeyValuePair<AnimationClip, AnimationClip>>(descriptor.CustomSittingAnims.overridesCount);
+                        var overridesSitting =
+ new List<KeyValuePair<AnimationClip, AnimationClip>>(descriptor.CustomSittingAnims.overridesCount);
                         descriptor.CustomSittingAnims.GetOverrides(overridesSitting);
                         clips.AddRange(overridesSitting.Select(p => p.Key));
                         clips.AddRange(overridesSitting.Select(p => p.Value));
                     }
                     if(descriptor.CustomStandingAnims != null)
                     {
-                        var overridesStanding = new List<KeyValuePair<AnimationClip, AnimationClip>>(descriptor.CustomStandingAnims.overridesCount);
+                        var overridesStanding =
+ new List<KeyValuePair<AnimationClip, AnimationClip>>(descriptor.CustomStandingAnims.overridesCount);
                         descriptor.CustomStandingAnims.GetOverrides(overridesStanding);
                         clips.AddRange(overridesStanding.Select(p => p.Key));
                         clips.AddRange(overridesStanding.Select(p => p.Value));
@@ -156,14 +158,16 @@ namespace lilToon.External
                     {
                         if(descriptor.CustomSittingAnims != null)
                         {
-                            var overridesSitting = new List<KeyValuePair<AnimationClip, AnimationClip>>(descriptor.CustomSittingAnims.overridesCount);
+                            var overridesSitting =
+ new List<KeyValuePair<AnimationClip, AnimationClip>>(descriptor.CustomSittingAnims.overridesCount);
                             descriptor.CustomSittingAnims.GetOverrides(overridesSitting);
                             clips.AddRange(overridesSitting.Select(p => p.Key));
                             clips.AddRange(overridesSitting.Select(p => p.Value));
                         }
                         if(descriptor.CustomStandingAnims != null)
                         {
-                            var overridesStanding = new List<KeyValuePair<AnimationClip, AnimationClip>>(descriptor.CustomStandingAnims.overridesCount);
+                            var overridesStanding =
+ new List<KeyValuePair<AnimationClip, AnimationClip>>(descriptor.CustomStandingAnims.overridesCount);
                             descriptor.CustomStandingAnims.GetOverrides(overridesStanding);
                             clips.AddRange(overridesStanding.Select(p => p.Key));
                             clips.AddRange(overridesStanding.Select(p => p.Value));

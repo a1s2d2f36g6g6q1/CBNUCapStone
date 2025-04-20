@@ -15,99 +15,119 @@ namespace lilToon
 {
     public class lilMaterialUtils
     {
-        internal static void SetupMaterialWithRenderingMode(Material material, RenderingMode renderingMode, TransparentMode transparentMode, bool isoutl, bool islite, bool istess, bool ismulti)
+        internal static void SetupMaterialWithRenderingMode(Material material, RenderingMode renderingMode,
+            TransparentMode transparentMode, bool isoutl, bool islite, bool istess, bool ismulti)
         {
             Undo.RecordObject(material, null);
-            int renderQueue = GetTrueRenderQueue(material);
-            RenderingMode rend = renderingMode;
-            lilRenderPipeline RP = lilRenderPipelineReader.GetRP();
-            if(ismulti)
+            var renderQueue = GetTrueRenderQueue(material);
+            var rend = renderingMode;
+            var RP = lilRenderPipelineReader.GetRP();
+            if (ismulti)
             {
-                float tpmode = material.GetFloat("_TransparentMode");
-                switch((int)tpmode)
+                var tpmode = material.GetFloat("_TransparentMode");
+                switch ((int)tpmode)
                 {
-                    case 1  : rend = RenderingMode.Cutout; break;
-                    case 2  : rend = RenderingMode.Transparent; break;
-                    case 3  : rend = RenderingMode.Refraction; break;
-                    case 4  : rend = RenderingMode.Fur; break;
-                    case 5  : rend = RenderingMode.FurCutout; break;
-                    case 6  : rend = RenderingMode.Gem; break;
-                    default : rend = RenderingMode.Opaque; break;
+                    case 1:
+                        rend = RenderingMode.Cutout;
+                        break;
+                    case 2:
+                        rend = RenderingMode.Transparent;
+                        break;
+                    case 3:
+                        rend = RenderingMode.Refraction;
+                        break;
+                    case 4:
+                        rend = RenderingMode.Fur;
+                        break;
+                    case 5:
+                        rend = RenderingMode.FurCutout;
+                        break;
+                    case 6:
+                        rend = RenderingMode.Gem;
+                        break;
+                    default:
+                        rend = RenderingMode.Opaque;
+                        break;
                 }
             }
-            switch(rend)
+
+            switch (rend)
             {
                 case RenderingMode.Opaque:
-                    if(islite)
+                    if (islite)
                     {
-                        if(isoutl)  material.shader = lilShaderManager.ltslo;
-                        else        material.shader = lilShaderManager.ltsl;
+                        if (isoutl) material.shader = lilShaderManager.ltslo;
+                        else material.shader = lilShaderManager.ltsl;
                     }
-                    else if(ismulti)
+                    else if (ismulti)
                     {
-                        if(isoutl)  material.shader = lilShaderManager.ltsmo;
-                        else        material.shader = lilShaderManager.ltsm;
+                        if (isoutl) material.shader = lilShaderManager.ltsmo;
+                        else material.shader = lilShaderManager.ltsm;
                         material.SetOverrideTag("RenderType", "");
                         material.renderQueue = -1;
                     }
-                    else if(istess)
+                    else if (istess)
                     {
-                        if(isoutl)  material.shader = lilShaderManager.ltstesso;
-                        else        material.shader = lilShaderManager.ltstess;
+                        if (isoutl) material.shader = lilShaderManager.ltstesso;
+                        else material.shader = lilShaderManager.ltstess;
                     }
                     else
                     {
-                        if(isoutl)  material.shader = lilShaderManager.ltso;
-                        else        material.shader = lilShaderManager.lts;
+                        if (isoutl) material.shader = lilShaderManager.ltso;
+                        else material.shader = lilShaderManager.lts;
                     }
+
                     material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
                     material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.Zero);
                     material.SetInt("_AlphaToMask", 0);
-                    if(isoutl)
+                    if (isoutl)
                     {
                         material.SetInt("_OutlineSrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
                         material.SetInt("_OutlineDstBlend", (int)UnityEngine.Rendering.BlendMode.Zero);
                         material.SetInt("_OutlineAlphaToMask", 0);
                     }
+
                     break;
                 case RenderingMode.Cutout:
-                    if(islite)
+                    if (islite)
                     {
-                        if(isoutl)  material.shader = lilShaderManager.ltslco;
-                        else        material.shader = lilShaderManager.ltslc;
+                        if (isoutl) material.shader = lilShaderManager.ltslco;
+                        else material.shader = lilShaderManager.ltslc;
                     }
-                    else if(ismulti)
+                    else if (ismulti)
                     {
-                        if(isoutl)  material.shader = lilShaderManager.ltsmo;
-                        else        material.shader = lilShaderManager.ltsm;
+                        if (isoutl) material.shader = lilShaderManager.ltsmo;
+                        else material.shader = lilShaderManager.ltsm;
                         material.SetOverrideTag("RenderType", "TransparentCutout");
                         material.renderQueue = 2450;
                     }
-                    else if(istess)
+                    else if (istess)
                     {
-                        if(isoutl)  material.shader = lilShaderManager.ltstessco;
-                        else        material.shader = lilShaderManager.ltstessc;
+                        if (isoutl) material.shader = lilShaderManager.ltstessco;
+                        else material.shader = lilShaderManager.ltstessc;
                     }
                     else
                     {
-                        if(isoutl)  material.shader = lilShaderManager.ltsco;
-                        else        material.shader = lilShaderManager.ltsc;
+                        if (isoutl) material.shader = lilShaderManager.ltsco;
+                        else material.shader = lilShaderManager.ltsc;
                     }
+
                     material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
                     material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.Zero);
                     material.SetInt("_AlphaToMask", 1);
-                    if(isoutl)
+                    if (isoutl)
                     {
                         material.SetInt("_OutlineSrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
                         material.SetInt("_OutlineDstBlend", (int)UnityEngine.Rendering.BlendMode.Zero);
                         material.SetInt("_OutlineAlphaToMask", 1);
                     }
+
                     break;
                 case RenderingMode.Transparent:
-                    if(ismulti)
+                    if (ismulti)
                     {
-                        if(isoutl)  material.shader = lilShaderManager.ltsmo;
-                        else        material.shader = lilShaderManager.ltsm;
+                        if (isoutl) material.shader = lilShaderManager.ltsmo;
+                        else material.shader = lilShaderManager.ltsm;
                         material.SetOverrideTag("RenderType", "TransparentCutout");
                         material.renderQueue = RP == lilRenderPipeline.HDRP ? 3000 : 2460;
                     }
@@ -116,70 +136,75 @@ namespace lilToon
                         switch (transparentMode)
                         {
                             case TransparentMode.Normal:
-                                if(islite)
+                                if (islite)
                                 {
-                                    if(isoutl)  material.shader = lilShaderManager.ltslto;
-                                    else        material.shader = lilShaderManager.ltslt;
+                                    if (isoutl) material.shader = lilShaderManager.ltslto;
+                                    else material.shader = lilShaderManager.ltslt;
                                 }
-                                else if(istess)
+                                else if (istess)
                                 {
-                                    if(isoutl)  material.shader = lilShaderManager.ltstessto;
-                                    else        material.shader = lilShaderManager.ltstesst;
+                                    if (isoutl) material.shader = lilShaderManager.ltstessto;
+                                    else material.shader = lilShaderManager.ltstesst;
                                 }
                                 else
                                 {
-                                    if(isoutl)  material.shader = lilShaderManager.ltsto;
-                                    else        material.shader = lilShaderManager.ltst;
+                                    if (isoutl) material.shader = lilShaderManager.ltsto;
+                                    else material.shader = lilShaderManager.ltst;
                                 }
+
                                 break;
                             case TransparentMode.OnePass:
-                                if(islite)
+                                if (islite)
                                 {
-                                    if(isoutl)  material.shader = lilShaderManager.ltsloto;
-                                    else        material.shader = lilShaderManager.ltslot;
+                                    if (isoutl) material.shader = lilShaderManager.ltsloto;
+                                    else material.shader = lilShaderManager.ltslot;
                                 }
-                                else if(istess)
+                                else if (istess)
                                 {
-                                    if(isoutl)  material.shader = lilShaderManager.ltstessoto;
-                                    else        material.shader = lilShaderManager.ltstessot;
+                                    if (isoutl) material.shader = lilShaderManager.ltstessoto;
+                                    else material.shader = lilShaderManager.ltstessot;
                                 }
                                 else
                                 {
-                                    if(isoutl)  material.shader = lilShaderManager.ltsoto;
-                                    else        material.shader = lilShaderManager.ltsot;
+                                    if (isoutl) material.shader = lilShaderManager.ltsoto;
+                                    else material.shader = lilShaderManager.ltsot;
                                 }
+
                                 break;
                             case TransparentMode.TwoPass:
-                                if(islite)
+                                if (islite)
                                 {
-                                    if(isoutl)  material.shader = lilShaderManager.ltsltto;
-                                    else        material.shader = lilShaderManager.ltsltt;
+                                    if (isoutl) material.shader = lilShaderManager.ltsltto;
+                                    else material.shader = lilShaderManager.ltsltt;
                                 }
-                                else if(istess)
+                                else if (istess)
                                 {
-                                    if(isoutl)  material.shader = lilShaderManager.ltstesstto;
-                                    else        material.shader = lilShaderManager.ltstesstt;
+                                    if (isoutl) material.shader = lilShaderManager.ltstesstto;
+                                    else material.shader = lilShaderManager.ltstesstt;
                                 }
                                 else
                                 {
-                                    if(isoutl)  material.shader = lilShaderManager.ltstto;
-                                    else        material.shader = lilShaderManager.ltstt;
+                                    if (isoutl) material.shader = lilShaderManager.ltstto;
+                                    else material.shader = lilShaderManager.ltstt;
                                 }
+
                                 break;
                         }
                     }
+
                     material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
                     material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
                     material.SetInt("_AlphaToMask", 0);
-                    if(isoutl)
+                    if (isoutl)
                     {
                         material.SetInt("_OutlineSrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
                         material.SetInt("_OutlineDstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
                         material.SetInt("_OutlineAlphaToMask", 0);
                     }
+
                     break;
                 case RenderingMode.Refraction:
-                    if(ismulti)
+                    if (ismulti)
                     {
                         material.shader = lilShaderManager.ltsmref;
                         material.SetOverrideTag("RenderType", "");
@@ -189,6 +214,7 @@ namespace lilToon
                     {
                         material.shader = lilShaderManager.ltsref;
                     }
+
                     material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
                     material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.Zero);
                     material.SetInt("_AlphaToMask", 0);
@@ -200,7 +226,7 @@ namespace lilToon
                     material.SetInt("_AlphaToMask", 0);
                     break;
                 case RenderingMode.Fur:
-                    if(ismulti)
+                    if (ismulti)
                     {
                         material.shader = lilShaderManager.ltsmfur;
                         material.SetOverrideTag("RenderType", "TransparentCutout");
@@ -210,6 +236,7 @@ namespace lilToon
                     {
                         material.shader = lilShaderManager.ltsfur;
                     }
+
                     material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
                     material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
                     material.SetInt("_AlphaToMask", 0);
@@ -219,7 +246,7 @@ namespace lilToon
                     material.SetInt("_FurAlphaToMask", 0);
                     break;
                 case RenderingMode.FurCutout:
-                    if(ismulti)
+                    if (ismulti)
                     {
                         material.shader = lilShaderManager.ltsmfur;
                         material.SetOverrideTag("RenderType", "TransparentCutout");
@@ -229,6 +256,7 @@ namespace lilToon
                     {
                         material.shader = lilShaderManager.ltsfurc;
                     }
+
                     material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
                     material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.Zero);
                     material.SetInt("_AlphaToMask", 1);
@@ -248,7 +276,7 @@ namespace lilToon
                     material.SetInt("_FurAlphaToMask", 0);
                     break;
                 case RenderingMode.Gem:
-                    if(ismulti)
+                    if (ismulti)
                     {
                         material.shader = lilShaderManager.ltsmgem;
                         material.SetOverrideTag("RenderType", "");
@@ -258,14 +286,16 @@ namespace lilToon
                     {
                         material.shader = lilShaderManager.ltsgem;
                     }
+
                     material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
                     material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.One);
                     material.SetInt("_AlphaToMask", 0);
                     break;
             }
-            if(!ismulti) material.renderQueue = renderQueue;
+
+            if (!ismulti) material.renderQueue = renderQueue;
             FixTransparentRenderQueue(material, renderingMode);
-            if(rend == RenderingMode.Gem)
+            if (rend == RenderingMode.Gem)
             {
                 material.SetInt("_Cull", 0);
                 material.SetInt("_ZWrite", 0);
@@ -274,10 +304,8 @@ namespace lilToon
             {
                 material.SetInt("_ZWrite", 1);
             }
-            if(transparentMode != TransparentMode.TwoPass)
-            {
-                material.SetInt("_ZTest", 4);
-            }
+
+            if (transparentMode != TransparentMode.TwoPass) material.SetInt("_ZTest", 4);
             material.SetFloat("_OffsetFactor", 0.0f);
             material.SetFloat("_OffsetUnits", 0.0f);
             material.SetInt("_ColorMask", 15);
@@ -291,7 +319,7 @@ namespace lilToon
             material.SetInt("_DstBlendAlphaFA", (int)UnityEngine.Rendering.BlendMode.One);
             material.SetInt("_BlendOpFA", (int)BlendOp.Max);
             material.SetInt("_BlendOpAlphaFA", (int)BlendOp.Max);
-            if(isoutl)
+            if (isoutl)
             {
                 material.SetInt("_OutlineCull", 1);
                 material.SetInt("_OutlineZWrite", 1);
@@ -310,7 +338,9 @@ namespace lilToon
                 material.SetInt("_OutlineBlendOpFA", (int)BlendOp.Max);
                 material.SetInt("_OutlineBlendOpAlphaFA", (int)BlendOp.Max);
             }
-            if(renderingMode == RenderingMode.Fur || renderingMode == RenderingMode.FurCutout || renderingMode == RenderingMode.FurTwoPass)
+
+            if (renderingMode == RenderingMode.Fur || renderingMode == RenderingMode.FurCutout ||
+                renderingMode == RenderingMode.FurTwoPass)
             {
                 material.SetInt("_FurZTest", 4);
                 material.SetFloat("_FurOffsetFactor", 0.0f);
@@ -336,7 +366,7 @@ namespace lilToon
 
         private static void FixTransparentRenderQueue(Material material, RenderingMode renderingMode)
         {
-            #if LILTOON_VRCSDK3_WORLDS
+#if LILTOON_VRCSDK3_WORLDS
                 if( renderingMode == RenderingMode.Transparent ||
                     renderingMode == RenderingMode.Refraction ||
                     renderingMode == RenderingMode.RefractionBlur ||
@@ -347,200 +377,203 @@ namespace lilToon
                 {
                     material.renderQueue = 3000;
                 }
-            #endif
+#endif
         }
 
         public static void SetupMultiMaterial(Material material)
         {
-            int tpmode = 0;
-            if(material.HasProperty("_TransparentMode")) tpmode = (int)material.GetFloat("_TransparentMode");
-            bool useShadow = IsFeatureOnFloat(material, "_UseShadow");
-            bool useRimShade = IsFeatureOnFloat(material, "_UseRimShade");
-            bool useDistanceFade = IsFeatureOnVectorZ(material, "_DistanceFade");
-            bool useEmission = IsFeatureOnFloat(material, "_UseEmission");
-            bool useEmission2nd = IsFeatureOnFloat(material, "_UseEmission2nd");
-            bool useBumpMap = IsFeatureOnFloat(material, "_UseBumpMap");
-            bool useBump2ndMap = IsFeatureOnFloat(material, "_UseBump2ndMap");
-            bool useAnisotropy = IsFeatureOnFloat(material, "_UseAnisotropy");
-            bool useMatCap = IsFeatureOnFloat(material, "_UseMatCap");
-            bool useMatCap2nd = IsFeatureOnFloat(material, "_UseMatCap2nd");
-            bool useMatCapCustomNormal = IsFeatureOnFloat(material, "_MatCapCustomNormal");
-            bool useMatCap2ndCustomNormal = IsFeatureOnFloat(material, "_MatCap2ndCustomNormal");
-            bool useRim = IsFeatureOnFloat(material, "_UseRim");
-            bool useRimDir = IsFeatureOnFloat(material, "_RimDirStrength");
-            bool useGlitter = IsFeatureOnFloat(material, "_UseGlitter");
-            bool useAudioLink = IsFeatureOnFloat(material, "_UseAudioLink");
-            bool audioLinkAsLocal = IsFeatureOnFloat(material, "_AudioLinkAsLocal");
-            bool useDissolve = IsFeatureOnVectorX(material, "_DissolveParams");
-            bool useMain2ndDissolve = IsFeatureOnVectorX(material, "_Main2ndDissolveParams");
-            bool useMain3rdDissolve = IsFeatureOnVectorX(material, "_Main3rdDissolveParams");
-            bool useMainTexHSVG = IsFeatureOnHSVG(material, "_MainTexHSVG");
-            bool useMainGradation = IsFeatureOnFloat(material, "_MainGradationStrength");
-            bool useMain2ndTex = IsFeatureOnFloat(material, "_UseMain2ndTex");
-            bool useMain3rdTex = IsFeatureOnFloat(material, "_UseMain3rdTex");
-            bool useBacklight = IsFeatureOnFloat(material, "_UseBacklight");
-            bool useParallax = IsFeatureOnFloat(material, "_UseParallax");
-            bool usePOM = IsFeatureOnFloat(material, "_UsePOM");
-            bool useReflection = IsFeatureOnFloat(material, "_UseReflection");
-            bool useAlphaMask = IsFeatureOnFloat(material, "_AlphaMaskMode");
-            bool useMain2ndTexDecalAnimation = IsFeatureOnDecalAnimation(material, "_Main2ndTexDecalAnimation");
-            bool useMain3rdTexDecalAnimation = IsFeatureOnDecalAnimation(material, "_Main3rdTexDecalAnimation");
-            bool useEmissionBlendMask = IsFeatureOnTexture(material, "_EmissionBlendMask");
-            bool useEmission2ndBlendMask = IsFeatureOnTexture(material, "_Emission2ndBlendMask");
+            var tpmode = 0;
+            if (material.HasProperty("_TransparentMode")) tpmode = (int)material.GetFloat("_TransparentMode");
+            var useShadow = IsFeatureOnFloat(material, "_UseShadow");
+            var useRimShade = IsFeatureOnFloat(material, "_UseRimShade");
+            var useDistanceFade = IsFeatureOnVectorZ(material, "_DistanceFade");
+            var useEmission = IsFeatureOnFloat(material, "_UseEmission");
+            var useEmission2nd = IsFeatureOnFloat(material, "_UseEmission2nd");
+            var useBumpMap = IsFeatureOnFloat(material, "_UseBumpMap");
+            var useBump2ndMap = IsFeatureOnFloat(material, "_UseBump2ndMap");
+            var useAnisotropy = IsFeatureOnFloat(material, "_UseAnisotropy");
+            var useMatCap = IsFeatureOnFloat(material, "_UseMatCap");
+            var useMatCap2nd = IsFeatureOnFloat(material, "_UseMatCap2nd");
+            var useMatCapCustomNormal = IsFeatureOnFloat(material, "_MatCapCustomNormal");
+            var useMatCap2ndCustomNormal = IsFeatureOnFloat(material, "_MatCap2ndCustomNormal");
+            var useRim = IsFeatureOnFloat(material, "_UseRim");
+            var useRimDir = IsFeatureOnFloat(material, "_RimDirStrength");
+            var useGlitter = IsFeatureOnFloat(material, "_UseGlitter");
+            var useAudioLink = IsFeatureOnFloat(material, "_UseAudioLink");
+            var audioLinkAsLocal = IsFeatureOnFloat(material, "_AudioLinkAsLocal");
+            var useDissolve = IsFeatureOnVectorX(material, "_DissolveParams");
+            var useMain2ndDissolve = IsFeatureOnVectorX(material, "_Main2ndDissolveParams");
+            var useMain3rdDissolve = IsFeatureOnVectorX(material, "_Main3rdDissolveParams");
+            var useMainTexHSVG = IsFeatureOnHSVG(material, "_MainTexHSVG");
+            var useMainGradation = IsFeatureOnFloat(material, "_MainGradationStrength");
+            var useMain2ndTex = IsFeatureOnFloat(material, "_UseMain2ndTex");
+            var useMain3rdTex = IsFeatureOnFloat(material, "_UseMain3rdTex");
+            var useBacklight = IsFeatureOnFloat(material, "_UseBacklight");
+            var useParallax = IsFeatureOnFloat(material, "_UseParallax");
+            var usePOM = IsFeatureOnFloat(material, "_UsePOM");
+            var useReflection = IsFeatureOnFloat(material, "_UseReflection");
+            var useAlphaMask = IsFeatureOnFloat(material, "_AlphaMaskMode");
+            var useMain2ndTexDecalAnimation = IsFeatureOnDecalAnimation(material, "_Main2ndTexDecalAnimation");
+            var useMain3rdTexDecalAnimation = IsFeatureOnDecalAnimation(material, "_Main3rdTexDecalAnimation");
+            var useEmissionBlendMask = IsFeatureOnTexture(material, "_EmissionBlendMask");
+            var useEmission2ndBlendMask = IsFeatureOnTexture(material, "_Emission2ndBlendMask");
 
-            bool isOutl = material.shader.name.Contains("Outline");
-            bool isRefr = material.shader.name.Contains("Refraction");
-            bool isFur = material.shader.name.Contains("Fur");
-            bool isGem = material.shader.name.Contains("Gem");
+            var isOutl = material.shader.name.Contains("Outline");
+            var isRefr = material.shader.name.Contains("Refraction");
+            var isFur = material.shader.name.Contains("Fur");
+            var isGem = material.shader.name.Contains("Gem");
 
-            SetShaderKeywords(material, "UNITY_UI_ALPHACLIP",                   tpmode == 1);
-            SetShaderKeywords(material, "UNITY_UI_CLIP_RECT",                   tpmode == 2 || tpmode == 4);
-            SetShaderKeywords(material, "ETC1_EXTERNAL_ALPHA",                  tpmode == 1 && material.GetFloat("_UseDither") == 1.0f);
-            material.SetShaderPassEnabled("ShadowCaster",                       material.GetFloat("_AsOverlay") == 0.0f);
-            material.SetShaderPassEnabled("DepthOnly",                          material.GetFloat("_AsOverlay") == 0.0f);
-            material.SetShaderPassEnabled("DepthNormals",                       material.GetFloat("_AsOverlay") == 0.0f);
-            material.SetShaderPassEnabled("DepthForwardOnly",                   material.GetFloat("_AsOverlay") == 0.0f);
-            material.SetShaderPassEnabled("MotionVectors",                      material.GetFloat("_AsOverlay") == 0.0f);
+            SetShaderKeywords(material, "UNITY_UI_ALPHACLIP", tpmode == 1);
+            SetShaderKeywords(material, "UNITY_UI_CLIP_RECT", tpmode == 2 || tpmode == 4);
+            SetShaderKeywords(material, "ETC1_EXTERNAL_ALPHA", tpmode == 1 && material.GetFloat("_UseDither") == 1.0f);
+            material.SetShaderPassEnabled("ShadowCaster", material.GetFloat("_AsOverlay") == 0.0f);
+            material.SetShaderPassEnabled("DepthOnly", material.GetFloat("_AsOverlay") == 0.0f);
+            material.SetShaderPassEnabled("DepthNormals", material.GetFloat("_AsOverlay") == 0.0f);
+            material.SetShaderPassEnabled("DepthForwardOnly", material.GetFloat("_AsOverlay") == 0.0f);
+            material.SetShaderPassEnabled("MotionVectors", material.GetFloat("_AsOverlay") == 0.0f);
 
-            if(isGem)
+            if (isGem)
             {
-                SetShaderKeywords(material, "_REQUIRE_UV2",                         false);
-                SetShaderKeywords(material, "AUTO_KEY_VALUE",                       false);
-                SetShaderKeywords(material, "_FADING_ON",                           false);
+                SetShaderKeywords(material, "_REQUIRE_UV2", false);
+                SetShaderKeywords(material, "AUTO_KEY_VALUE", false);
+                SetShaderKeywords(material, "_FADING_ON", false);
             }
             else
             {
-                SetShaderKeywords(material, "_REQUIRE_UV2",                         useShadow);
-                SetShaderKeywords(material, "AUTO_KEY_VALUE",                       useRimShade);
-                SetShaderKeywords(material, "_FADING_ON",                           useDistanceFade);
+                SetShaderKeywords(material, "_REQUIRE_UV2", useShadow);
+                SetShaderKeywords(material, "AUTO_KEY_VALUE", useRimShade);
+                SetShaderKeywords(material, "_FADING_ON", useDistanceFade);
             }
 
-            SetShaderKeywords(material, "_EMISSION",                            useEmission);
-            SetShaderKeywords(material, "GEOM_TYPE_BRANCH",                     useEmission2nd);
-            SetShaderKeywords(material, "_SUNDISK_SIMPLE",                      (useEmission && useEmissionBlendMask) || (useEmission2nd && useEmission2ndBlendMask));
-            SetShaderKeywords(material, "_NORMALMAP",                           useBumpMap);
-            SetShaderKeywords(material, "EFFECT_BUMP",                          useBump2ndMap);
-            SetShaderKeywords(material, "SOURCE_GBUFFER",                       useAnisotropy);
+            SetShaderKeywords(material, "_EMISSION", useEmission);
+            SetShaderKeywords(material, "GEOM_TYPE_BRANCH", useEmission2nd);
+            SetShaderKeywords(material, "_SUNDISK_SIMPLE",
+                (useEmission && useEmissionBlendMask) || (useEmission2nd && useEmission2ndBlendMask));
+            SetShaderKeywords(material, "_NORMALMAP", useBumpMap);
+            SetShaderKeywords(material, "EFFECT_BUMP", useBump2ndMap);
+            SetShaderKeywords(material, "SOURCE_GBUFFER", useAnisotropy);
             SetShaderKeywords(material, "_SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A", useMatCap);
-            SetShaderKeywords(material, "_SPECULARHIGHLIGHTS_OFF",              useMatCap2nd);
-            SetShaderKeywords(material, "GEOM_TYPE_MESH",                       (useMatCap && useMatCapCustomNormal) || (useMatCap2nd && useMatCap2ndCustomNormal));
-            SetShaderKeywords(material, "_METALLICGLOSSMAP",                    useRim);
-            SetShaderKeywords(material, "GEOM_TYPE_LEAF",                       useRim && useRimDir);
-            SetShaderKeywords(material, "_SPECGLOSSMAP",                        useGlitter);
-            SetShaderKeywords(material, "_MAPPING_6_FRAMES_LAYOUT",             useAudioLink);
-            SetShaderKeywords(material, "_SUNDISK_HIGH_QUALITY",                useAudioLink && audioLinkAsLocal);
-            SetShaderKeywords(material, "GEOM_TYPE_BRANCH_DETAIL",              useDissolve);
+            SetShaderKeywords(material, "_SPECULARHIGHLIGHTS_OFF", useMatCap2nd);
+            SetShaderKeywords(material, "GEOM_TYPE_MESH",
+                (useMatCap && useMatCapCustomNormal) || (useMatCap2nd && useMatCap2ndCustomNormal));
+            SetShaderKeywords(material, "_METALLICGLOSSMAP", useRim);
+            SetShaderKeywords(material, "GEOM_TYPE_LEAF", useRim && useRimDir);
+            SetShaderKeywords(material, "_SPECGLOSSMAP", useGlitter);
+            SetShaderKeywords(material, "_MAPPING_6_FRAMES_LAYOUT", useAudioLink);
+            SetShaderKeywords(material, "_SUNDISK_HIGH_QUALITY", useAudioLink && audioLinkAsLocal);
+            SetShaderKeywords(material, "GEOM_TYPE_BRANCH_DETAIL", useDissolve);
 
-            if(isGem)
+            if (isGem)
             {
-                SetShaderKeywords(material, "EFFECT_HUE_VARIATION",                 false);
-                SetShaderKeywords(material, "_COLORADDSUBDIFF_ON",                  false);
-                SetShaderKeywords(material, "_COLORCOLOR_ON",                       false);
-                SetShaderKeywords(material, "_SUNDISK_NONE",                        false);
-                SetShaderKeywords(material, "GEOM_TYPE_FROND",                      false);
-                SetShaderKeywords(material, "_COLOROVERLAY_ON",                     false);
-                SetShaderKeywords(material, "ANTI_FLICKER",                         false);
-                SetShaderKeywords(material, "_PARALLAXMAP",                         false);
-                SetShaderKeywords(material, "PIXELSNAP_ON",                         false);
-                SetShaderKeywords(material, "_GLOSSYREFLECTIONS_OFF",               false);
+                SetShaderKeywords(material, "EFFECT_HUE_VARIATION", false);
+                SetShaderKeywords(material, "_COLORADDSUBDIFF_ON", false);
+                SetShaderKeywords(material, "_COLORCOLOR_ON", false);
+                SetShaderKeywords(material, "_SUNDISK_NONE", false);
+                SetShaderKeywords(material, "GEOM_TYPE_FROND", false);
+                SetShaderKeywords(material, "_COLOROVERLAY_ON", false);
+                SetShaderKeywords(material, "ANTI_FLICKER", false);
+                SetShaderKeywords(material, "_PARALLAXMAP", false);
+                SetShaderKeywords(material, "PIXELSNAP_ON", false);
+                SetShaderKeywords(material, "_GLOSSYREFLECTIONS_OFF", false);
             }
             else
             {
-                SetShaderKeywords(material, "EFFECT_HUE_VARIATION",                 useMainTexHSVG || useMainGradation);
-                SetShaderKeywords(material, "_COLORADDSUBDIFF_ON",                  useMain2ndTex);
-                SetShaderKeywords(material, "_COLORCOLOR_ON",                       useMain3rdTex);
-                SetShaderKeywords(material, "_SUNDISK_NONE",                        (useMain2ndTex && useMain2ndTexDecalAnimation) || (useMain3rdTex && useMain3rdTexDecalAnimation));
-                SetShaderKeywords(material, "GEOM_TYPE_FROND",                      (useMain2ndTex && useMain2ndDissolve) || (useMain3rdTex && useMain3rdDissolve));
-                SetShaderKeywords(material, "_COLOROVERLAY_ON",                     tpmode != 0 && useAlphaMask);
-                SetShaderKeywords(material, "ANTI_FLICKER",                         useBacklight);
-                SetShaderKeywords(material, "_PARALLAXMAP",                         useParallax);
-                SetShaderKeywords(material, "PIXELSNAP_ON",                         useParallax && usePOM);
-                SetShaderKeywords(material, "_GLOSSYREFLECTIONS_OFF",               useReflection);
+                SetShaderKeywords(material, "EFFECT_HUE_VARIATION", useMainTexHSVG || useMainGradation);
+                SetShaderKeywords(material, "_COLORADDSUBDIFF_ON", useMain2ndTex);
+                SetShaderKeywords(material, "_COLORCOLOR_ON", useMain3rdTex);
+                SetShaderKeywords(material, "_SUNDISK_NONE",
+                    (useMain2ndTex && useMain2ndTexDecalAnimation) || (useMain3rdTex && useMain3rdTexDecalAnimation));
+                SetShaderKeywords(material, "GEOM_TYPE_FROND",
+                    (useMain2ndTex && useMain2ndDissolve) || (useMain3rdTex && useMain3rdDissolve));
+                SetShaderKeywords(material, "_COLOROVERLAY_ON", tpmode != 0 && useAlphaMask);
+                SetShaderKeywords(material, "ANTI_FLICKER", useBacklight);
+                SetShaderKeywords(material, "_PARALLAXMAP", useParallax);
+                SetShaderKeywords(material, "PIXELSNAP_ON", useParallax && usePOM);
+                SetShaderKeywords(material, "_GLOSSYREFLECTIONS_OFF", useReflection);
             }
 
-            if(isRefr || isFur || isGem)
-            {
-                SetShaderKeywords(material, "_DETAIL_MULX2",                        false);
-            }
+            if (isRefr || isFur || isGem)
+                SetShaderKeywords(material, "_DETAIL_MULX2", false);
             else
-            {
-                SetShaderKeywords(material, "_DETAIL_MULX2",                        isOutl && material.GetVector("_OutlineTexHSVG") != lilConstants.defaultHSVG);
-            }
+                SetShaderKeywords(material, "_DETAIL_MULX2",
+                    isOutl && material.GetVector("_OutlineTexHSVG") != lilConstants.defaultHSVG);
 
             // Remove old keywords
-            material.SetShaderPassEnabled("SRPDEFAULTUNLIT",                    true);
-            SetShaderKeywords(material, "BILLBOARD_FACE_CAMERA_POS",            false);
+            material.SetShaderPassEnabled("SRPDEFAULTUNLIT", true);
+            SetShaderKeywords(material, "BILLBOARD_FACE_CAMERA_POS", false);
         }
 
         public static void SetupMultiMaterial(Material[] materials, AnimationClip[] clips)
         {
             var ms = materials.Where(m => m.shader.name.Contains("Multi")).ToArray();
-            foreach(var binding in clips.SelectMany(c => AnimationUtility.GetCurveBindings(c)).ToArray())
+            foreach (var binding in clips.SelectMany(c => AnimationUtility.GetCurveBindings(c)).ToArray())
             {
-                string propname = binding.propertyName;
-                if(string.IsNullOrEmpty(propname) || !propname.Contains("material.")) continue;
+                var propname = binding.propertyName;
+                if (string.IsNullOrEmpty(propname) || !propname.Contains("material.")) continue;
 
                 void Set(string name, string keyword)
                 {
-                    if(propname.Contains(name))
-                        foreach(var m in ms)
+                    if (propname.Contains(name))
+                        foreach (var m in ms)
                         {
                             m.EnableKeyword(keyword);
                             EditorUtility.SetDirty(m);
                         }
                 }
+
                 Set("_RimDirStrength", "GEOM_TYPE_LEAF");
                 Set("_MainTexHSVG", "EFFECT_HUE_VARIATION");
                 Set("_MainGradationStrength", "EFFECT_HUE_VARIATION");
             }
+
             AssetDatabase.SaveAssets();
         }
 
         private static bool IsFeatureOnFloat(Material material, string propname)
         {
-            if(material.HasProperty(propname)) return material.GetFloat(propname) != 0.0f;
+            if (material.HasProperty(propname)) return material.GetFloat(propname) != 0.0f;
             return false;
         }
 
         private static bool IsFeatureOnVectorZ(Material material, string propname)
         {
-            if(material.HasProperty(propname)) return material.GetVector(propname).z != 0.0f;
+            if (material.HasProperty(propname)) return material.GetVector(propname).z != 0.0f;
             return false;
         }
 
         private static bool IsFeatureOnVectorX(Material material, string propname)
         {
-            if(material.HasProperty(propname)) return material.GetVector(propname).x != 0.0f;
+            if (material.HasProperty(propname)) return material.GetVector(propname).x != 0.0f;
             return false;
         }
 
         private static bool IsFeatureOnHSVG(Material material, string propname)
         {
-            if(material.HasProperty(propname)) return material.GetVector(propname) != lilConstants.defaultHSVG;
+            if (material.HasProperty(propname)) return material.GetVector(propname) != lilConstants.defaultHSVG;
             return false;
         }
 
         private static bool IsFeatureOnDecalAnimation(Material material, string propname)
         {
-            if(material.HasProperty(propname)) return material.GetVector(propname) != lilConstants.defaultDecalAnim;
+            if (material.HasProperty(propname)) return material.GetVector(propname) != lilConstants.defaultDecalAnim;
             return false;
         }
 
         private static bool IsFeatureOnTexture(Material material, string propname)
         {
-            if(material.HasProperty(propname)) return material.GetTexture(propname) != null;
+            if (material.HasProperty(propname)) return material.GetTexture(propname) != null;
             return false;
         }
 
         private static void SetShaderKeywords(Material material, string keyword, bool enable)
         {
-            if(enable)  material.EnableKeyword(keyword);
-            else        material.DisableKeyword(keyword);
+            if (enable) material.EnableKeyword(keyword);
+            else material.DisableKeyword(keyword);
         }
 
         public static void RemoveUnusedTexture(Material material, params string[] animatedProps)
         {
-            if(!material.shader.name.Contains("lilToon")) return;
+            if (!material.shader.name.Contains("lilToon")) return;
             RemoveUnusedTexture(material, material.shader.name.Contains("Lite"), animatedProps);
         }
 
@@ -552,40 +585,38 @@ namespace lilToon
 
         public static void RemoveUnusedTextureOnly(Material material, bool islite, params string[] animatedProps)
         {
-            if(islite)
+            if (islite)
             {
-                if(IsPropZero(material, "_UseShadow", animatedProps))
+                if (IsPropZero(material, "_UseShadow", animatedProps))
                 {
                     material.SetTexture("_ShadowColorTex", null);
                     material.SetTexture("_Shadow2ndColorTex", null);
                 }
-                if(IsPropZero(material, "_UseEmission", animatedProps))
-                {
-                    material.SetTexture("_EmissionMap", null);
-                }
-                if(IsPropZero(material, "_UseMatCap", animatedProps))
-                {
-                    material.SetTexture("_MatCapTex", null);
-                }
+
+                if (IsPropZero(material, "_UseEmission", animatedProps)) material.SetTexture("_EmissionMap", null);
+                if (IsPropZero(material, "_UseMatCap", animatedProps)) material.SetTexture("_MatCapTex", null);
             }
             else
             {
-                if(IsPropZero(material, "_MainGradationStrength", animatedProps)) material.SetTexture("_MainGradationTex", null);
-                if(IsPropZero(material, "_UseMain2ndTex", animatedProps))
+                if (IsPropZero(material, "_MainGradationStrength", animatedProps))
+                    material.SetTexture("_MainGradationTex", null);
+                if (IsPropZero(material, "_UseMain2ndTex", animatedProps))
                 {
                     material.SetTexture("_Main2ndTex", null);
                     material.SetTexture("_Main2ndBlendMask", null);
                     material.SetTexture("_Main2ndDissolveMask", null);
                     material.SetTexture("_Main2ndDissolveNoiseMask", null);
                 }
-                if(IsPropZero(material, "_UseMain3rdTex", animatedProps))
+
+                if (IsPropZero(material, "_UseMain3rdTex", animatedProps))
                 {
                     material.SetTexture("_Main3rdTex", null);
                     material.SetTexture("_Main3rdBlendMask", null);
                     material.SetTexture("_Main3rdDissolveMask", null);
                     material.SetTexture("_Main3rdDissolveNoiseMask", null);
                 }
-                if(IsPropZero(material, "_UseShadow", animatedProps))
+
+                if (IsPropZero(material, "_UseShadow", animatedProps))
                 {
                     material.SetTexture("_ShadowBlurMask", null);
                     material.SetTexture("_ShadowBorderMask", null);
@@ -594,85 +625,93 @@ namespace lilToon
                     material.SetTexture("_Shadow2ndColorTex", null);
                     material.SetTexture("_Shadow3rdColorTex", null);
                 }
-                if(IsPropZero(material, "_UseRimShade", animatedProps))
-                {
-                    material.SetTexture("_RimShadeMask", null);
-                }
-                if(IsPropZero(material, "_UseEmission", animatedProps))
+
+                if (IsPropZero(material, "_UseRimShade", animatedProps)) material.SetTexture("_RimShadeMask", null);
+                if (IsPropZero(material, "_UseEmission", animatedProps))
                 {
                     material.SetTexture("_EmissionMap", null);
                     material.SetTexture("_EmissionBlendMask", null);
                     material.SetTexture("_EmissionGradTex", null);
                 }
-                if(IsPropZero(material, "_UseEmission2nd", animatedProps))
+
+                if (IsPropZero(material, "_UseEmission2nd", animatedProps))
                 {
                     material.SetTexture("_Emission2ndMap", null);
                     material.SetTexture("_Emission2ndBlendMask", null);
                     material.SetTexture("_Emission2ndGradTex", null);
                 }
-                if(IsPropZero(material, "_UseBumpMap", animatedProps)) material.SetTexture("_BumpMap", null);
-                if(IsPropZero(material, "_UseBump2ndMap", animatedProps))
+
+                if (IsPropZero(material, "_UseBumpMap", animatedProps)) material.SetTexture("_BumpMap", null);
+                if (IsPropZero(material, "_UseBump2ndMap", animatedProps))
                 {
                     material.SetTexture("_Bump2ndMap", null);
                     material.SetTexture("_Bump2ndScaleMask", null);
                 }
-                if(IsPropZero(material, "_UseAnisotropy", animatedProps))
+
+                if (IsPropZero(material, "_UseAnisotropy", animatedProps))
                 {
                     material.SetTexture("_AnisotropyTangentMap", null);
                     material.SetTexture("_AnisotropyScaleMask", null);
                     material.SetTexture("_AnisotropyShiftNoiseMask", null);
                 }
-                if(IsPropZero(material, "_UseReflection", animatedProps))
+
+                if (IsPropZero(material, "_UseReflection", animatedProps))
                 {
                     material.SetTexture("_SmoothnessTex", null);
                     material.SetTexture("_MetallicGlossMap", null);
                     material.SetTexture("_ReflectionColorTex", null);
                     material.SetTexture("_ReflectionCubeTex", null);
                 }
-                if(IsPropZero(material, "_UseMatCap", animatedProps))
+
+                if (IsPropZero(material, "_UseMatCap", animatedProps))
                 {
                     material.SetTexture("_MatCapTex", null);
                     material.SetTexture("_MatCapBlendMask", null);
                     material.SetTexture("_MatCapBumpMap", null);
                 }
-                if(IsPropZero(material, "_UseMatCap2nd", animatedProps))
+
+                if (IsPropZero(material, "_UseMatCap2nd", animatedProps))
                 {
                     material.SetTexture("_MatCap2ndTex", null);
                     material.SetTexture("_MatCap2ndBlendMask", null);
                     material.SetTexture("_MatCap2ndBumpMap", null);
                 }
-                if(!material.shader.name.Contains("Outline"))
+
+                if (!material.shader.name.Contains("Outline"))
                 {
                     material.SetTexture("_OutlineTex", null);
                     material.SetTexture("_OutlineWidthMask", null);
                     material.SetTexture("_OutlineVectorTex", null);
                 }
-                if(!material.shader.name.Contains("Fur"))
+
+                if (!material.shader.name.Contains("Fur"))
                 {
                     material.SetTexture("_FurVectorTex", null);
                     material.SetTexture("_FurLengthMask", null);
                     material.SetTexture("_FurNoiseMask", null);
                     material.SetTexture("_FurMask", null);
                 }
-                if(IsPropZero(material, "_UseRim", animatedProps)) material.SetTexture("_RimColorTex", null);
-                if(IsPropZero(material, "_UseGlitter", animatedProps)) material.SetTexture("_GlitterColorTex", null);
-                if(IsPropZero(material, "_UseParallax", animatedProps)) material.SetTexture("_ParallaxMap", null);
-                if(IsPropZero(material, "_UseAudioLink", animatedProps) || material.GetFloat("_AudioLinkUVMode") != 3.0f || animatedProps.Contains("_AudioLinkUVMode")) material.SetTexture("_AudioLinkMask", null);
-                if(IsPropZero(material, "_UseAudioLink", animatedProps) || IsPropZero(material, "_AudioLinkAsLocal", animatedProps)) material.SetTexture("_AudioLinkLocalMap", null);
+
+                if (IsPropZero(material, "_UseRim", animatedProps)) material.SetTexture("_RimColorTex", null);
+                if (IsPropZero(material, "_UseGlitter", animatedProps)) material.SetTexture("_GlitterColorTex", null);
+                if (IsPropZero(material, "_UseParallax", animatedProps)) material.SetTexture("_ParallaxMap", null);
+                if (IsPropZero(material, "_UseAudioLink", animatedProps) ||
+                    material.GetFloat("_AudioLinkUVMode") != 3.0f ||
+                    animatedProps.Contains("_AudioLinkUVMode")) material.SetTexture("_AudioLinkMask", null);
+                if (IsPropZero(material, "_UseAudioLink", animatedProps) ||
+                    IsPropZero(material, "_AudioLinkAsLocal", animatedProps))
+                    material.SetTexture("_AudioLinkLocalMap", null);
             }
         }
 
         private static bool IsPropZero(Material material, string name, string[] animatedProps)
         {
-            return !material.HasProperty(name) || material.GetFloat(name) == 0.0f && !animatedProps.Contains(name);
+            return !material.HasProperty(name) || (material.GetFloat(name) == 0.0f && !animatedProps.Contains(name));
         }
 
         public static void RemoveShaderKeywords(Material material)
         {
-            foreach(var keyword in material.shaderKeywords)
-            {
-                material.DisableKeyword(keyword);
-            }
+            foreach (var keyword in material.shaderKeywords) material.DisableKeyword(keyword);
         }
 
         private static void RemoveUnusedProperties(Material material)
@@ -696,13 +735,9 @@ namespace lilToon
 
         private static void DeleteUnused(ref SerializedProperty props, Material material)
         {
-            for(int i = props.arraySize - 1; i >= 0; i--)
-            {
-                if(!material.HasProperty(props.GetArrayElementAtIndex(i).FindPropertyRelative("first").stringValue))
-                {
+            for (var i = props.arraySize - 1; i >= 0; i--)
+                if (!material.HasProperty(props.GetArrayElementAtIndex(i).FindPropertyRelative("first").stringValue))
                     props.DeleteArrayElementAtIndex(i);
-                }
-            }
         }
 
         public static int GetTrueRenderQueue(Material material)
@@ -713,15 +748,15 @@ namespace lilToon
 
         public static bool CheckShaderIslilToon(Material material)
         {
-            if(material == null) return false;
+            if (material == null) return false;
             return CheckShaderIslilToon(material.shader);
         }
 
         public static bool CheckShaderIslilToon(Shader shader)
         {
-            if(shader == null) return false;
-            if(shader.name.Contains("lilToon") || shader.name.Contains("lts_pass")) return true;
-            string shaderPath = AssetDatabase.GetAssetPath(shader);
+            if (shader == null) return false;
+            if (shader.name.Contains("lilToon") || shader.name.Contains("lts_pass")) return true;
+            var shaderPath = AssetDatabase.GetAssetPath(shader);
             return !string.IsNullOrEmpty(shaderPath) && shaderPath.Contains(".lilcontainer");
         }
     }

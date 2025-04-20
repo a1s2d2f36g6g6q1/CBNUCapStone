@@ -4,7 +4,7 @@
 #if defined(LIL_LITE)
     #include "lil_pass_forward_lite.hlsl"
 #else
-    #include "lil_pass_forward_normal.hlsl"
+#include "lil_pass_forward_normal.hlsl"
 #endif
 
 #endif

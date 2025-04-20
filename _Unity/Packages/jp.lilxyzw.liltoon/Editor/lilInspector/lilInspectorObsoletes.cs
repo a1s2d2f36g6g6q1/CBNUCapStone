@@ -1,24 +1,21 @@
 #if UNITY_EDITOR
+
+using System;
+using System.Linq;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.Rendering;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Reflection;
-
 using Object = UnityEngine.Object;
 
 namespace lilToon
 {
     public partial class lilToonInspector
     {
-
         //------------------------------------------------------------------------------------------------------------------------------
         // Obsolete
+
         #region
+
         [Obsolete("Use \"DrawCustomProperties(Material material)\" instead.")]
         protected virtual void DrawCustomProperties(
             MaterialEditor materialEditor,
@@ -35,20 +32,22 @@ namespace lilToon
         [Obsolete("This may be deleted in the future.")]
         public static bool EqualsShaderSetting(lilToonSetting ssA, lilToonSetting ssB)
         {
-            if((ssA == null && ssB != null) || (ssA != null && ssB == null)) return false;
-            if(ssA == null && ssB == null) return true;
-            return !typeof(lilToonSetting).GetFields(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.DeclaredOnly).Any(f => f.FieldType == typeof(bool) && (bool)f.GetValue(ssA) != (bool)f.GetValue(ssB));
+            if ((ssA == null && ssB != null) || (ssA != null && ssB == null)) return false;
+            if (ssA == null && ssB == null) return true;
+            return !typeof(lilToonSetting)
+                .GetFields(
+                    BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.DeclaredOnly)
+                .Any(f => f.FieldType == typeof(bool) && (bool)f.GetValue(ssA) != (bool)f.GetValue(ssB));
         }
 
         [Obsolete("This may be deleted in the future.")]
         public static void CopyShaderSetting(ref lilToonSetting ssA, lilToonSetting ssB)
         {
-            if(ssA == null || ssB == null) return;
+            if (ssA == null || ssB == null) return;
 
-            foreach(var field in typeof(lilToonSetting).GetFields(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.DeclaredOnly))
-            {
+            foreach (var field in typeof(lilToonSetting).GetFields(BindingFlags.Instance | BindingFlags.Static |
+                                                                   BindingFlags.Public | BindingFlags.DeclaredOnly))
                 field.SetValue(ssA, field.GetValue(ssB));
-            }
         }
 
         [Obsolete("Use \"lilToonSetting.InitializeShaderSetting(ref lilToonSetting shaderSetting)\" instead.")]
@@ -69,13 +68,15 @@ namespace lilToon
             lilToonSetting.TurnOnAllShaderSetting(ref shaderSetting);
         }
 
-        [Obsolete("Use \"lilToonSetting.ApplyShaderSetting(lilToonSetting shaderSetting, string reportTitle = null)\" instead.")]
+        [Obsolete(
+            "Use \"lilToonSetting.ApplyShaderSetting(lilToonSetting shaderSetting, string reportTitle = null)\" instead.")]
         public static void ApplyShaderSetting(lilToonSetting shaderSetting, string reportTitle = null)
         {
             lilToonSetting.ApplyShaderSetting(shaderSetting, reportTitle);
         }
 
-        [Obsolete("Use \"lilToonSetting.BuildShaderSettingString(lilToonSetting shaderSetting, bool isFile)\" instead.")]
+        [Obsolete(
+            "Use \"lilToonSetting.BuildShaderSettingString(lilToonSetting shaderSetting, bool isFile)\" instead.")]
         public static string BuildShaderSettingString(lilToonSetting shaderSetting, bool isFile)
         {
             return lilToonSetting.BuildShaderSettingString(shaderSetting, isFile);
@@ -123,10 +124,13 @@ namespace lilToon
             return lilTextureUtils.ConvertGifToAtlas(tex);
         }
 
-        [Obsolete("Use \"lilTextureUtils.ConvertGifToAtlas(Object tex, out int frameCount, out int loopXY, out int duration, out float xScale, out float yScale)\" instead.")]
-        public static string ConvertGifToAtlas(Object tex, out int frameCount, out int loopXY, out int duration, out float xScale, out float yScale)
+        [Obsolete(
+            "Use \"lilTextureUtils.ConvertGifToAtlas(Object tex, out int frameCount, out int loopXY, out int duration, out float xScale, out float yScale)\" instead.")]
+        public static string ConvertGifToAtlas(Object tex, out int frameCount, out int loopXY, out int duration,
+            out float xScale, out float yScale)
         {
-            return lilTextureUtils.ConvertGifToAtlas(tex, out frameCount, out loopXY, out duration, out xScale, out yScale);
+            return lilTextureUtils.ConvertGifToAtlas(tex, out frameCount, out loopXY, out duration, out xScale,
+                out yScale);
         }
 
         [Obsolete("Use \"lilLanguageManager.InitializeLanguage()\" instead.")]
@@ -147,28 +151,37 @@ namespace lilToon
             lilEditorGUI.DrawWebButton(text, URL);
         }
 
-        [Obsolete("Use \"condition = lilEditorGUI.DrawSimpleFoldout(string label, bool condition, GUIStyle style, bool isCustomEditor = true)\" instead.")]
-        public static void DrawSimpleFoldout(string label, ref bool condition, GUIStyle style, bool isCustomEditor = true)
+        [Obsolete(
+            "Use \"condition = lilEditorGUI.DrawSimpleFoldout(string label, bool condition, GUIStyle style, bool isCustomEditor = true)\" instead.")]
+        public static void DrawSimpleFoldout(string label, ref bool condition, GUIStyle style,
+            bool isCustomEditor = true)
         {
             condition = lilEditorGUI.DrawSimpleFoldout(label, condition, style, isCustomEditor);
         }
 
-        [Obsolete("Use \"condition = lilEditorGUI.DrawSimpleFoldout(string label, bool condition, bool isCustomEditor = true)\" instead.")]
+        [Obsolete(
+            "Use \"condition = lilEditorGUI.DrawSimpleFoldout(string label, bool condition, bool isCustomEditor = true)\" instead.")]
         public static void DrawSimpleFoldout(string label, ref bool condition, bool isCustomEditor = true)
         {
             condition = lilEditorGUI.DrawSimpleFoldout(label, condition, isCustomEditor);
         }
 
-        [Obsolete("Use \"condition = lilEditorGUI.DrawSimpleFoldout(MaterialEditor materialEditor, GUIContent guiContent, MaterialProperty textureName, MaterialProperty rgba, bool condition, bool isCustomEditor = true)\" instead.")]
-        public static void DrawSimpleFoldout(GUIContent guiContent, MaterialProperty textureName, MaterialProperty rgba, ref bool condition, bool isCustomEditor = true)
+        [Obsolete(
+            "Use \"condition = lilEditorGUI.DrawSimpleFoldout(MaterialEditor materialEditor, GUIContent guiContent, MaterialProperty textureName, MaterialProperty rgba, bool condition, bool isCustomEditor = true)\" instead.")]
+        public static void DrawSimpleFoldout(GUIContent guiContent, MaterialProperty textureName, MaterialProperty rgba,
+            ref bool condition, bool isCustomEditor = true)
         {
-            condition = lilEditorGUI.DrawSimpleFoldout(m_MaterialEditor, guiContent, textureName, rgba, condition, isCustomEditor);
+            condition = lilEditorGUI.DrawSimpleFoldout(m_MaterialEditor, guiContent, textureName, rgba, condition,
+                isCustomEditor);
         }
 
-        [Obsolete("Use \"condition = lilEditorGUI.DrawSimpleFoldout(MaterialEditor materialEditor, GUIContent guiContent, MaterialProperty textureName, bool condition, bool isCustomEditor = true)\" instead.")]
-        public static void DrawSimpleFoldout(GUIContent guiContent, MaterialProperty textureName, ref bool condition, bool isCustomEditor = true)
+        [Obsolete(
+            "Use \"condition = lilEditorGUI.DrawSimpleFoldout(MaterialEditor materialEditor, GUIContent guiContent, MaterialProperty textureName, bool condition, bool isCustomEditor = true)\" instead.")]
+        public static void DrawSimpleFoldout(GUIContent guiContent, MaterialProperty textureName, ref bool condition,
+            bool isCustomEditor = true)
         {
-            condition = lilEditorGUI.DrawSimpleFoldout(m_MaterialEditor, guiContent, textureName, condition, isCustomEditor);
+            condition = lilEditorGUI.DrawSimpleFoldout(m_MaterialEditor, guiContent, textureName, condition,
+                isCustomEditor);
         }
 
         [Obsolete("Use \"lilShaderManager.InitializeShaders()\" instead.")]
@@ -195,8 +208,10 @@ namespace lilToon
             lilToonPreset.ApplyPreset(material, preset, isMulti);
         }
 
-        [Obsolete("Use \"lilEditorGUI.ConvertGifToAtlas(MaterialProperty tex, MaterialProperty decalAnimation, MaterialProperty decalSubParam, MaterialProperty isDecal)\" instead.")]
-        public static void ConvertGifToAtlas(MaterialProperty tex, MaterialProperty decalAnimation, MaterialProperty decalSubParam, MaterialProperty isDecal)
+        [Obsolete(
+            "Use \"lilEditorGUI.ConvertGifToAtlas(MaterialProperty tex, MaterialProperty decalAnimation, MaterialProperty decalSubParam, MaterialProperty isDecal)\" instead.")]
+        public static void ConvertGifToAtlas(MaterialProperty tex, MaterialProperty decalAnimation,
+            MaterialProperty decalSubParam, MaterialProperty isDecal)
         {
             lilEditorGUI.ConvertGifToAtlas(tex, decalAnimation, decalSubParam, isDecal);
         }
@@ -207,43 +222,173 @@ namespace lilToon
             SetupShaderSettingFromMaterial(material, ref shaderSetting);
         }
 
-        [Obsolete("This may be deleted in the future.")] public static void ApplyEditorSettingTemp(){}
-        [Obsolete("This may be deleted in the future.")] public static void SaveEditorSettingTemp(){}
+        [Obsolete("This may be deleted in the future.")]
+        public static void ApplyEditorSettingTemp()
+        {
+        }
 
-        private const string WARN_ABOUT_DIRECTORY = "Methods related to directories have been moved to lilDirectoryManager.";
-        [Obsolete(WARN_ABOUT_DIRECTORY)] public const string editorSettingTempPath           = lilDirectoryManager.editorSettingTempPath;
-        [Obsolete(WARN_ABOUT_DIRECTORY)] public const string versionInfoTempPath             = lilDirectoryManager.versionInfoTempPath;
-        [Obsolete(WARN_ABOUT_DIRECTORY)] public const string packageListTempPath             = lilDirectoryManager.packageListTempPath;
-        [Obsolete(WARN_ABOUT_DIRECTORY)] public const string postBuildTempPath               = lilDirectoryManager.postBuildTempPath;
-        [Obsolete(WARN_ABOUT_DIRECTORY)] public const string startupTempPath                 = lilDirectoryManager.startupTempPath;
-        #if NET_4_6
-            [Obsolete(WARN_ABOUT_DIRECTORY)] public const string rspPath = "Assets/csc.rsp";
-        #else
+        [Obsolete("This may be deleted in the future.")]
+        public static void SaveEditorSettingTemp()
+        {
+        }
+
+        private const string WARN_ABOUT_DIRECTORY =
+            "Methods related to directories have been moved to lilDirectoryManager.";
+
+        [Obsolete(WARN_ABOUT_DIRECTORY)]
+        public const string editorSettingTempPath = lilDirectoryManager.editorSettingTempPath;
+
+        [Obsolete(WARN_ABOUT_DIRECTORY)]
+        public const string versionInfoTempPath = lilDirectoryManager.versionInfoTempPath;
+
+        [Obsolete(WARN_ABOUT_DIRECTORY)]
+        public const string packageListTempPath = lilDirectoryManager.packageListTempPath;
+
+        [Obsolete(WARN_ABOUT_DIRECTORY)] public const string postBuildTempPath = lilDirectoryManager.postBuildTempPath;
+        [Obsolete(WARN_ABOUT_DIRECTORY)] public const string startupTempPath = lilDirectoryManager.startupTempPath;
+#if NET_4_6
+        [Obsolete(WARN_ABOUT_DIRECTORY)] public const string rspPath = "Assets/csc.rsp";
+#else
             [Obsolete(WARN_ABOUT_DIRECTORY)] public const string rspPath = "Assets/mcs.rsp";
-        #endif
-        [Obsolete(WARN_ABOUT_DIRECTORY)] public static string GetMainFolderPath()            { return lilDirectoryManager.GetMainFolderPath()        ; }
-        [Obsolete(WARN_ABOUT_DIRECTORY)] public static string GetEditorFolderPath()          { return lilDirectoryManager.GetEditorFolderPath()      ; }
-        [Obsolete(WARN_ABOUT_DIRECTORY)] public static string GetPresetsFolderPath()         { return lilDirectoryManager.GetPresetsFolderPath()     ; }
-        [Obsolete(WARN_ABOUT_DIRECTORY)] public static string GetEditorPath()                { return lilDirectoryManager.GetEditorPath()            ; }
-        [Obsolete(WARN_ABOUT_DIRECTORY)] public static string GetShaderFolderPath()          { return lilDirectoryManager.GetShaderFolderPath()      ; }
-        [Obsolete(WARN_ABOUT_DIRECTORY)] public static string GetShaderPipelinePath()        { return lilDirectoryManager.GetShaderPipelinePath()    ; }
-        [Obsolete(WARN_ABOUT_DIRECTORY)] public static string GetShaderCommonPath()          { return lilDirectoryManager.GetShaderCommonPath()      ; }
-        [Obsolete(WARN_ABOUT_DIRECTORY)] public static string GetShaderSettingHLSLPath()     { return ""                                             ; }
-        [Obsolete(WARN_ABOUT_DIRECTORY)] public static string GetEditorLanguageFileGUID()    { return lilDirectoryManager.GetEditorLanguageFileGUID(); }
-        [Obsolete(WARN_ABOUT_DIRECTORY)] public static string GetAvatarEncryptionPath()      { return lilDirectoryManager.GetAvatarEncryptionPath()  ; }
-        [Obsolete(WARN_ABOUT_DIRECTORY)] public static string GetGUIBoxInDarkPath()          { return lilDirectoryManager.GetGUIBoxInDarkPath()      ; }
-        [Obsolete(WARN_ABOUT_DIRECTORY)] public static string GetGUIBoxInLightPath()         { return lilDirectoryManager.GetGUIBoxInLightPath()     ; }
-        [Obsolete(WARN_ABOUT_DIRECTORY)] public static string GetGUIBoxInHalfDarkPath()      { return lilDirectoryManager.GetGUIBoxInHalfDarkPath()  ; }
-        [Obsolete(WARN_ABOUT_DIRECTORY)] public static string GetGUIBoxInHalfLightPath()     { return lilDirectoryManager.GetGUIBoxInHalfLightPath() ; }
-        [Obsolete(WARN_ABOUT_DIRECTORY)] public static string GetGUIBoxOutDarkPath()         { return lilDirectoryManager.GetGUIBoxOutDarkPath()     ; }
-        [Obsolete(WARN_ABOUT_DIRECTORY)] public static string GetGUIBoxOutLightPath()        { return lilDirectoryManager.GetGUIBoxOutLightPath()    ; }
-        [Obsolete(WARN_ABOUT_DIRECTORY)] public static string GetGUICustomBoxDarkPath()      { return lilDirectoryManager.GetGUICustomBoxDarkPath()  ; }
-        [Obsolete(WARN_ABOUT_DIRECTORY)] public static string GetGUICustomBoxLightPath()     { return lilDirectoryManager.GetGUICustomBoxLightPath() ; }
-        [Obsolete(WARN_ABOUT_DIRECTORY)] public static string[] GetShaderFolderPaths()       { return lilDirectoryManager.GetShaderFolderPaths(); }
-        [Obsolete(WARN_ABOUT_DIRECTORY)] public static string GetSettingFolderPath()         { return lilDirectoryManager.GetMainFolderPath(); }
-        [Obsolete(WARN_ABOUT_DIRECTORY)] public static string GetShaderSettingPath()         { return lilDirectoryManager.GetMainFolderPath() + "/ShaderSetting.asset"; }
-        [Obsolete(WARN_ABOUT_DIRECTORY)] public static string GUIDToPath(string GUID)        { return lilDirectoryManager.GUIDToPath(GUID); }
-        [Obsolete(WARN_ABOUT_DIRECTORY)] public static bool ExistsEncryption()               { return lilDirectoryManager.ExistsEncryption(); }
+#endif
+        [Obsolete(WARN_ABOUT_DIRECTORY)]
+        public static string GetMainFolderPath()
+        {
+            return lilDirectoryManager.GetMainFolderPath();
+        }
+
+        [Obsolete(WARN_ABOUT_DIRECTORY)]
+        public static string GetEditorFolderPath()
+        {
+            return lilDirectoryManager.GetEditorFolderPath();
+        }
+
+        [Obsolete(WARN_ABOUT_DIRECTORY)]
+        public static string GetPresetsFolderPath()
+        {
+            return lilDirectoryManager.GetPresetsFolderPath();
+        }
+
+        [Obsolete(WARN_ABOUT_DIRECTORY)]
+        public static string GetEditorPath()
+        {
+            return lilDirectoryManager.GetEditorPath();
+        }
+
+        [Obsolete(WARN_ABOUT_DIRECTORY)]
+        public static string GetShaderFolderPath()
+        {
+            return lilDirectoryManager.GetShaderFolderPath();
+        }
+
+        [Obsolete(WARN_ABOUT_DIRECTORY)]
+        public static string GetShaderPipelinePath()
+        {
+            return lilDirectoryManager.GetShaderPipelinePath();
+        }
+
+        [Obsolete(WARN_ABOUT_DIRECTORY)]
+        public static string GetShaderCommonPath()
+        {
+            return lilDirectoryManager.GetShaderCommonPath();
+        }
+
+        [Obsolete(WARN_ABOUT_DIRECTORY)]
+        public static string GetShaderSettingHLSLPath()
+        {
+            return "";
+        }
+
+        [Obsolete(WARN_ABOUT_DIRECTORY)]
+        public static string GetEditorLanguageFileGUID()
+        {
+            return lilDirectoryManager.GetEditorLanguageFileGUID();
+        }
+
+        [Obsolete(WARN_ABOUT_DIRECTORY)]
+        public static string GetAvatarEncryptionPath()
+        {
+            return lilDirectoryManager.GetAvatarEncryptionPath();
+        }
+
+        [Obsolete(WARN_ABOUT_DIRECTORY)]
+        public static string GetGUIBoxInDarkPath()
+        {
+            return lilDirectoryManager.GetGUIBoxInDarkPath();
+        }
+
+        [Obsolete(WARN_ABOUT_DIRECTORY)]
+        public static string GetGUIBoxInLightPath()
+        {
+            return lilDirectoryManager.GetGUIBoxInLightPath();
+        }
+
+        [Obsolete(WARN_ABOUT_DIRECTORY)]
+        public static string GetGUIBoxInHalfDarkPath()
+        {
+            return lilDirectoryManager.GetGUIBoxInHalfDarkPath();
+        }
+
+        [Obsolete(WARN_ABOUT_DIRECTORY)]
+        public static string GetGUIBoxInHalfLightPath()
+        {
+            return lilDirectoryManager.GetGUIBoxInHalfLightPath();
+        }
+
+        [Obsolete(WARN_ABOUT_DIRECTORY)]
+        public static string GetGUIBoxOutDarkPath()
+        {
+            return lilDirectoryManager.GetGUIBoxOutDarkPath();
+        }
+
+        [Obsolete(WARN_ABOUT_DIRECTORY)]
+        public static string GetGUIBoxOutLightPath()
+        {
+            return lilDirectoryManager.GetGUIBoxOutLightPath();
+        }
+
+        [Obsolete(WARN_ABOUT_DIRECTORY)]
+        public static string GetGUICustomBoxDarkPath()
+        {
+            return lilDirectoryManager.GetGUICustomBoxDarkPath();
+        }
+
+        [Obsolete(WARN_ABOUT_DIRECTORY)]
+        public static string GetGUICustomBoxLightPath()
+        {
+            return lilDirectoryManager.GetGUICustomBoxLightPath();
+        }
+
+        [Obsolete(WARN_ABOUT_DIRECTORY)]
+        public static string[] GetShaderFolderPaths()
+        {
+            return lilDirectoryManager.GetShaderFolderPaths();
+        }
+
+        [Obsolete(WARN_ABOUT_DIRECTORY)]
+        public static string GetSettingFolderPath()
+        {
+            return lilDirectoryManager.GetMainFolderPath();
+        }
+
+        [Obsolete(WARN_ABOUT_DIRECTORY)]
+        public static string GetShaderSettingPath()
+        {
+            return lilDirectoryManager.GetMainFolderPath() + "/ShaderSetting.asset";
+        }
+
+        [Obsolete(WARN_ABOUT_DIRECTORY)]
+        public static string GUIDToPath(string GUID)
+        {
+            return lilDirectoryManager.GUIDToPath(GUID);
+        }
+
+        [Obsolete(WARN_ABOUT_DIRECTORY)]
+        public static bool ExistsEncryption()
+        {
+            return lilDirectoryManager.ExistsEncryption();
+        }
+
         #endregion
     }
 }

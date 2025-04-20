@@ -1,71 +1,76 @@
-﻿using UnityEngine;
-using System.Collections;
+﻿using System.Collections;
+using UnityEngine;
 
-public class ST_PuzzleTile : MonoBehaviour 
+public class ST_PuzzleTile : MonoBehaviour
 {
-	// the target position for this tile.
-	public Vector3 TargetPosition;
+    // the target position for this tile.
+    public Vector3 TargetPosition;
 
-	// is this an active tile?  usually one per game is inactive.
-	public bool Active = true;
+    // is this an active tile?  usually one per game is inactive.
+    public bool Active = true;
 
-	// is this tile in the correct location?
-	public bool CorrectLocation = false;
+    // is this tile in the correct location?
+    public bool CorrectLocation;
 
-	// store this tiles array location.
-	public Vector2 ArrayLocation = new Vector2();
-	public Vector2 GridLocation = new Vector2();
+    // store this tiles array location.
+    public Vector2 ArrayLocation;
+    public Vector2 GridLocation;
 
-	void Awake()
-	{
-		// assign the new target position.
-		TargetPosition = this.transform.localPosition;
+    private void Awake()
+    {
+        // assign the new target position.
+        TargetPosition = transform.localPosition;
 
-		// start the movement coroutine to always move the objects to the new target position.
-		StartCoroutine(UpdatePosition());
-	}
+        // start the movement coroutine to always move the objects to the new target position.
+        StartCoroutine(UpdatePosition());
+    }
 
-	public  void LaunchPositionCoroutine(Vector3 newPosition)
-	{
-		// assign the new target position.
-		TargetPosition = newPosition;
+    private void OnMouseDown()
+    {
+        // get the puzzle display and return the new target location from this tile. 
+        LaunchPositionCoroutine(transform.parent.GetComponent<ST_PuzzleDisplay>()
+            .GetTargetLocation(GetComponent<ST_PuzzleTile>()));
+    }
 
-		// start the movement coroutine to always move the objects to the new target position.
-		StartCoroutine(UpdatePosition());
-	}
+    public void LaunchPositionCoroutine(Vector3 newPosition)
+    {
+        // assign the new target position.
+        TargetPosition = newPosition;
 
-	public IEnumerator UpdatePosition()
-	{
-		// whilst we are not at our target position.
-		while(TargetPosition != this.transform.localPosition)
-		{
-			// lerp towards our target.
-			this.transform.localPosition = Vector3.Lerp(this.transform.localPosition, TargetPosition, 10.0f * Time.deltaTime);
-			yield return null;
-		}
+        // start the movement coroutine to always move the objects to the new target position.
+        StartCoroutine(UpdatePosition());
+    }
 
-		// after each move check if we are now in the correct location.
-		if(ArrayLocation == GridLocation){CorrectLocation = true;}else{CorrectLocation = false;}
+    public IEnumerator UpdatePosition()
+    {
+        // whilst we are not at our target position.
+        while (TargetPosition != transform.localPosition)
+        {
+            // lerp towards our target.
+            transform.localPosition = Vector3.Lerp(transform.localPosition, TargetPosition, 10.0f * Time.deltaTime);
+            yield return null;
+        }
 
-		// if we are not an active tile then hide our renderer and collider.
-		if(Active == false)
-		{
-			this.GetComponent<Renderer>().enabled = false;
-			this.GetComponent<Collider>().enabled = false;
-		}
+        // after each move check if we are now in the correct location.
+        if (ArrayLocation == GridLocation)
+            CorrectLocation = true;
+        else
+            CorrectLocation = false;
 
-		yield return null;
-	}
+        // if we are not an active tile then hide our renderer and collider.
+        if (Active == false)
+        {
+            GetComponent<Renderer>().enabled = false;
+            GetComponent<Collider>().enabled = false;
+        }
 
-	public void ExecuteAdditionalMove()
-	{
-		// get the puzzle display and return the new target location from this tile. 
-		LaunchPositionCoroutine(this.transform.parent.GetComponent<ST_PuzzleDisplay>().GetTargetLocation(this.GetComponent<ST_PuzzleTile>()));
-	}
+        yield return null;
+    }
 
-	void OnMouseDown()
-	{
-		// get the puzzle display and return the new target location from this tile. 
-		LaunchPositionCoroutine(this.transform.parent.GetComponent<ST_PuzzleDisplay>().GetTargetLocation(this.GetComponent<ST_PuzzleTile>()));
-	}
+    public void ExecuteAdditionalMove()
+    {
+        // get the puzzle display and return the new target location from this tile. 
+        LaunchPositionCoroutine(transform.parent.GetComponent<ST_PuzzleDisplay>()
+            .GetTargetLocation(GetComponent<ST_PuzzleTile>()));
+    }
 }

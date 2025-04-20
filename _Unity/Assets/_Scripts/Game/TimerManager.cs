@@ -1,11 +1,24 @@
-using UnityEngine;
 using TMPro;
+using UnityEngine;
 
 public class TimerManager : MonoBehaviour
 {
     public TMP_Text timerText;
-    private float elapsedTime = 0f;
-    private bool isRunning = false;
+    private float elapsedTime;
+    private bool isRunning;
+
+    private void Update()
+    {
+        if (!isRunning) return;
+
+        elapsedTime += Time.deltaTime;
+
+        var minutes = (int)(elapsedTime / 60f);
+        var seconds = (int)(elapsedTime % 60f);
+        var milliseconds = (int)(elapsedTime * 1000f % 1000);
+
+        timerText.text = string.Format("{0:00} : {1:00} : {2:000}", minutes, seconds, milliseconds);
+    }
 
     public void StartTimer()
     {
@@ -16,18 +29,5 @@ public class TimerManager : MonoBehaviour
     public void StopTimer()
     {
         isRunning = false;
-    }
-
-    void Update()
-    {
-        if (!isRunning) return;
-
-        elapsedTime += Time.deltaTime;
-
-        int minutes = (int)(elapsedTime / 60f);
-        int seconds = (int)(elapsedTime % 60f);
-        int milliseconds = (int)((elapsedTime * 1000f) % 1000);
-
-        timerText.text = string.Format("{0:00} : {1:00} : {2:000}", minutes, seconds, milliseconds);
     }
 }

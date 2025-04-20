@@ -7,7 +7,7 @@
 //------------------------------------------------------------------------------------------------------------------------------
 // Structure
 #if !defined(LIL_CUSTOM_V2F_MEMBER)
-    #define LIL_CUSTOM_V2F_MEMBER(id0,id1,id2,id3,id4,id5,id6,id7)
+#define LIL_CUSTOM_V2F_MEMBER(id0,id1,id2,id3,id4,id5,id6,id7)
 #endif
 
 #define LIL_V2F_POSITION_CS
@@ -16,12 +16,12 @@
     #define LIL_V2F_POSITION_CS_NO_JITTER
 #endif
 #if defined(LIL_V2F_FORCE_TEXCOORD0) || (LIL_RENDER > 0)
-    #if defined(LIL_FUR)
+#if defined(LIL_FUR)
         #define LIL_V2F_TEXCOORD0
-    #else
+#else
         #define LIL_V2F_PACKED_TEXCOORD01
         #define LIL_V2F_PACKED_TEXCOORD23
-    #endif
+#endif
 #endif
 #if defined(LIL_V2F_FORCE_POSITION_OS) || ((LIL_RENDER > 0) && !defined(LIL_LITE) && defined(LIL_FEATURE_DISSOLVE))
     #define LIL_V2F_POSITION_OS
@@ -38,7 +38,7 @@
 
 struct v2f
 {
-    float4 positionCS   : SV_POSITION;
+    float4 positionCS : SV_POSITION;
     float4 previousPositionCS : TEXCOORD0;
     #if defined(LIL_V2F_POSITION_CS_NO_JITTER)
         float4 positionCSNoJitter : POSITION_CS_NO_JITTER;
@@ -64,7 +64,7 @@ struct v2f
     #if defined(LIL_FUR)
         float furLayer      : TEXCOORD6;
     #endif
-    LIL_CUSTOM_V2F_MEMBER(9,10,11,12,13,14,15,16)
+    LIL_CUSTOM_V2F_MEMBER(9, 10, 11, 12, 13, 14, 15, 16)
     LIL_VERTEX_INPUT_INSTANCE_ID
     LIL_VERTEX_OUTPUT_STEREO
 };
@@ -72,9 +72,9 @@ struct v2f
 #if defined(LIL_FUR)
     #define LIL_V2G_TEXCOORD0
     #define LIL_V2G_POSITION_WS
-    #if defined(LIL_V2G_FORCE_NORMAL_WS) || defined(WRITE_NORMAL_BUFFER)
+#if defined(LIL_V2G_FORCE_NORMAL_WS) || defined(WRITE_NORMAL_BUFFER)
         #define LIL_V2G_NORMAL_WS
-    #endif
+#endif
     #define LIL_V2G_FURVECTOR
     #define LIL_V2G_VERTEXID
     #define LIL_V2G_PREV_POSITION_WS
@@ -85,9 +85,9 @@ struct v2f
         float2 uv0          : TEXCOORD1;
         float3 furVector    : TEXCOORD2;
         uint vertexID       : TEXCOORD3;
-        #if defined(LIL_V2G_NORMAL_WS)
+#if defined(LIL_V2G_NORMAL_WS)
             float3 normalWS     : TEXCOORD4;
-        #endif
+#endif
         float3 previousPositionWS : TEXCOORD5;
         LIL_VERTEX_INPUT_INSTANCE_ID
         LIL_VERTEX_OUTPUT_STEREO
@@ -106,7 +106,7 @@ struct v2f
 #if defined(LIL_FUR)
     #include "lil_common_vert_fur.hlsl"
 #else
-    #include "lil_common_vert.hlsl"
+#include "lil_common_vert.hlsl"
 #endif
 #include "lil_common_frag.hlsl"
 
@@ -117,17 +117,17 @@ struct v2f
 #endif
 
 void frag(v2f input
-    LIL_VFACE(facing)
-    #ifdef WRITE_MSAA_DEPTH
+          LIL_VFACE(facing)
+          #ifdef WRITE_MSAA_DEPTH
     , out float4 depthColor : SV_Target0
     , out float4 outMotionVector : SV_Target1
-    #else
-    , out float4 outMotionVector : SV_Target0
-    #endif
+          #else
+          , out float4 outMotionVector : SV_Target0
+          #endif
 
-    #ifdef WRITE_NORMAL_BUFFER
+          #ifdef WRITE_NORMAL_BUFFER
     , out float4 outNormalBuffer : SV_TARGET_NORMAL
-    #endif
+          #endif
 )
 {
     LIL_SETUP_INSTANCE_ID(input);
@@ -143,19 +143,19 @@ void frag(v2f input
     #if defined(LIL_V2F_POSITION_CS_NO_JITTER)
         float2 motionVector = lilCalculateMotionVector(input.positionCSNoJitter, input.previousPositionCS);
     #else
-        float2 motionVector = lilCalculateMotionVector(input.positionCS, input.previousPositionCS);
+    float2 motionVector = lilCalculateMotionVector(input.positionCS, input.previousPositionCS);
     #endif
     outMotionVector = float4(motionVector, 0.0, 0.0);
 
     #ifdef WRITE_MSAA_DEPTH
         depthColor = fd.positionCS.z;
-        #ifdef _ALPHATOMASK_ON
-            #if LIL_RENDER > 0
+    #ifdef _ALPHATOMASK_ON
+    #if LIL_RENDER > 0
                 depthColor.a = saturate((fd.col.a - _Cutoff) / max(fwidth(fd.col.a), 0.0001) + 0.5);
-            #else
+    #else
                 depthColor.a = 1.0;
-            #endif
-        #endif
+    #endif
+    #endif
     #endif
 
     #if defined(WRITE_NORMAL_BUFFER)

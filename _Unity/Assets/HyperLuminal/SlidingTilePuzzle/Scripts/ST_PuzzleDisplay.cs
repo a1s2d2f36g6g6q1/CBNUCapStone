@@ -1,323 +1,278 @@
-﻿using UnityEngine;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
+using UnityEngine;
 
-public class ST_PuzzleDisplay : MonoBehaviour 
+public class ST_PuzzleDisplay : MonoBehaviour
 {
-	// this puzzle texture.
-	public Texture PuzzleImage;
+    // this puzzle texture.
+    public Texture PuzzleImage;
 
-	// the width and height of the puzzle in tiles.
-	public int Height = 3;
-	public int Width  = 3;
+    // the width and height of the puzzle in tiles.
+    public int Height = 3;
+    public int Width = 3;
 
-	// additional scaling value.
-	public Vector3 PuzzleScale = new Vector3(1.0f, 1.0f, 1.0f);
+    // additional scaling value.
+    public Vector3 PuzzleScale = new(1.0f, 1.0f, 1.0f);
 
-	// additional positioning offset.
-	public Vector3 PuzzlePosition = new Vector3(0.0f, 0.0f, 0.0f);
+    // additional positioning offset.
+    public Vector3 PuzzlePosition = new(0.0f, 0.0f, 0.0f);
 
-	// seperation value between puzzle tiles.
-	public float SeperationBetweenTiles = 0.5f;
+    // seperation value between puzzle tiles.
+    public float SeperationBetweenTiles = 0.5f;
 
-	// the tile display object.
-	public GameObject Tile;
+    // the tile display object.
+    public GameObject Tile;
 
-	// the shader used to render the puzzle.
-	public Shader PuzzleShader;
+    // the shader used to render the puzzle.
+    public Shader PuzzleShader;
 
-	// array of the spawned tiles.
-	private GameObject[,] TileDisplayArray;
-	private List<Vector3>  DisplayPositions = new List<Vector3>();
+    // has the puzzle been completed?
+    public bool Complete;
+    private readonly List<Vector3> DisplayPositions = new();
+    private Vector3 Position;
 
-	// position and scale values.
-	private Vector3 Scale;
-	private Vector3 Position;
+    // position and scale values.
+    private Vector3 Scale;
 
-	// has the puzzle been completed?
-	public bool Complete = false;
+    // array of the spawned tiles.
+    private GameObject[,] TileDisplayArray;
 
-	// Use this for initialization
-	void Start () 
-	{
-		// create the games puzzle tiles from the provided image.
-		CreatePuzzleTiles();
+    // Use this for initialization
+    private void Start()
+    {
+        // create the games puzzle tiles from the provided image.
+        CreatePuzzleTiles();
 
-		// mix up the puzzle.
-		StartCoroutine(JugglePuzzle());
+        // mix up the puzzle.
+        StartCoroutine(JugglePuzzle());
+    }
 
-	}
-	
-	// Update is called once per frame
-	void Update () 
-	{
-		// move the puzzle to the position set in the inspector.
-		this.transform.localPosition = PuzzlePosition;
+    // Update is called once per frame
+    private void Update()
+    {
+        // move the puzzle to the position set in the inspector.
+        transform.localPosition = PuzzlePosition;
 
-		// set the scale of the entire puzzle object as set in the inspector.
-		this.transform.localScale = PuzzleScale;
-	}
+        // set the scale of the entire puzzle object as set in the inspector.
+        transform.localScale = PuzzleScale;
+    }
 
-	public Vector3 GetTargetLocation(ST_PuzzleTile thisTile)
-	{
-		// check if we can move this tile and get the position we can move to.
-		ST_PuzzleTile MoveTo = CheckIfWeCanMove((int)thisTile.GridLocation.x, (int)thisTile.GridLocation.y, thisTile);
+    public Vector3 GetTargetLocation(ST_PuzzleTile thisTile)
+    {
+        // check if we can move this tile and get the position we can move to.
+        var MoveTo = CheckIfWeCanMove((int)thisTile.GridLocation.x, (int)thisTile.GridLocation.y, thisTile);
 
-		if(MoveTo != thisTile)
-		{
-			// get the target position for this new tile.
-			Vector3 TargetPos = MoveTo.TargetPosition;
-			Vector2 GridLocation = thisTile.GridLocation;
-			thisTile.GridLocation = MoveTo.GridLocation;
+        if (MoveTo != thisTile)
+        {
+            // get the target position for this new tile.
+            var TargetPos = MoveTo.TargetPosition;
+            var GridLocation = thisTile.GridLocation;
+            thisTile.GridLocation = MoveTo.GridLocation;
 
-			// move the empty tile into this tiles current position.
-			MoveTo.LaunchPositionCoroutine(thisTile.TargetPosition);
-			MoveTo.GridLocation = GridLocation;
+            // move the empty tile into this tiles current position.
+            MoveTo.LaunchPositionCoroutine(thisTile.TargetPosition);
+            MoveTo.GridLocation = GridLocation;
 
-			// return the new target position.
-			return TargetPos;
-		}
+            // return the new target position.
+            return TargetPos;
+        }
 
-		// else return the tiles actual position (no movement).
-		return thisTile.TargetPosition;
-	}
+        // else return the tiles actual position (no movement).
+        return thisTile.TargetPosition;
+    }
 
-	private ST_PuzzleTile CheckMoveLeft(int Xpos, int Ypos, ST_PuzzleTile thisTile)
-	{
-		// move left 
-		if((Xpos - 1)  >= 0)
-		{
-			// we can move left, is the space currently being used?
-			return GetTileAtThisGridLocation(Xpos - 1, Ypos, thisTile);
-		}
-		
-		return thisTile;
-	}
-	
-	private ST_PuzzleTile CheckMoveRight(int Xpos, int Ypos, ST_PuzzleTile thisTile)
-	{
-		// move right 
-		if((Xpos + 1)  < Width)
-		{
-			// we can move right, is the space currently being used?
-			return GetTileAtThisGridLocation(Xpos + 1, Ypos , thisTile);
-		}
-		
-		return thisTile;
-	}
-	
-	private ST_PuzzleTile CheckMoveDown(int Xpos, int Ypos, ST_PuzzleTile thisTile)
-	{
-		// move down 
-		if((Ypos - 1)  >= 0)
-		{
-			// we can move down, is the space currently being used?
-			return GetTileAtThisGridLocation(Xpos, Ypos  - 1, thisTile);
-		}
-		
-		return thisTile;
-	}
-	
-	private ST_PuzzleTile CheckMoveUp(int Xpos, int Ypos, ST_PuzzleTile thisTile)
-	{
-		// move up 
-		if((Ypos + 1)  < Height)
-		{
-			// we can move up, is the space currently being used?
-			return GetTileAtThisGridLocation(Xpos, Ypos  + 1, thisTile);
-		}
-		
-		return thisTile;
-	}
-	
-	private ST_PuzzleTile CheckIfWeCanMove(int Xpos, int Ypos, ST_PuzzleTile thisTile)
-	{
-		// check each movement direction
-		if(CheckMoveLeft(Xpos, Ypos, thisTile) != thisTile)
-		{
-			return CheckMoveLeft(Xpos, Ypos, thisTile);
-		}
-		
-		if(CheckMoveRight(Xpos, Ypos, thisTile) != thisTile)
-		{
-			return CheckMoveRight(Xpos, Ypos, thisTile);
-		}
-		
-		if(CheckMoveDown(Xpos, Ypos, thisTile) != thisTile)
-		{
-			return CheckMoveDown(Xpos, Ypos, thisTile);
-		}
-		
-		if(CheckMoveUp(Xpos, Ypos, thisTile) != thisTile)
-		{
-			return CheckMoveUp(Xpos, Ypos, thisTile);
-		}
+    private ST_PuzzleTile CheckMoveLeft(int Xpos, int Ypos, ST_PuzzleTile thisTile)
+    {
+        // move left 
+        if (Xpos - 1 >= 0)
+            // we can move left, is the space currently being used?
+            return GetTileAtThisGridLocation(Xpos - 1, Ypos, thisTile);
 
-		return thisTile;
-	}
+        return thisTile;
+    }
 
-	private ST_PuzzleTile GetTileAtThisGridLocation(int x, int y, ST_PuzzleTile thisTile)
-	{
-		for(int j = Height - 1; j >= 0; j--)
-		{
-			for(int i = 0; i < Width; i++)
-			{
-				// check if this tile has the correct grid display location.
-				if((TileDisplayArray[i,j].GetComponent<ST_PuzzleTile>().GridLocation.x == x)&&
-				   (TileDisplayArray[i,j].GetComponent<ST_PuzzleTile>().GridLocation.y == y))
-				{
-					if(TileDisplayArray[i,j].GetComponent<ST_PuzzleTile>().Active == false)
-					{
-						// return this tile active property. 
-						return TileDisplayArray[i,j].GetComponent<ST_PuzzleTile>();
-					}
-				}
-			}
-		}
+    private ST_PuzzleTile CheckMoveRight(int Xpos, int Ypos, ST_PuzzleTile thisTile)
+    {
+        // move right 
+        if (Xpos + 1 < Width)
+            // we can move right, is the space currently being used?
+            return GetTileAtThisGridLocation(Xpos + 1, Ypos, thisTile);
 
-		return thisTile;
-	}
+        return thisTile;
+    }
 
-	private IEnumerator JugglePuzzle()
-	{
-		yield return new WaitForSeconds(1.0f);
+    private ST_PuzzleTile CheckMoveDown(int Xpos, int Ypos, ST_PuzzleTile thisTile)
+    {
+        // move down 
+        if (Ypos - 1 >= 0)
+            // we can move down, is the space currently being used?
+            return GetTileAtThisGridLocation(Xpos, Ypos - 1, thisTile);
 
-		// hide a puzzle tile (one is always missing to allow the puzzle movement).
-		TileDisplayArray[0,0].GetComponent<ST_PuzzleTile>().Active = false;
+        return thisTile;
+    }
 
-		yield return new WaitForSeconds(1.0f);
+    private ST_PuzzleTile CheckMoveUp(int Xpos, int Ypos, ST_PuzzleTile thisTile)
+    {
+        // move up 
+        if (Ypos + 1 < Height)
+            // we can move up, is the space currently being used?
+            return GetTileAtThisGridLocation(Xpos, Ypos + 1, thisTile);
 
-		for(int k = 0; k < 20; k++)
-		{
-			// use random to position each puzzle section in the array delete the number once the space is filled.
-			for(int j = 0; j < Height; j++)
-			{
-				for(int i = 0; i < Width; i++)
-				{		
-					// attempt to execute a move for this tile.
-					TileDisplayArray[i,j].GetComponent<ST_PuzzleTile>().ExecuteAdditionalMove();
+        return thisTile;
+    }
 
-					yield return new WaitForSeconds(0.02f);
-				}
-			}
-		}
+    private ST_PuzzleTile CheckIfWeCanMove(int Xpos, int Ypos, ST_PuzzleTile thisTile)
+    {
+        // check each movement direction
+        if (CheckMoveLeft(Xpos, Ypos, thisTile) != thisTile) return CheckMoveLeft(Xpos, Ypos, thisTile);
 
-		// continually check for the correct answer.
-		StartCoroutine(CheckForComplete());
+        if (CheckMoveRight(Xpos, Ypos, thisTile) != thisTile) return CheckMoveRight(Xpos, Ypos, thisTile);
 
-		yield return null;
-	}
+        if (CheckMoveDown(Xpos, Ypos, thisTile) != thisTile) return CheckMoveDown(Xpos, Ypos, thisTile);
 
-	public IEnumerator CheckForComplete()
-	{
-		while(Complete == false)
-		{
-			// iterate over all the tiles and check if they are in the correct position.
-			Complete = true;
-			for(int j = Height - 1; j >= 0; j--)
-			{
-				for(int i = 0; i < Width; i++)
-				{
-					// check if this tile has the correct grid display location.
-					if(TileDisplayArray[i,j].GetComponent<ST_PuzzleTile>().CorrectLocation == false)  
-					{
-						Complete = false;
-					}
-				}
-			}
+        if (CheckMoveUp(Xpos, Ypos, thisTile) != thisTile) return CheckMoveUp(Xpos, Ypos, thisTile);
 
-			yield return null;
-		}
-				
-		// if we are still complete then all the tiles are correct.
-		if(Complete)
-		{
-			Debug.Log("Puzzle Complete!");
-		}
+        return thisTile;
+    }
 
-		yield return null;
-	}
+    private ST_PuzzleTile GetTileAtThisGridLocation(int x, int y, ST_PuzzleTile thisTile)
+    {
+        for (var j = Height - 1; j >= 0; j--)
+        for (var i = 0; i < Width; i++)
+            // check if this tile has the correct grid display location.
+            if (TileDisplayArray[i, j].GetComponent<ST_PuzzleTile>().GridLocation.x == x &&
+                TileDisplayArray[i, j].GetComponent<ST_PuzzleTile>().GridLocation.y == y)
+                if (TileDisplayArray[i, j].GetComponent<ST_PuzzleTile>().Active == false)
+                    // return this tile active property. 
+                    return TileDisplayArray[i, j].GetComponent<ST_PuzzleTile>();
 
-	private Vector2 ConvertIndexToGrid(int index)
-	{
-		int WidthIndex = index;
-		int HeightIndex = 0;
+        return thisTile;
+    }
 
-		// take the index value and return the grid array location X,Y.
-		for(int i = 0; i < Height; i++)
-		{
-			if(WidthIndex < Width)
-			{
-				return new Vector2(WidthIndex, HeightIndex);
-			}
-			else
-			{
-				WidthIndex -= Width;
-				HeightIndex++;
-			}
-		}
+    private IEnumerator JugglePuzzle()
+    {
+        yield return new WaitForSeconds(1.0f);
 
-		return new Vector2(WidthIndex, HeightIndex);
-	}
+        // hide a puzzle tile (one is always missing to allow the puzzle movement).
+        TileDisplayArray[0, 0].GetComponent<ST_PuzzleTile>().Active = false;
 
-	private void CreatePuzzleTiles()
-	{
-		// using the width and height variables create an array.
-		TileDisplayArray = new GameObject[Width,Height];
+        yield return new WaitForSeconds(1.0f);
 
-		// set the scale and position values for this puzzle.
-		Scale = new Vector3(1.0f/Width, 1.0f, 1.0f/Height);
-		Tile.transform.localScale = Scale;
+        for (var k = 0; k < 20; k++)
+            // use random to position each puzzle section in the array delete the number once the space is filled.
+        for (var j = 0; j < Height; j++)
+        for (var i = 0; i < Width; i++)
+        {
+            // attempt to execute a move for this tile.
+            TileDisplayArray[i, j].GetComponent<ST_PuzzleTile>().ExecuteAdditionalMove();
 
-		// used to count the number of tiles and assign each tile a correct value.
-		int TileValue = 0;
+            yield return new WaitForSeconds(0.02f);
+        }
 
-		// spawn the tiles into an array.
-		for(int j = Height - 1; j >= 0; j--)
-		{
-			for(int i = 0; i < Width; i++)
-			{
-				// calculate the position of this tile all centred around Vector3(0.0f, 0.0f, 0.0f).
-				Position = new Vector3(((Scale.x * (i + 0.5f))-(Scale.x * (Width/2.0f))) * (10.0f + SeperationBetweenTiles), 
-				                       0.0f, 
-				                      ((Scale.z * (j + 0.5f))-(Scale.z * (Height/2.0f))) * (10.0f + SeperationBetweenTiles));
+        // continually check for the correct answer.
+        StartCoroutine(CheckForComplete());
 
-				// set this location on the display grid.
-				DisplayPositions.Add(Position);
+        yield return null;
+    }
 
-				// spawn the object into play.
-				TileDisplayArray[i,j] = Instantiate(Tile, new Vector3(0.0f, 0.0f, 0.0f) , Quaternion.Euler(90.0f, -180.0f, 0.0f)) as GameObject;
-				TileDisplayArray[i,j].gameObject.transform.parent = this.transform;
+    public IEnumerator CheckForComplete()
+    {
+        while (Complete == false)
+        {
+            // iterate over all the tiles and check if they are in the correct position.
+            Complete = true;
+            for (var j = Height - 1; j >= 0; j--)
+            for (var i = 0; i < Width; i++)
+                // check if this tile has the correct grid display location.
+                if (TileDisplayArray[i, j].GetComponent<ST_PuzzleTile>().CorrectLocation == false)
+                    Complete = false;
 
-				// set and increment the display number counter.
-				ST_PuzzleTile thisTile = TileDisplayArray[i,j].GetComponent<ST_PuzzleTile>();
-				thisTile.ArrayLocation = new Vector2(i,j);
-				thisTile.GridLocation = new Vector2(i,j);
-				thisTile.LaunchPositionCoroutine(Position);
-				TileValue++;
+            yield return null;
+        }
 
-				// create a new material using the defined shader.
-				Material thisTileMaterial = new Material(PuzzleShader);
+        // if we are still complete then all the tiles are correct.
+        if (Complete) Debug.Log("Puzzle Complete!");
 
-				// apply the puzzle image to it.
-				thisTileMaterial.mainTexture = PuzzleImage;
-					
-				// set the offset and tile values for this material.
-				thisTileMaterial.mainTextureOffset = new Vector2(1.0f/Width * i, 1.0f/Height * j);
-				thisTileMaterial.mainTextureScale  = new Vector2(1.0f/Width, 1.0f/Height);
-					
-				// assign the new material to this tile for display.
-				TileDisplayArray[i,j].GetComponent<Renderer>().material = thisTileMaterial;
-			}
-		}
+        yield return null;
+    }
 
-		/*
-		// Enable an impossible puzzle for fun!
-		// switch the second and third grid location textures.
-		Material thisTileMaterial2 = TileDisplayArray[1,3].GetComponent<Renderer>().material;
-		Material thisTileMaterial3 = TileDisplayArray[2,3].GetComponent<Renderer>().material;
-		TileDisplayArray[1,3].GetComponent<Renderer>().material = thisTileMaterial3;
-		TileDisplayArray[2,3].GetComponent<Renderer>().material = thisTileMaterial2;
-		*/
-	}
+    private Vector2 ConvertIndexToGrid(int index)
+    {
+        var WidthIndex = index;
+        var HeightIndex = 0;
+
+        // take the index value and return the grid array location X,Y.
+        for (var i = 0; i < Height; i++)
+            if (WidthIndex < Width)
+            {
+                return new Vector2(WidthIndex, HeightIndex);
+            }
+            else
+            {
+                WidthIndex -= Width;
+                HeightIndex++;
+            }
+
+        return new Vector2(WidthIndex, HeightIndex);
+    }
+
+    private void CreatePuzzleTiles()
+    {
+        // using the width and height variables create an array.
+        TileDisplayArray = new GameObject[Width, Height];
+
+        // set the scale and position values for this puzzle.
+        Scale = new Vector3(1.0f / Width, 1.0f, 1.0f / Height);
+        Tile.transform.localScale = Scale;
+
+        // used to count the number of tiles and assign each tile a correct value.
+        var TileValue = 0;
+
+        // spawn the tiles into an array.
+        for (var j = Height - 1; j >= 0; j--)
+        for (var i = 0; i < Width; i++)
+        {
+            // calculate the position of this tile all centred around Vector3(0.0f, 0.0f, 0.0f).
+            Position = new Vector3((Scale.x * (i + 0.5f) - Scale.x * (Width / 2.0f)) * (10.0f + SeperationBetweenTiles),
+                0.0f,
+                (Scale.z * (j + 0.5f) - Scale.z * (Height / 2.0f)) * (10.0f + SeperationBetweenTiles));
+
+            // set this location on the display grid.
+            DisplayPositions.Add(Position);
+
+            // spawn the object into play.
+            TileDisplayArray[i, j] =
+                Instantiate(Tile, new Vector3(0.0f, 0.0f, 0.0f), Quaternion.Euler(90.0f, -180.0f, 0.0f));
+            TileDisplayArray[i, j].gameObject.transform.parent = transform;
+
+            // set and increment the display number counter.
+            var thisTile = TileDisplayArray[i, j].GetComponent<ST_PuzzleTile>();
+            thisTile.ArrayLocation = new Vector2(i, j);
+            thisTile.GridLocation = new Vector2(i, j);
+            thisTile.LaunchPositionCoroutine(Position);
+            TileValue++;
+
+            // create a new material using the defined shader.
+            var thisTileMaterial = new Material(PuzzleShader);
+
+            // apply the puzzle image to it.
+            thisTileMaterial.mainTexture = PuzzleImage;
+
+            // set the offset and tile values for this material.
+            thisTileMaterial.mainTextureOffset = new Vector2(1.0f / Width * i, 1.0f / Height * j);
+            thisTileMaterial.mainTextureScale = new Vector2(1.0f / Width, 1.0f / Height);
+
+            // assign the new material to this tile for display.
+            TileDisplayArray[i, j].GetComponent<Renderer>().material = thisTileMaterial;
+        }
+
+        /*
+        // Enable an impossible puzzle for fun!
+        // switch the second and third grid location textures.
+        Material thisTileMaterial2 = TileDisplayArray[1,3].GetComponent<Renderer>().material;
+        Material thisTileMaterial3 = TileDisplayArray[2,3].GetComponent<Renderer>().material;
+        TileDisplayArray[1,3].GetComponent<Renderer>().material = thisTileMaterial3;
+        TileDisplayArray[2,3].GetComponent<Renderer>().material = thisTileMaterial2;
+        */
+    }
 }

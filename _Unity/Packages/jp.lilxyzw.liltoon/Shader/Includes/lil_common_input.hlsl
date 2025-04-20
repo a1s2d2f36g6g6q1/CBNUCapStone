@@ -4,7 +4,7 @@
 //------------------------------------------------------------------------------------------------------------------------------
 // Variables from Unity
 #if !defined(SHADER_API_GLES)
-    TEXTURE3D(_DitherMaskLOD);
+TEXTURE3D(_DitherMaskLOD);
 #endif
 
 SAMPLER(lil_sampler_trilinear_repeat);
@@ -18,15 +18,15 @@ SAMPLER(lil_sampler_linear_clamp);
 #define lil_sampler_linear_repeat       lil_sampler_trilinear_repeat
 
 #if defined(LIL_BRP)
-    TEXTURE2D_SCREEN(_CameraDepthTexture);
-    TEXTURE2D_SCREEN(_lilBackgroundTexture);
-    TEXTURE2D_SCREEN(_GrabTexture);
-    float4 _lilBackgroundTexture_TexelSize;
-    #define LIL_GET_DEPTH_TEX_CS(uv) LIL_SAMPLE_SCREEN_CS(_CameraDepthTexture, lilCameraDepthTexel(uv))
-    #define LIL_TO_LINEARDEPTH(z,uv) lilLinearEyeDepth(z, uv)
-    #define LIL_GET_BG_TEX(uv,lod) max(LIL_SAMPLE_SCREEN(_lilBackgroundTexture, lil_sampler_linear_clamp, uv),0)
-    #define LIL_GET_GRAB_TEX(uv,lod) max(LIL_SAMPLE_SCREEN(_GrabTexture, lil_sampler_linear_clamp, uv),0)
-    #define LIL_ENABLED_DEPTH_TEX IsScreenTex(_CameraDepthTexture)
+TEXTURE2D_SCREEN(_CameraDepthTexture);
+TEXTURE2D_SCREEN(_lilBackgroundTexture);
+TEXTURE2D_SCREEN(_GrabTexture);
+float4 _lilBackgroundTexture_TexelSize;
+#define LIL_GET_DEPTH_TEX_CS(uv) LIL_SAMPLE_SCREEN_CS(_CameraDepthTexture, lilCameraDepthTexel(uv))
+#define LIL_TO_LINEARDEPTH(z,uv) lilLinearEyeDepth(z, uv)
+#define LIL_GET_BG_TEX(uv,lod) max(LIL_SAMPLE_SCREEN(_lilBackgroundTexture, lil_sampler_linear_clamp, uv),0)
+#define LIL_GET_GRAB_TEX(uv,lod) max(LIL_SAMPLE_SCREEN(_GrabTexture, lil_sampler_linear_clamp, uv),0)
+#define LIL_ENABLED_DEPTH_TEX IsScreenTex(_CameraDepthTexture)
 #elif defined(LIL_HDRP)
     #define LIL_GET_DEPTH_TEX_CS(uv) SampleCameraDepth(uv/LIL_SCREENPARAMS.xy)
     #define LIL_TO_LINEARDEPTH(z,uv) LinearEyeDepth(z, _ZBufferParams)
@@ -46,7 +46,7 @@ SAMPLER(lil_sampler_linear_clamp);
 //------------------------------------------------------------------------------------------------------------------------------
 // Texture Exists
 #if !defined(LIL_FEATURE_MainTex)
-    #define LIL_FEATURE_MainTex
+#define LIL_FEATURE_MainTex
 #endif
 #if !defined(LIL_FEATURE_Main2ndTex)
     #define LIL_FEATURE_Main2ndTex
@@ -55,33 +55,33 @@ SAMPLER(lil_sampler_linear_clamp);
     #define LIL_FEATURE_Main3rdTex
 #endif
 #if !defined(LIL_FEATURE_DitherTex)
-    #define LIL_FEATURE_DitherTex
+#define LIL_FEATURE_DitherTex
 #endif
 #if defined(LIL_LITE)
-    #if !defined(LIL_FEATURE_TriMask)
+#if !defined(LIL_FEATURE_TriMask)
         #define LIL_FEATURE_TriMask
-    #endif
-    #if !defined(LIL_FEATURE_MainTex)
+#endif
+#if !defined(LIL_FEATURE_MainTex)
         #define LIL_FEATURE_MainTex
-    #endif
-    #if !defined(LIL_FEATURE_ShadowColorTex)
+#endif
+#if !defined(LIL_FEATURE_ShadowColorTex)
         #define LIL_FEATURE_ShadowColorTex
-    #endif
-    #if !defined(LIL_FEATURE_Shadow2ndColorTex)
+#endif
+#if !defined(LIL_FEATURE_Shadow2ndColorTex)
         #define LIL_FEATURE_Shadow2ndColorTex
-    #endif
-    #if !defined(LIL_FEATURE_MatCapTex)
+#endif
+#if !defined(LIL_FEATURE_MatCapTex)
         #define LIL_FEATURE_MatCapTex
-    #endif
-    #if !defined(LIL_FEATURE_EmissionMap)
+#endif
+#if !defined(LIL_FEATURE_EmissionMap)
         #define LIL_FEATURE_EmissionMap
-    #endif
-    #if !defined(LIL_FEATURE_OutlineTex)
+#endif
+#if !defined(LIL_FEATURE_OutlineTex)
         #define LIL_FEATURE_OutlineTex
-    #endif
-    #if !defined(LIL_FEATURE_OutlineWidthMask)
+#endif
+#if !defined(LIL_FEATURE_OutlineWidthMask)
         #define LIL_FEATURE_OutlineWidthMask
-    #endif
+#endif
 #endif
 
 //------------------------------------------------------------------------------------------------------------------------------
@@ -95,12 +95,13 @@ SAMPLER(lil_sampler_linear_clamp);
 
 // bool does not work in cbuffer
 #if !defined(lilBool)
-    #define lilBool uint
+#define lilBool uint
 #endif
 
 #ifndef LIL_INPUT_BASE_INCLUDED
 
 CBUFFER_START(UnityPerMaterial)
+
 #if defined(LIL_LITE)
     float4  _LightDirectionOverride;
     float4  _Color;
@@ -127,13 +128,13 @@ CBUFFER_START(UnityPerMaterial)
     float   _LightMaxLimit;
     float   _MonochromeLighting;
     float   _AAStrength;
-    #if defined(LIL_BRP)
+#if defined(LIL_BRP)
         float   _AlphaBoostFA;
-    #endif
-    #if defined(LIL_HDRP)
+#endif
+#if defined(LIL_HDRP)
         float   _BeforeExposureLimit;
         float   _lilDirectionalLightStrength;
-    #endif
+#endif
     float   _BackfaceForceShadow;
     float   _ShadowBorder;
     float   _ShadowBlur;
@@ -168,13 +169,13 @@ CBUFFER_START(UnityPerMaterial)
     float4  _Color;
     float4  _MainTex_ST;
     float4  _FakeShadowVector;
-    #if defined(LIL_FEATURE_ENCRYPTION)
+#if defined(LIL_FEATURE_ENCRYPTION)
         float4  _Keys;
-    #endif
+#endif
     lilBool _Invisible;
-    #if defined(LIL_FEATURE_ENCRYPTION)
+#if defined(LIL_FEATURE_ENCRYPTION)
         lilBool _IgnoreEncryption;
-    #endif
+#endif
 #elif defined(LIL_BAKER)
     float4  _Color;
     float4  _MainTex_ST;
@@ -218,10 +219,10 @@ CBUFFER_START(UnityPerMaterial)
     float4  _Color;
     float4  _MainTex_ST;
     float4  _MainTex_ScrollRotate;
-    #if defined(LIL_MULTI_INPUTS_MAIN_TONECORRECTION)
+#if defined(LIL_MULTI_INPUTS_MAIN_TONECORRECTION)
         float4  _MainTexHSVG;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_MAIN2ND)
+#endif
+#if defined(LIL_MULTI_INPUTS_MAIN2ND)
         float4  _Color2nd;
         float4  _Main2ndTex_ST;
         float4  _Main2ndTex_ScrollRotate;
@@ -234,8 +235,8 @@ CBUFFER_START(UnityPerMaterial)
         float4  _Main2ndDissolvePos;
         float4  _Main2ndDissolveNoiseMask_ST;
         float4  _Main2ndDissolveNoiseMask_ScrollRotate;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_MAIN3RD)
+#endif
+#if defined(LIL_MULTI_INPUTS_MAIN3RD)
         float4  _Color3rd;
         float4  _Main3rdTex_ST;
         float4  _Main3rdTex_ScrollRotate;
@@ -248,100 +249,100 @@ CBUFFER_START(UnityPerMaterial)
         float4  _Main3rdDissolvePos;
         float4  _Main3rdDissolveNoiseMask_ST;
         float4  _Main3rdDissolveNoiseMask_ScrollRotate;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_SHADOW)
+#endif
+#if defined(LIL_MULTI_INPUTS_SHADOW)
         float4  _ShadowColor;
         float4  _Shadow2ndColor;
         float4  _Shadow3rdColor;
         float4  _ShadowBorderColor;
         float4  _ShadowAOShift;
         float4  _ShadowAOShift2;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_RIMSHADE)
+#endif
+#if defined(LIL_MULTI_INPUTS_RIMSHADE)
         float4  _RimShadeColor;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_BACKLIGHT)
+#endif
+#if defined(LIL_MULTI_INPUTS_BACKLIGHT)
         float4  _BacklightColor;
         float4  _BacklightColorTex_ST;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_EMISSION)
+#endif
+#if defined(LIL_MULTI_INPUTS_EMISSION)
         float4  _EmissionColor;
         float4  _EmissionBlink;
         float4  _EmissionMap_ST;
         float4  _EmissionMap_ScrollRotate;
         float4  _EmissionBlendMask_ST;
         float4  _EmissionBlendMask_ScrollRotate;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_EMISSION_2ND)
+#endif
+#if defined(LIL_MULTI_INPUTS_EMISSION_2ND)
         float4  _Emission2ndColor;
         float4  _Emission2ndBlink;
         float4  _Emission2ndMap_ST;
         float4  _Emission2ndMap_ScrollRotate;
         float4  _Emission2ndBlendMask_ST;
         float4  _Emission2ndBlendMask_ScrollRotate;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_NORMAL)
+#endif
+#if defined(LIL_MULTI_INPUTS_NORMAL)
         float4  _BumpMap_ST;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_NORMAL_2ND)
+#endif
+#if defined(LIL_MULTI_INPUTS_NORMAL_2ND)
         float4  _Bump2ndMap_ST;
         float4  _Bump2ndScaleMask_ST;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_ANISOTROPY)
+#endif
+#if defined(LIL_MULTI_INPUTS_ANISOTROPY)
         float4  _AnisotropyTangentMap_ST;
         float4  _AnisotropyScaleMask_ST;
         float4  _AnisotropyShiftNoiseMask_ST;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_REFLECTION)
+#endif
+#if defined(LIL_MULTI_INPUTS_REFLECTION)
         float4  _ReflectionColor;
         float4  _MetallicGlossMap_ST;
         float4  _ReflectionColorTex_ST;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_REFLECTION) || defined(LIL_REFRACTION_BLUR2)
+#endif
+#if defined(LIL_MULTI_INPUTS_REFLECTION) || defined(LIL_REFRACTION_BLUR2)
         float4  _SmoothnessTex_ST;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_REFLECTION) || defined(LIL_GEM)
+#endif
+#if defined(LIL_MULTI_INPUTS_REFLECTION) || defined(LIL_GEM)
         float4  _ReflectionCubeColor;
         float4  _ReflectionCubeTex_HDR;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_MATCAP)
+#endif
+#if defined(LIL_MULTI_INPUTS_MATCAP)
         float4  _MatCapColor;
         float4  _MatCapTex_ST;
         float4  _MatCapBlendMask_ST;
         float4  _MatCapBlendUV1;
         float4  _MatCapBumpMap_ST;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_MATCAP_2ND)
+#endif
+#if defined(LIL_MULTI_INPUTS_MATCAP_2ND)
         float4  _MatCap2ndColor;
         float4  _MatCap2ndTex_ST;
         float4  _MatCap2ndBlendMask_ST;
         float4  _MatCap2ndBlendUV1;
         float4  _MatCap2ndBumpMap_ST;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_RIM)
+#endif
+#if defined(LIL_MULTI_INPUTS_RIM)
         float4  _RimColor;
         float4  _RimColorTex_ST;
         float4  _RimIndirColor;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_GLITTER)
+#endif
+#if defined(LIL_MULTI_INPUTS_GLITTER)
         float4  _GlitterColor;
         float4  _GlitterColorTex_ST;
         float4  _GlitterParams1;
         float4  _GlitterParams2;
-        #if defined(LIL_FEATURE_GlitterShapeTex)
+#if defined(LIL_FEATURE_GlitterShapeTex)
             float4  _GlitterShapeTex_ST;
             float4  _GlitterAtras;
-        #endif
-    #endif
-    #if defined(LIL_MULTI_INPUTS_DISTANCE_FADE)
+#endif
+#endif
+#if defined(LIL_MULTI_INPUTS_DISTANCE_FADE)
         float4  _DistanceFade;
         float4  _DistanceFadeColor;
         float4  _DistanceFadeRimColor;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_DITHER)
+#endif
+#if defined(LIL_MULTI_INPUTS_DITHER)
         float4  _DitherTex_TexelSize;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_AUDIOLINK)
+#endif
+#if defined(LIL_MULTI_INPUTS_AUDIOLINK)
         float4  _AudioLinkMask_ST;
         float4  _AudioLinkMask_ScrollRotate;
         float4  _AudioLinkDefaultValue;
@@ -351,37 +352,37 @@ CBUFFER_START(UnityPerMaterial)
         float4  _AudioLinkVertexStart;
         float4  _AudioLinkVertexStrength;
         float4  _AudioLinkLocalMapParams;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_DISSOLVE)
+#endif
+#if defined(LIL_MULTI_INPUTS_DISSOLVE)
         float4  _DissolveMask_ST;
         float4  _DissolveColor;
         float4  _DissolveParams;
         float4  _DissolvePos;
         float4  _DissolveNoiseMask_ST;
         float4  _DissolveNoiseMask_ScrollRotate;
-    #endif
-    #if defined(LIL_FEATURE_ENCRYPTION)
+#endif
+#if defined(LIL_FEATURE_ENCRYPTION)
         float4  _Keys;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_OUTLINE)
+#endif
+#if defined(LIL_MULTI_INPUTS_OUTLINE)
         float4  _OutlineColor;
         float4  _OutlineLitColor;
         float4  _OutlineTex_ST;
         float4  _OutlineTex_ScrollRotate;
         float4  _OutlineTexHSVG;
-    #endif
-    #if defined(LIL_FUR)
+#endif
+#if defined(LIL_FUR)
         float4  _FurNoiseMask_ST;
         float4  _FurVector;
         float4  _FurRimColor;
-    #endif
-    #if defined(LIL_REFRACTION) || defined(LIL_GEM)
+#endif
+#if defined(LIL_REFRACTION) || defined(LIL_GEM)
         float4  _RefractionColor;
-    #endif
-    #if defined(LIL_GEM)
+#endif
+#if defined(LIL_GEM)
         float4  _GemParticleColor;
         float4  _GemEnvColor;
-    #endif
+#endif
     float   _AsUnlit;
     float   _Cutoff;
     float   _SubpassCutoff;
@@ -392,33 +393,33 @@ CBUFFER_START(UnityPerMaterial)
     float   _LightMaxLimit;
     float   _MonochromeLighting;
     float   _AAStrength;
-    #if defined(LIL_BRP)
+#if defined(LIL_BRP)
         float   _AlphaBoostFA;
-    #endif
-    #if defined(LIL_HDRP)
+#endif
+#if defined(LIL_HDRP)
         float   _BeforeExposureLimit;
         float   _lilDirectionalLightStrength;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_MAIN_TONECORRECTION)
+#endif
+#if defined(LIL_MULTI_INPUTS_MAIN_TONECORRECTION)
         float   _MainGradationStrength;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_MAIN2ND)
+#endif
+#if defined(LIL_MULTI_INPUTS_MAIN2ND)
         float   _Main2ndTexAngle;
         float   _Main2ndEnableLighting;
         float   _Main2ndDissolveNoiseStrength;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_MAIN3RD)
+#endif
+#if defined(LIL_MULTI_INPUTS_MAIN3RD)
         float   _Main3rdTexAngle;
         float   _Main3rdEnableLighting;
         float   _Main3rdDissolveNoiseStrength;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_ALPHAMASK)
+#endif
+#if defined(LIL_MULTI_INPUTS_ALPHAMASK)
         float4  _AlphaMask_ST;
         float   _AlphaMaskScale;
         float   _AlphaMaskValue;
-    #endif
+#endif
     float   _BackfaceForceShadow;
-    #if defined(LIL_MULTI_INPUTS_SHADOW)
+#if defined(LIL_MULTI_INPUTS_SHADOW)
         float   _ShadowStrength;
         float   _ShadowNormalStrength;
         float   _ShadowBorder;
@@ -440,14 +441,14 @@ CBUFFER_START(UnityPerMaterial)
         float   _Shadow3rdReceive;
         float   _ShadowFlatBlur;
         float   _ShadowFlatBorder;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_RIMSHADE)
+#endif
+#if defined(LIL_MULTI_INPUTS_RIMSHADE)
         float _RimShadeNormalStrength;
         float _RimShadeBorder;
         float _RimShadeBlur;
         float _RimShadeFresnelPower;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_BACKLIGHT)
+#endif
+#if defined(LIL_MULTI_INPUTS_BACKLIGHT)
         float   _BacklightNormalStrength;
         float   _BacklightBorder;
         float   _BacklightBlur;
@@ -455,14 +456,14 @@ CBUFFER_START(UnityPerMaterial)
         float   _BacklightViewStrength;
         float   _BacklightBackfaceMask;
         float   _BacklightMainStrength;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_NORMAL)
+#endif
+#if defined(LIL_MULTI_INPUTS_NORMAL)
         float   _BumpScale;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_NORMAL_2ND)
+#endif
+#if defined(LIL_MULTI_INPUTS_NORMAL_2ND)
         float   _Bump2ndScale;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_ANISOTROPY)
+#endif
+#if defined(LIL_MULTI_INPUTS_ANISOTROPY)
         float   _AnisotropyScale;
         float   _AnisotropyTangentWidth;
         float   _AnisotropyBitangentWidth;
@@ -474,23 +475,23 @@ CBUFFER_START(UnityPerMaterial)
         float   _Anisotropy2ndShift;
         float   _Anisotropy2ndShiftNoiseScale;
         float   _Anisotropy2ndSpecularStrength;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_REFLECTION) || defined(LIL_GEM)
+#endif
+#if defined(LIL_MULTI_INPUTS_REFLECTION) || defined(LIL_GEM)
         float   _Reflectance;
         float   _SpecularNormalStrength;
         float   _SpecularBorder;
         float   _SpecularBlur;
         float   _ReflectionNormalStrength;
         float   _ReflectionCubeEnableLighting;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_REFLECTION) || defined(LIL_GEM) || defined(LIL_REFRACTION_BLUR2)
+#endif
+#if defined(LIL_MULTI_INPUTS_REFLECTION) || defined(LIL_GEM) || defined(LIL_REFRACTION_BLUR2)
         float   _Smoothness;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_REFLECTION)
+#endif
+#if defined(LIL_MULTI_INPUTS_REFLECTION)
         float   _Metallic;
         float   _GSAAStrength;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_MATCAP)
+#endif
+#if defined(LIL_MULTI_INPUTS_MATCAP)
         float   _MatCapBlend;
         float   _MatCapEnableLighting;
         float   _MatCapShadowMask;
@@ -500,8 +501,8 @@ CBUFFER_START(UnityPerMaterial)
         float   _MatCapNormalStrength;
         float   _MatCapBumpScale;
         float   _MatCapMainStrength;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_MATCAP_2ND)
+#endif
+#if defined(LIL_MULTI_INPUTS_MATCAP_2ND)
         float   _MatCap2ndBlend;
         float   _MatCap2ndEnableLighting;
         float   _MatCap2ndShadowMask;
@@ -511,8 +512,8 @@ CBUFFER_START(UnityPerMaterial)
         float   _MatCap2ndNormalStrength;
         float   _MatCap2ndBumpScale;
         float   _MatCap2ndMainStrength;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_RIM)
+#endif
+#if defined(LIL_MULTI_INPUTS_RIM)
         float   _RimNormalStrength;
         float   _RimBorder;
         float   _RimBlur;
@@ -527,8 +528,8 @@ CBUFFER_START(UnityPerMaterial)
         float   _RimIndirBlur;
         float   _RimBackfaceMask;
         float   _RimMainStrength;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_GLITTER)
+#endif
+#if defined(LIL_MULTI_INPUTS_GLITTER)
         float   _GlitterMainStrength;
         float   _GlitterPostContrast;
         float   _GlitterSensitivity;
@@ -538,39 +539,39 @@ CBUFFER_START(UnityPerMaterial)
         float   _GlitterVRParallaxStrength;
         float   _GlitterBackfaceMask;
         float   _GlitterScaleRandomize;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_DISTANCE_FADE)
+#endif
+#if defined(LIL_MULTI_INPUTS_DISTANCE_FADE)
         float  _DistanceFadeRimFresnelPower;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_EMISSION)
+#endif
+#if defined(LIL_MULTI_INPUTS_EMISSION)
         float   _EmissionBlend;
         float   _EmissionParallaxDepth;
         float   _EmissionFluorescence;
         float   _EmissionGradSpeed;
         float   _EmissionMainStrength;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_EMISSION_2ND)
+#endif
+#if defined(LIL_MULTI_INPUTS_EMISSION_2ND)
         float   _Emission2ndBlend;
         float   _Emission2ndParallaxDepth;
         float   _Emission2ndFluorescence;
         float   _Emission2ndGradSpeed;
         float   _Emission2ndMainStrength;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_PARALLAX)
+#endif
+#if defined(LIL_MULTI_INPUTS_PARALLAX)
         float   _Parallax;
         float   _ParallaxOffset;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_DITHER)
+#endif
+#if defined(LIL_MULTI_INPUTS_DITHER)
         float   _DitherMaxValue;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_AUDIOLINK)
+#endif
+#if defined(LIL_MULTI_INPUTS_AUDIOLINK)
         float   _AudioLink2EmissionGrad;
         float   _AudioLink2Emission2ndGrad;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_DISSOLVE)
+#endif
+#if defined(LIL_MULTI_INPUTS_DISSOLVE)
         float   _DissolveNoiseStrength;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_IDMASK)
+#endif
+#if defined(LIL_MULTI_INPUTS_IDMASK)
         float   _IDMask1;
         float   _IDMask2;
         float   _IDMask3;
@@ -587,8 +588,8 @@ CBUFFER_START(UnityPerMaterial)
         float   _IDMaskPrior6;
         float   _IDMaskPrior7;
         float   _IDMaskPrior8;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_UDIMDISCARD)
+#endif
+#if defined(LIL_MULTI_INPUTS_UDIMDISCARD)
         float _UDIMDiscardCompile;
         float _UDIMDiscardMode;
         float _UDIMDiscardUV;
@@ -608,9 +609,9 @@ CBUFFER_START(UnityPerMaterial)
         float _UDIMDiscardRow0_1;
         float _UDIMDiscardRow0_2;
         float _UDIMDiscardRow0_3;
-    #endif
+#endif
     float   _lilShadowCasterBias;
-    #if defined(LIL_MULTI_INPUTS_OUTLINE)
+#if defined(LIL_MULTI_INPUTS_OUTLINE)
         float   _OutlineLitScale;
         float   _OutlineLitOffset;
         float   _OutlineWidth;
@@ -618,8 +619,8 @@ CBUFFER_START(UnityPerMaterial)
         float   _OutlineVectorScale;
         float   _OutlineFixWidth;
         float   _OutlineZBias;
-    #endif
-    #if defined(LIL_FUR)
+#endif
+#if defined(LIL_FUR)
         float   _FurVectorScale;
         float   _FurGravity;
         float   _FurAO;
@@ -628,24 +629,24 @@ CBUFFER_START(UnityPerMaterial)
         float   _FurTouchStrength;
         float   _FurRimFresnelPower;
         float   _FurRimAntiLight;
-    #endif
-    #if defined(LIL_REFRACTION) || defined(LIL_GEM)
+#endif
+#if defined(LIL_REFRACTION) || defined(LIL_GEM)
         float   _RefractionStrength;
         float   _RefractionFresnelPower;
-    #endif
-    #if defined(LIL_TESSELLATION)
+#endif
+#if defined(LIL_TESSELLATION)
         float   _TessEdge;
         float   _TessStrength;
         float   _TessShrink;
         float   _TessFactorMax;
-    #endif
-    #if defined(LIL_GEM)
+#endif
+#if defined(LIL_GEM)
         float   _GemChromaticAberration;
         float   _GemParticleLoop;
         float   _GemEnvContrast;
         float   _GemVRParallaxStrength;
-    #endif
-    #if defined(LIL_FEATURE_IDMASK)
+#endif
+#if defined(LIL_FEATURE_IDMASK)
         int     _IDMaskIndex1;
         int     _IDMaskIndex2;
         int     _IDMaskIndex3;
@@ -657,78 +658,78 @@ CBUFFER_START(UnityPerMaterial)
         uint    _IDMaskFrom;
         uint    _IDMaskIsBitmap;
         uint    _IDMaskControlsDissolve;
-    #endif
+#endif
     uint    _Cull;
-    #if defined(LIL_MULTI_INPUTS_OUTLINE)
+#if defined(LIL_MULTI_INPUTS_OUTLINE)
         uint    _OutlineCull;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_MAIN2ND)
+#endif
+#if defined(LIL_MULTI_INPUTS_MAIN2ND)
         uint    _Main2ndTexBlendMode;
         uint    _Main2ndTexAlphaMode;
         uint    _Main2ndTex_UVMode;
         uint    _Main2ndTex_Cull;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_MAIN3RD)
+#endif
+#if defined(LIL_MULTI_INPUTS_MAIN3RD)
         uint    _Main3rdTexBlendMode;
         uint    _Main3rdTexAlphaMode;
         uint    _Main3rdTex_UVMode;
         uint    _Main3rdTex_Cull;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_ALPHAMASK)
+#endif
+#if defined(LIL_MULTI_INPUTS_ALPHAMASK)
         uint    _AlphaMaskMode;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_SHADOW)
+#endif
+#if defined(LIL_MULTI_INPUTS_SHADOW)
         uint    _ShadowColorType;
         uint    _ShadowMaskType;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_NORMAL_2ND)
+#endif
+#if defined(LIL_MULTI_INPUTS_NORMAL_2ND)
         uint    _Bump2ndMap_UVMode;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_REFLECTION)
+#endif
+#if defined(LIL_MULTI_INPUTS_REFLECTION)
         uint    _ReflectionBlendMode;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_RIM)
+#endif
+#if defined(LIL_MULTI_INPUTS_RIM)
         uint    _RimBlendMode;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_MATCAP)
+#endif
+#if defined(LIL_MULTI_INPUTS_MATCAP)
         uint    _MatCapBlendMode;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_MATCAP_2ND)
+#endif
+#if defined(LIL_MULTI_INPUTS_MATCAP_2ND)
         uint    _MatCap2ndBlendMode;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_GLITTER)
+#endif
+#if defined(LIL_MULTI_INPUTS_GLITTER)
         uint    _GlitterUVMode;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_EMISSION)
+#endif
+#if defined(LIL_MULTI_INPUTS_EMISSION)
         uint    _EmissionMap_UVMode;
         uint    _EmissionBlendMode;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_EMISSION_2ND)
+#endif
+#if defined(LIL_MULTI_INPUTS_EMISSION_2ND)
         uint    _Emission2ndMap_UVMode;
         uint    _Emission2ndBlendMode;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_AUDIOLINK)
+#endif
+#if defined(LIL_MULTI_INPUTS_AUDIOLINK)
         uint    _AudioLinkUVMode;
         uint    _AudioLinkMask_UVMode;
         uint    _AudioLinkVertexUVMode;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_DISTANCE_FADE)
+#endif
+#if defined(LIL_MULTI_INPUTS_DISTANCE_FADE)
         uint    _DistanceFadeMode;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_DITHER)
+#endif
+#if defined(LIL_MULTI_INPUTS_DITHER)
         uint    _UseDither;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_OUTLINE)
+#endif
+#if defined(LIL_MULTI_INPUTS_OUTLINE)
         uint    _OutlineVertexR2Width;
         uint    _OutlineVectorUVMode;
-    #endif
-    #if defined(LIL_FUR)
+#endif
+#if defined(LIL_FUR)
         uint    _FurLayerNum;
         uint    _FurMeshType;
-    #endif
+#endif
     lilBool _Invisible;
     lilBool _UseClippingCanceller;
-    #if defined(LIL_MULTI_INPUTS_MAIN2ND)
+#if defined(LIL_MULTI_INPUTS_MAIN2ND)
         lilBool _Main2ndTexIsMSDF;
         lilBool _Main2ndTexIsDecal;
         lilBool _Main2ndTexIsLeftOnly;
@@ -736,8 +737,8 @@ CBUFFER_START(UnityPerMaterial)
         lilBool _Main2ndTexShouldCopy;
         lilBool _Main2ndTexShouldFlipMirror;
         lilBool _Main2ndTexShouldFlipCopy;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_MAIN3RD)
+#endif
+#if defined(LIL_MULTI_INPUTS_MAIN3RD)
         lilBool _Main3rdTexIsMSDF;
         lilBool _Main3rdTexIsDecal;
         lilBool _Main3rdTexIsLeftOnly;
@@ -745,81 +746,81 @@ CBUFFER_START(UnityPerMaterial)
         lilBool _Main3rdTexShouldCopy;
         lilBool _Main3rdTexShouldFlipMirror;
         lilBool _Main3rdTexShouldFlipCopy;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_SHADOW)
+#endif
+#if defined(LIL_MULTI_INPUTS_SHADOW)
         lilBool _ShadowPostAO;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_BACKLIGHT)
+#endif
+#if defined(LIL_MULTI_INPUTS_BACKLIGHT)
         lilBool _BacklightReceiveShadow;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_ANISOTROPY)
+#endif
+#if defined(LIL_MULTI_INPUTS_ANISOTROPY)
         lilBool _Anisotropy2Reflection;
         lilBool _Anisotropy2MatCap;
         lilBool _Anisotropy2MatCap2nd;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_REFLECTION)
+#endif
+#if defined(LIL_MULTI_INPUTS_REFLECTION)
         lilBool _ApplySpecular;
         lilBool _ApplySpecularFA;
         lilBool _ApplyReflection;
         lilBool _SpecularToon;
         lilBool _ReflectionApplyTransparency;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_REFLECTION) || defined(LIL_GEM)
+#endif
+#if defined(LIL_MULTI_INPUTS_REFLECTION) || defined(LIL_GEM)
         lilBool _ReflectionCubeOverride;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_MATCAP)
+#endif
+#if defined(LIL_MULTI_INPUTS_MATCAP)
         lilBool _MatCapApplyTransparency;
         lilBool _MatCapPerspective;
         lilBool _MatCapZRotCancel;
         lilBool _MatCapCustomNormal;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_MATCAP_2ND)
+#endif
+#if defined(LIL_MULTI_INPUTS_MATCAP_2ND)
         lilBool _MatCap2ndApplyTransparency;
         lilBool _MatCap2ndPerspective;
         lilBool _MatCap2ndZRotCancel;
         lilBool _MatCap2ndCustomNormal;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_RIM)
+#endif
+#if defined(LIL_MULTI_INPUTS_RIM)
         lilBool _RimApplyTransparency;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_GLITTER)
+#endif
+#if defined(LIL_MULTI_INPUTS_GLITTER)
         lilBool _GlitterColorTex_UVMode;
         lilBool _GlitterApplyTransparency;
-        #if defined(LIL_FEATURE_GlitterShapeTex)
+#if defined(LIL_FEATURE_GlitterShapeTex)
             lilBool _GlitterApplyShape;
             lilBool _GlitterAngleRandomize;
-        #endif
-    #endif
-    #if defined(LIL_MULTI_INPUTS_EMISSION)
+#endif
+#endif
+#if defined(LIL_MULTI_INPUTS_EMISSION)
         lilBool _EmissionUseGrad;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_EMISSION_2ND)
+#endif
+#if defined(LIL_MULTI_INPUTS_EMISSION_2ND)
         lilBool _Emission2ndUseGrad;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_AUDIOLINK)
+#endif
+#if defined(LIL_MULTI_INPUTS_AUDIOLINK)
         lilBool _AudioLink2Main2nd;
         lilBool _AudioLink2Main3rd;
         lilBool _AudioLink2Emission;
         lilBool _AudioLink2Emission2nd;
         lilBool _AudioLink2Vertex;
-    #endif
-    #if defined(LIL_FEATURE_ENCRYPTION)
+#endif
+#if defined(LIL_FEATURE_ENCRYPTION)
         lilBool _IgnoreEncryption;
-    #endif
-    #if defined(LIL_MULTI_INPUTS_OUTLINE)
+#endif
+#if defined(LIL_MULTI_INPUTS_OUTLINE)
         lilBool _OutlineLitApplyTex;
         lilBool _OutlineLitShadowReceive;
         lilBool _OutlineDeleteMesh;
         lilBool _OutlineDisableInVR;
-    #endif
-    #if defined(LIL_FUR)
+#endif
+#if defined(LIL_FUR)
         lilBool _VertexColor2FurVector;
-    #endif
-    #if defined(LIL_REFRACTION)
+#endif
+#if defined(LIL_REFRACTION)
         lilBool _RefractionColorFromMain;
-    #endif
+#endif
 #else
-    #include "lil_common_input_base.hlsl"
+#include "lil_common_input_base.hlsl"
 #endif
 
 #if defined(LIL_CUSTOM_PROPERTIES)

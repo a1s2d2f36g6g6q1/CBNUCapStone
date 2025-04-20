@@ -4,177 +4,177 @@ Shader "Hidden/ltsother_baker"
     {
         //----------------------------------------------------------------------------------------------------------------------
         // Main
-        [lilHDR]        _Color                      ("Color", Color) = (1,1,1,1)
-        [MainTexture]   _MainTex                    ("Texture", 2D) = "white" {}
-        [lilUVAnim]     _MainTex_ScrollRotate       ("Angle|UV Animation|Scroll|Rotate", Vector) = (0,0,0,0)
-        [lilHSVG]       _MainTexHSVG                ("Hue|Saturation|Value|Gamma", Vector) = (0,1,1,1)
-                        _MainGradationStrength      ("Gradation Strength", Range(0, 1)) = 0
-        [NoScaleOffset] _MainGradationTex           ("Gradation Map", 2D) = "white" {}
-        [NoScaleOffset] _MainColorAdjustMask        ("Adjust Mask", 2D) = "white" {}
+        [lilHDR] _Color ("Color", Color) = (1,1,1,1)
+        [MainTexture] _MainTex ("Texture", 2D) = "white" {}
+        [lilUVAnim] _MainTex_ScrollRotate ("Angle|UV Animation|Scroll|Rotate", Vector) = (0,0,0,0)
+        [lilHSVG] _MainTexHSVG ("Hue|Saturation|Value|Gamma", Vector) = (0,1,1,1)
+        _MainGradationStrength ("Gradation Strength", Range(0, 1)) = 0
+        [NoScaleOffset] _MainGradationTex ("Gradation Map", 2D) = "white" {}
+        [NoScaleOffset] _MainColorAdjustMask ("Adjust Mask", 2D) = "white" {}
 
         //----------------------------------------------------------------------------------------------------------------------
         // Main2nd
-        [lilToggleLeft] _UseMain2ndTex              ("Use Main 2nd", Int) = 0
-                        _Color2nd                   ("Color", Color) = (1,1,1,1)
-                        _Main2ndTex                 ("Texture", 2D) = "white" {}
-        [lilAngle]      _Main2ndTexAngle            ("Angle", Float) = 0
-        [lilToggle]     _Main2ndTexIsDecal          ("As Decal", Int) = 0
-        [lilToggle]     _Main2ndTexIsLeftOnly       ("Left Only", Int) = 0
-        [lilToggle]     _Main2ndTexIsRightOnly      ("Right Only", Int) = 0
-        [lilToggle]     _Main2ndTexShouldCopy       ("Copy", Int) = 0
-        [lilToggle]     _Main2ndTexShouldFlipMirror ("Flip Mirror", Int) = 0
-        [lilToggle]     _Main2ndTexShouldFlipCopy   ("Flip Copy", Int) = 0
-        [lilToggle]     _Main2ndTexIsMSDF           ("As MSDF", Int) = 0
-        [NoScaleOffset] _Main2ndBlendMask           ("Mask", 2D) = "white" {}
-        [lilEnum]       _Main2ndTexBlendMode        ("Blend Mode|Normal|Add|Screen|Multiply", Int) = 0
+        [lilToggleLeft] _UseMain2ndTex ("Use Main 2nd", Int) = 0
+        _Color2nd ("Color", Color) = (1,1,1,1)
+        _Main2ndTex ("Texture", 2D) = "white" {}
+        [lilAngle] _Main2ndTexAngle ("Angle", Float) = 0
+        [lilToggle] _Main2ndTexIsDecal ("As Decal", Int) = 0
+        [lilToggle] _Main2ndTexIsLeftOnly ("Left Only", Int) = 0
+        [lilToggle] _Main2ndTexIsRightOnly ("Right Only", Int) = 0
+        [lilToggle] _Main2ndTexShouldCopy ("Copy", Int) = 0
+        [lilToggle] _Main2ndTexShouldFlipMirror ("Flip Mirror", Int) = 0
+        [lilToggle] _Main2ndTexShouldFlipCopy ("Flip Copy", Int) = 0
+        [lilToggle] _Main2ndTexIsMSDF ("As MSDF", Int) = 0
+        [NoScaleOffset] _Main2ndBlendMask ("Mask", 2D) = "white" {}
+        [lilEnum] _Main2ndTexBlendMode ("Blend Mode|Normal|Add|Screen|Multiply", Int) = 0
 
         //----------------------------------------------------------------------------------------------------------------------
         // Main3rd
-        [lilToggleLeft] _UseMain3rdTex              ("Use Main 3rd", Int) = 0
-                        _Color3rd                   ("Color", Color) = (1,1,1,1)
-                        _Main3rdTex                 ("Texture", 2D) = "white" {}
-        [lilAngle]      _Main3rdTexAngle            ("Angle", Float) = 0
-        [lilToggle]     _Main3rdTexIsDecal          ("As Decal", Int) = 0
-        [lilToggle]     _Main3rdTexIsLeftOnly       ("Left Only", Int) = 0
-        [lilToggle]     _Main3rdTexIsRightOnly      ("Right Only", Int) = 0
-        [lilToggle]     _Main3rdTexShouldCopy       ("Copy", Int) = 0
-        [lilToggle]     _Main3rdTexShouldFlipMirror ("Flip Mirror", Int) = 0
-        [lilToggle]     _Main3rdTexShouldFlipCopy   ("Flip Copy", Int) = 0
-        [lilToggle]     _Main3rdTexIsMSDF           ("As MSDF", Int) = 0
-        [NoScaleOffset] _Main3rdBlendMask           ("Mask", 2D) = "white" {}
-        [lilEnum]       _Main3rdTexBlendMode        ("Blend Mode|Normal|Add|Screen|Multiply", Int) = 0
+        [lilToggleLeft] _UseMain3rdTex ("Use Main 3rd", Int) = 0
+        _Color3rd ("Color", Color) = (1,1,1,1)
+        _Main3rdTex ("Texture", 2D) = "white" {}
+        [lilAngle] _Main3rdTexAngle ("Angle", Float) = 0
+        [lilToggle] _Main3rdTexIsDecal ("As Decal", Int) = 0
+        [lilToggle] _Main3rdTexIsLeftOnly ("Left Only", Int) = 0
+        [lilToggle] _Main3rdTexIsRightOnly ("Right Only", Int) = 0
+        [lilToggle] _Main3rdTexShouldCopy ("Copy", Int) = 0
+        [lilToggle] _Main3rdTexShouldFlipMirror ("Flip Mirror", Int) = 0
+        [lilToggle] _Main3rdTexShouldFlipCopy ("Flip Copy", Int) = 0
+        [lilToggle] _Main3rdTexIsMSDF ("As MSDF", Int) = 0
+        [NoScaleOffset] _Main3rdBlendMask ("Mask", 2D) = "white" {}
+        [lilEnum] _Main3rdTexBlendMode ("Blend Mode|Normal|Add|Screen|Multiply", Int) = 0
 
         //----------------------------------------------------------------------------------------------------------------------
         // Alpha Mask
-        [lilEnumLabel]  _AlphaMaskMode              ("AlphaMask|", Int) = 0
-                        _AlphaMask                  ("AlphaMask", 2D) = "white" {}
-                        _AlphaMaskScale             ("Scale", Float) = 1
-                        _AlphaMaskValue             ("Offset", Float) = 0
+        [lilEnumLabel] _AlphaMaskMode ("AlphaMask|", Int) = 0
+        _AlphaMask ("AlphaMask", 2D) = "white" {}
+        _AlphaMaskScale ("Scale", Float) = 1
+        _AlphaMaskValue ("Offset", Float) = 0
 
         //----------------------------------------------------------------------------------------------------------------------
         // Texture Packing
-        [NoScaleOffset] _PackingTexture1            ("Texture", 2D) = "white" {}
-        [NoScaleOffset] _PackingTexture2            ("Texture", 2D) = "white" {}
-        [NoScaleOffset] _PackingTexture3            ("Texture", 2D) = "white" {}
-        [NoScaleOffset] _PackingTexture4            ("Texture", 2D) = "white" {}
-                        _PackingChannel1            ("Channel", Int) = 0
-                        _PackingChannel2            ("Channel", Int) = 0
-                        _PackingChannel3            ("Channel", Int) = 0
-                        _PackingChannel4            ("Channel", Int) = 0
+        [NoScaleOffset] _PackingTexture1 ("Texture", 2D) = "white" {}
+        [NoScaleOffset] _PackingTexture2 ("Texture", 2D) = "white" {}
+        [NoScaleOffset] _PackingTexture3 ("Texture", 2D) = "white" {}
+        [NoScaleOffset] _PackingTexture4 ("Texture", 2D) = "white" {}
+        _PackingChannel1 ("Channel", Int) = 0
+        _PackingChannel2 ("Channel", Int) = 0
+        _PackingChannel3 ("Channel", Int) = 0
+        _PackingChannel4 ("Channel", Int) = 0
 
         //----------------------------------------------------------------------------------------------------------------------
         // Texture3D
-        [NoScaleOffset] _MainTex3D                  ("Texture", 3D) = "white" {}
-        _ResX                                       ("ResX", Int) = 16
-        _ResY                                       ("ResY", Int) = 1
+        [NoScaleOffset] _MainTex3D ("Texture", 3D) = "white" {}
+        _ResX ("ResX", Int) = 16
+        _ResY ("ResY", Int) = 1
     }
 
     SubShader
     {
         HLSLINCLUDE
-            #define LIL_FEATURE_ANIMATE_MAIN_UV
-            #define LIL_FEATURE_MAIN_TONE_CORRECTION
-            #define LIL_FEATURE_MAIN_GRADATION_MAP
-            #define LIL_FEATURE_MAIN2ND
-            #define LIL_FEATURE_MAIN3RD
-            #define LIL_FEATURE_DECAL
-            #define LIL_FEATURE_ANIMATE_DECAL
-            #define LIL_FEATURE_LAYER_DISSOLVE
-            #define LIL_FEATURE_ALPHAMASK
-            #define LIL_FEATURE_SHADOW
-            #define LIL_FEATURE_RECEIVE_SHADOW
-            #define LIL_FEATURE_SHADOW_3RD
-            #define LIL_FEATURE_SHADOW_LUT
-            #define LIL_FEATURE_RIMSHADE
-            #define LIL_FEATURE_EMISSION_1ST
-            #define LIL_FEATURE_EMISSION_2ND
-            #define LIL_FEATURE_ANIMATE_EMISSION_UV
-            #define LIL_FEATURE_ANIMATE_EMISSION_MASK_UV
-            #define LIL_FEATURE_EMISSION_GRADATION
-            #define LIL_FEATURE_NORMAL_1ST
-            #define LIL_FEATURE_NORMAL_2ND
-            #define LIL_FEATURE_ANISOTROPY
-            #define LIL_FEATURE_REFLECTION
-            #define LIL_FEATURE_MATCAP
-            #define LIL_FEATURE_MATCAP_2ND
-            #define LIL_FEATURE_RIMLIGHT
-            #define LIL_FEATURE_RIMLIGHT_DIRECTION
-            #define LIL_FEATURE_GLITTER
-            #define LIL_FEATURE_BACKLIGHT
-            #define LIL_FEATURE_PARALLAX
-            #define LIL_FEATURE_POM
-            #define LIL_FEATURE_DISTANCE_FADE
-            #define LIL_FEATURE_AUDIOLINK
-            #define LIL_FEATURE_AUDIOLINK_VERTEX
-            #define LIL_FEATURE_AUDIOLINK_LOCAL
-            #define LIL_FEATURE_DISSOLVE
-            #define LIL_FEATURE_DITHER
-            #define LIL_FEATURE_IDMASK
-            #define LIL_FEATURE_UDIMDISCARD
-            #define LIL_FEATURE_OUTLINE_TONE_CORRECTION
-            #define LIL_FEATURE_OUTLINE_RECEIVE_SHADOW
-            #define LIL_FEATURE_ANIMATE_OUTLINE_UV
-            #define LIL_FEATURE_FUR_COLLISION
-            #define LIL_FEATURE_MainGradationTex
-            #define LIL_FEATURE_MainColorAdjustMask
-            #define LIL_FEATURE_Main2ndTex
-            #define LIL_FEATURE_Main2ndBlendMask
-            #define LIL_FEATURE_Main2ndDissolveMask
-            #define LIL_FEATURE_Main2ndDissolveNoiseMask
-            #define LIL_FEATURE_Main3rdTex
-            #define LIL_FEATURE_Main3rdBlendMask
-            #define LIL_FEATURE_Main3rdDissolveMask
-            #define LIL_FEATURE_Main3rdDissolveNoiseMask
-            #define LIL_FEATURE_AlphaMask
-            #define LIL_FEATURE_BumpMap
-            #define LIL_FEATURE_Bump2ndMap
-            #define LIL_FEATURE_Bump2ndScaleMask
-            #define LIL_FEATURE_AnisotropyTangentMap
-            #define LIL_FEATURE_AnisotropyScaleMask
-            #define LIL_FEATURE_AnisotropyShiftNoiseMask
-            #define LIL_FEATURE_ShadowBorderMask
-            #define LIL_FEATURE_ShadowBlurMask
-            #define LIL_FEATURE_ShadowStrengthMask
-            #define LIL_FEATURE_ShadowColorTex
-            #define LIL_FEATURE_Shadow2ndColorTex
-            #define LIL_FEATURE_Shadow3rdColorTex
-            #define LIL_FEATURE_RimShadeMask
-            #define LIL_FEATURE_BacklightColorTex
-            #define LIL_FEATURE_SmoothnessTex
-            #define LIL_FEATURE_MetallicGlossMap
-            #define LIL_FEATURE_ReflectionColorTex
-            #define LIL_FEATURE_ReflectionCubeTex
-            #define LIL_FEATURE_MatCapTex
-            #define LIL_FEATURE_MatCapBlendMask
-            #define LIL_FEATURE_MatCapBumpMap
-            #define LIL_FEATURE_MatCap2ndTex
-            #define LIL_FEATURE_MatCap2ndBlendMask
-            #define LIL_FEATURE_MatCap2ndBumpMap
-            #define LIL_FEATURE_RimColorTex
-            #define LIL_FEATURE_GlitterColorTex
-            #define LIL_FEATURE_GlitterShapeTex
-            #define LIL_FEATURE_EmissionMap
-            #define LIL_FEATURE_EmissionBlendMask
-            #define LIL_FEATURE_EmissionGradTex
-            #define LIL_FEATURE_Emission2ndMap
-            #define LIL_FEATURE_Emission2ndBlendMask
-            #define LIL_FEATURE_Emission2ndGradTex
-            #define LIL_FEATURE_ParallaxMap
-            #define LIL_FEATURE_AudioLinkMask
-            #define LIL_FEATURE_AudioLinkLocalMap
-            #define LIL_FEATURE_DissolveMask
-            #define LIL_FEATURE_DissolveNoiseMask
-            #define LIL_FEATURE_OutlineTex
-            #define LIL_FEATURE_OutlineWidthMask
-            #define LIL_FEATURE_OutlineVectorTex
-            #define LIL_FEATURE_FurNoiseMask
-            #define LIL_FEATURE_FurMask
-            #define LIL_FEATURE_FurLengthMask
-            #define LIL_FEATURE_FurVectorTex
-            #define LIL_OPTIMIZE_APPLY_SHADOW_FA
-            #define LIL_OPTIMIZE_USE_FORWARDADD
-            #define LIL_OPTIMIZE_USE_VERTEXLIGHT
-            #pragma skip_variants LIGHTMAP_ON DYNAMICLIGHTMAP_ON LIGHTMAP_SHADOW_MIXING SHADOWS_SHADOWMASK DIRLIGHTMAP_COMBINED _MIXED_LIGHTING_SUBTRACTIVE
+        #define LIL_FEATURE_ANIMATE_MAIN_UV
+        #define LIL_FEATURE_MAIN_TONE_CORRECTION
+        #define LIL_FEATURE_MAIN_GRADATION_MAP
+        #define LIL_FEATURE_MAIN2ND
+        #define LIL_FEATURE_MAIN3RD
+        #define LIL_FEATURE_DECAL
+        #define LIL_FEATURE_ANIMATE_DECAL
+        #define LIL_FEATURE_LAYER_DISSOLVE
+        #define LIL_FEATURE_ALPHAMASK
+        #define LIL_FEATURE_SHADOW
+        #define LIL_FEATURE_RECEIVE_SHADOW
+        #define LIL_FEATURE_SHADOW_3RD
+        #define LIL_FEATURE_SHADOW_LUT
+        #define LIL_FEATURE_RIMSHADE
+        #define LIL_FEATURE_EMISSION_1ST
+        #define LIL_FEATURE_EMISSION_2ND
+        #define LIL_FEATURE_ANIMATE_EMISSION_UV
+        #define LIL_FEATURE_ANIMATE_EMISSION_MASK_UV
+        #define LIL_FEATURE_EMISSION_GRADATION
+        #define LIL_FEATURE_NORMAL_1ST
+        #define LIL_FEATURE_NORMAL_2ND
+        #define LIL_FEATURE_ANISOTROPY
+        #define LIL_FEATURE_REFLECTION
+        #define LIL_FEATURE_MATCAP
+        #define LIL_FEATURE_MATCAP_2ND
+        #define LIL_FEATURE_RIMLIGHT
+        #define LIL_FEATURE_RIMLIGHT_DIRECTION
+        #define LIL_FEATURE_GLITTER
+        #define LIL_FEATURE_BACKLIGHT
+        #define LIL_FEATURE_PARALLAX
+        #define LIL_FEATURE_POM
+        #define LIL_FEATURE_DISTANCE_FADE
+        #define LIL_FEATURE_AUDIOLINK
+        #define LIL_FEATURE_AUDIOLINK_VERTEX
+        #define LIL_FEATURE_AUDIOLINK_LOCAL
+        #define LIL_FEATURE_DISSOLVE
+        #define LIL_FEATURE_DITHER
+        #define LIL_FEATURE_IDMASK
+        #define LIL_FEATURE_UDIMDISCARD
+        #define LIL_FEATURE_OUTLINE_TONE_CORRECTION
+        #define LIL_FEATURE_OUTLINE_RECEIVE_SHADOW
+        #define LIL_FEATURE_ANIMATE_OUTLINE_UV
+        #define LIL_FEATURE_FUR_COLLISION
+        #define LIL_FEATURE_MainGradationTex
+        #define LIL_FEATURE_MainColorAdjustMask
+        #define LIL_FEATURE_Main2ndTex
+        #define LIL_FEATURE_Main2ndBlendMask
+        #define LIL_FEATURE_Main2ndDissolveMask
+        #define LIL_FEATURE_Main2ndDissolveNoiseMask
+        #define LIL_FEATURE_Main3rdTex
+        #define LIL_FEATURE_Main3rdBlendMask
+        #define LIL_FEATURE_Main3rdDissolveMask
+        #define LIL_FEATURE_Main3rdDissolveNoiseMask
+        #define LIL_FEATURE_AlphaMask
+        #define LIL_FEATURE_BumpMap
+        #define LIL_FEATURE_Bump2ndMap
+        #define LIL_FEATURE_Bump2ndScaleMask
+        #define LIL_FEATURE_AnisotropyTangentMap
+        #define LIL_FEATURE_AnisotropyScaleMask
+        #define LIL_FEATURE_AnisotropyShiftNoiseMask
+        #define LIL_FEATURE_ShadowBorderMask
+        #define LIL_FEATURE_ShadowBlurMask
+        #define LIL_FEATURE_ShadowStrengthMask
+        #define LIL_FEATURE_ShadowColorTex
+        #define LIL_FEATURE_Shadow2ndColorTex
+        #define LIL_FEATURE_Shadow3rdColorTex
+        #define LIL_FEATURE_RimShadeMask
+        #define LIL_FEATURE_BacklightColorTex
+        #define LIL_FEATURE_SmoothnessTex
+        #define LIL_FEATURE_MetallicGlossMap
+        #define LIL_FEATURE_ReflectionColorTex
+        #define LIL_FEATURE_ReflectionCubeTex
+        #define LIL_FEATURE_MatCapTex
+        #define LIL_FEATURE_MatCapBlendMask
+        #define LIL_FEATURE_MatCapBumpMap
+        #define LIL_FEATURE_MatCap2ndTex
+        #define LIL_FEATURE_MatCap2ndBlendMask
+        #define LIL_FEATURE_MatCap2ndBumpMap
+        #define LIL_FEATURE_RimColorTex
+        #define LIL_FEATURE_GlitterColorTex
+        #define LIL_FEATURE_GlitterShapeTex
+        #define LIL_FEATURE_EmissionMap
+        #define LIL_FEATURE_EmissionBlendMask
+        #define LIL_FEATURE_EmissionGradTex
+        #define LIL_FEATURE_Emission2ndMap
+        #define LIL_FEATURE_Emission2ndBlendMask
+        #define LIL_FEATURE_Emission2ndGradTex
+        #define LIL_FEATURE_ParallaxMap
+        #define LIL_FEATURE_AudioLinkMask
+        #define LIL_FEATURE_AudioLinkLocalMap
+        #define LIL_FEATURE_DissolveMask
+        #define LIL_FEATURE_DissolveNoiseMask
+        #define LIL_FEATURE_OutlineTex
+        #define LIL_FEATURE_OutlineWidthMask
+        #define LIL_FEATURE_OutlineVectorTex
+        #define LIL_FEATURE_FurNoiseMask
+        #define LIL_FEATURE_FurMask
+        #define LIL_FEATURE_FurLengthMask
+        #define LIL_FEATURE_FurVectorTex
+        #define LIL_OPTIMIZE_APPLY_SHADOW_FA
+        #define LIL_OPTIMIZE_USE_FORWARDADD
+        #define LIL_OPTIMIZE_USE_VERTEXLIGHT
+        #pragma skip_variants LIGHTMAP_ON DYNAMICLIGHTMAP_ON LIGHTMAP_SHADOW_MIXING SHADOWS_SHADOWMASK DIRLIGHTMAP_COMBINED _MIXED_LIGHTING_SUBTRACTIVE
         ENDHLSL
 
         Pass
@@ -209,16 +209,16 @@ Shader "Hidden/ltsother_baker"
 
             struct v2f
             {
-                float4 positionCS   : SV_POSITION;
-                float2 uv0          : TEXCOORD0;
-                float  tangentW     : TEXCOORD1;
+                float4 positionCS : SV_POSITION;
+                float2 uv0 : TEXCOORD0;
+                float tangentW : TEXCOORD1;
             };
 
             v2f vert(appdata input)
             {
                 v2f o;
                 LIL_VERTEX_POSITION_INPUTS(input.positionOS, vertexInput);
-                o.positionCS    = vertexInput.positionCS;
+                o.positionCS = vertexInput.positionCS;
                 o.uv0 = input.uv0;
                 o.tangentW = input.tangentOS.w;
                 return o;
@@ -286,34 +286,37 @@ Shader "Hidden/ltsother_baker"
                     col.rgb = LIL_SAMPLE_3D(_MainTex3D, lil_sampler_linear_clamp, col.rgb).rgb;
                     col.a = 1;
                 #else
-                    // Main
-                    float4 col = LIL_SAMPLE_2D(_MainTex,sampler_MainTex,input.uv0);
-                    float3 baseColor = col.rgb;
-                    float colorAdjustMask = LIL_SAMPLE_2D(_MainColorAdjustMask, sampler_MainTex, input.uv0).r;
-                    col.rgb = lilToneCorrection(col.rgb, _MainTexHSVG);
-                    #if defined(LIL_FEATURE_MAIN_GRADATION_MAP)
-                        col.rgb = lilGradationMap(col.rgb, _MainGradationTex, _MainGradationStrength);
-                    #endif
-                    col.rgb = lerp(baseColor, col.rgb, colorAdjustMask);
-                    col *= _Color;
+                // Main
+                float4 col = LIL_SAMPLE_2D(_MainTex, sampler_MainTex, input.uv0);
+                float3 baseColor = col.rgb;
+                float colorAdjustMask = LIL_SAMPLE_2D(_MainColorAdjustMask, sampler_MainTex, input.uv0).r;
+                col.rgb = lilToneCorrection(col.rgb, _MainTexHSVG);
+                #if defined(LIL_FEATURE_MAIN_GRADATION_MAP)
+                col.rgb = lilGradationMap(col.rgb, _MainGradationTex, _MainGradationStrength);
+                #endif
+                col.rgb = lerp(baseColor, col.rgb, colorAdjustMask);
+                col *= _Color;
 
-                    bool isRightHand = input.tangentW > 0.0;
+                bool isRightHand = input.tangentW > 0.0;
 
-                    // 2nd
+                // 2nd
+                UNITY_BRANCH
+                if (_UseMain2ndTex)
+                {
+                    _Color2nd *= LIL_GET_SUBTEX(_Main2ndTex, input.uv0);
+                    col.rgb = lilBlendColor(col.rgb, _Color2nd.rgb,
+                                     LIL_SAMPLE_2D(_Main2ndBlendMask, sampler_MainTex, input.uv0).r * _Color2nd.a,
+                                     _Main2ndTexBlendMode);
+                }
+
+                // 3rd
                     UNITY_BRANCH
-                    if(_UseMain2ndTex)
-                    {
-                        _Color2nd *= LIL_GET_SUBTEX(_Main2ndTex,input.uv0);
-                        col.rgb = lilBlendColor(col.rgb, _Color2nd.rgb, LIL_SAMPLE_2D(_Main2ndBlendMask,sampler_MainTex,input.uv0).r * _Color2nd.a, _Main2ndTexBlendMode);
-                    }
-
-                    // 3rd
-                    UNITY_BRANCH
-                    if(_UseMain3rdTex)
-                    {
-                        _Color3rd *= LIL_GET_SUBTEX(_Main3rdTex,input.uv0);
-                        col.rgb = lilBlendColor(col.rgb, _Color3rd.rgb, LIL_SAMPLE_2D(_Main3rdBlendMask,sampler_MainTex,input.uv0).r * _Color3rd.a, _Main3rdTexBlendMode);
-                    }
+                if (_UseMain3rdTex)
+                {
+                    _Color3rd *= LIL_GET_SUBTEX(_Main3rdTex, input.uv0);
+                    col.rgb = lilBlendColor(col.rgb, _Color3rd.rgb,
+               LIL_SAMPLE_2D(_Main3rdBlendMask, sampler_MainTex, input.uv0).r * _Color3rd.a, _Main3rdTexBlendMode);
+                }
                 #endif
 
                 return col;
@@ -322,4 +325,3 @@ Shader "Hidden/ltsother_baker"
         }
     }
 }
-

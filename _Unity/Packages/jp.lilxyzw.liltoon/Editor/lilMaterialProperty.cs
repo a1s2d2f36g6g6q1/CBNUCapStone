@@ -3,93 +3,16 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace lilToon
 {
     internal class lilMaterialProperty
     {
-        public MaterialProperty p;
         public HashSet<PropertyBlock> blocks;
-        public string propertyName;
         public bool isTexture;
-
-        public float floatValue
-        {
-            get { return p.floatValue; }
-            set { p.floatValue = value; }
-        }
-
-        public Vector4 vectorValue
-        {
-            get { return p.vectorValue; }
-            set { p.vectorValue = value; }
-        }
-
-        public Color colorValue
-        {
-            get { return p.colorValue; }
-            set { p.colorValue = value; }
-        }
-
-        public Texture textureValue
-        {
-            get { return p.textureValue; }
-            set { p.textureValue = value; }
-        }
-
-        // Other
-        public string name
-        {
-            get { return p.name; }
-            private set { }
-        }
-
-        public string displayName
-        {
-            get { return p.displayName; }
-            private set { }
-        }
-
-        public MaterialProperty.PropFlags flags
-        {
-            get { return p.flags; }
-            private set { }
-        }
-
-        public bool hasMixedValue
-        {
-            get { return p.hasMixedValue; }
-            private set { }
-        }
-
-        public Vector2 rangeLimits
-        {
-            get { return p.rangeLimits; }
-            private set { }
-        }
-
-        public Object[] targets
-        {
-            get { return p.targets; }
-            private set { }
-        }
-
-        public UnityEngine.Rendering.TextureDimension textureDimension
-        {
-            get { return p.textureDimension; }
-            private set { }
-        }
-
-        public MaterialProperty.PropType type
-        {
-            get { return p.type; }
-            private set { }
-        }
-
-        public void FindProperty(MaterialProperty[] props)
-        {
-            p = props.FirstOrDefault(prop => prop != null && prop.name == propertyName);
-        }
+        public MaterialProperty p;
+        public string propertyName;
 
         public lilMaterialProperty()
         {
@@ -118,6 +41,84 @@ namespace lilToon
         public lilMaterialProperty(MaterialProperty prop)
         {
             p = prop;
+        }
+
+        public float floatValue
+        {
+            get => p.floatValue;
+            set => p.floatValue = value;
+        }
+
+        public Vector4 vectorValue
+        {
+            get => p.vectorValue;
+            set => p.vectorValue = value;
+        }
+
+        public Color colorValue
+        {
+            get => p.colorValue;
+            set => p.colorValue = value;
+        }
+
+        public Texture textureValue
+        {
+            get => p.textureValue;
+            set => p.textureValue = value;
+        }
+
+        // Other
+        public string name
+        {
+            get => p.name;
+            private set { }
+        }
+
+        public string displayName
+        {
+            get => p.displayName;
+            private set { }
+        }
+
+        public MaterialProperty.PropFlags flags
+        {
+            get => p.flags;
+            private set { }
+        }
+
+        public bool hasMixedValue
+        {
+            get => p.hasMixedValue;
+            private set { }
+        }
+
+        public Vector2 rangeLimits
+        {
+            get => p.rangeLimits;
+            private set { }
+        }
+
+        public Object[] targets
+        {
+            get => p.targets;
+            private set { }
+        }
+
+        public TextureDimension textureDimension
+        {
+            get => p.textureDimension;
+            private set { }
+        }
+
+        public MaterialProperty.PropType type
+        {
+            get => p.type;
+            private set { }
+        }
+
+        public void FindProperty(MaterialProperty[] props)
+        {
+            p = props.FirstOrDefault(prop => prop != null && prop.name == propertyName);
         }
 
         public static implicit operator MaterialProperty(lilMaterialProperty prop)

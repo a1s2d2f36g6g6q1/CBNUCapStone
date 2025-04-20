@@ -1,5 +1,3 @@
-
-
 #ifndef LIL_COMMON_INCLUDED
 #define LIL_COMMON_INCLUDED
 
@@ -47,7 +45,7 @@
     #define _AudioLinkAsLocal true
     #define LIL_MULTI_SHOULD_CLIPPING && _UseClippingCanceller
 #else
-    #define LIL_MULTI_SHOULD_CLIPPING
+#define LIL_MULTI_SHOULD_CLIPPING
 #endif
 
 #include "lil_common_functions.hlsl"
@@ -175,9 +173,9 @@ lilFragData lilInitFragData()
     fd.cameraRight = lilCameraRight();
     fd.cameraMatrix = float3x3(fd.cameraRight, fd.cameraUp, fd.cameraFront);
     fd.TBN = float3x3(
-        1.0,0.0,0.0,
-        0.0,1.0,0.0,
-        0.0,0.0,1.0);
+        1.0, 0.0, 0.0,
+        0.0, 1.0, 0.0,
+        0.0, 0.0, 1.0);
     fd.T = 0.0;
     fd.B = 0.0;
     fd.N = 0.0;

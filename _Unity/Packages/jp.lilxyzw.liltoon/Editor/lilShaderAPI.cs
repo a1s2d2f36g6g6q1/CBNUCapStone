@@ -13,17 +13,17 @@ namespace lilToon
 
         public static int CurrentAPITextureLimit()
         {
-            switch(SystemInfo.graphicsDeviceType)
+            switch (SystemInfo.graphicsDeviceType)
             {
-                #if !UNITY_2023_1_OR_NEWER
+#if !UNITY_2023_1_OR_NEWER
                 case GraphicsDeviceType.OpenGLES2:
                     return 32;
-                #endif
+#endif
                 case GraphicsDeviceType.OpenGLES3:
                     return 32;
                 case GraphicsDeviceType.OpenGLCore:
                     return 32;
-                default :
+                default:
                     return 128;
             }
         }

@@ -5,9 +5,9 @@
 #include "UnityMetaPass.cginc"
 
 #if defined(UNITY_SHOULD_SAMPLE_SH)
-    #undef UNITY_SHOULD_SAMPLE_SH
-    #define UNITY_SHOULD_SAMPLE_SH 1
-    #define LIL_FORCED_SH
+#undef UNITY_SHOULD_SAMPLE_SH
+#define UNITY_SHOULD_SAMPLE_SH 1
+#define LIL_FORCED_SH
 #endif
 #include "openlit_core.hlsl"
 #undef UNITY_SHOULD_SAMPLE_SH

@@ -1,3 +1,5 @@
+using System;
+
 #if UNITY_EDITOR
 namespace lilToon
 {
@@ -29,7 +31,7 @@ namespace lilToon
         TwoPass
     }
 
-    [System.Obsolete]
+    [Obsolete]
     public enum BlendMode
     {
         Alpha,

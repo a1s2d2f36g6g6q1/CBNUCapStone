@@ -1,15 +1,7 @@
 #if UNITY_EDITOR
+
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.Rendering;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Reflection;
-
-using Object = UnityEngine.Object;
 
 namespace lilToon
 {
@@ -17,7 +9,9 @@ namespace lilToon
     {
         //------------------------------------------------------------------------------------------------------------------------------
         // Property drawer
+
         #region
+
         private void LocalizedProperty(MaterialProperty prop, bool shouldCheck = true)
         {
             lilEditorGUI.LocalizedProperty(m_MaterialEditor, prop, shouldCheck);
@@ -48,12 +42,14 @@ namespace lilToon
             lilEditorGUI.LocalizedPropertyTexture(m_MaterialEditor, content, tex, shouldCheck);
         }
 
-        public static void LocalizedPropertyTexture(GUIContent content, MaterialProperty tex, MaterialProperty color, bool shouldCheck = true)
+        public static void LocalizedPropertyTexture(GUIContent content, MaterialProperty tex, MaterialProperty color,
+            bool shouldCheck = true)
         {
             lilEditorGUI.LocalizedPropertyTexture(m_MaterialEditor, content, tex, color, shouldCheck);
         }
 
-        private void LocalizedPropertyTextureWithAlpha(GUIContent content, MaterialProperty tex, MaterialProperty color, bool shouldCheck = true)
+        private void LocalizedPropertyTextureWithAlpha(GUIContent content, MaterialProperty tex, MaterialProperty color,
+            bool shouldCheck = true)
         {
             lilEditorGUI.LocalizedPropertyTextureWithAlpha(m_MaterialEditor, content, tex, color, shouldCheck);
         }
@@ -63,9 +59,13 @@ namespace lilToon
             lilEditorGUI.LocalizedPropertyAlpha(prop, shouldCheck);
         }
 
-        private void UV4Decal(MaterialProperty isDecal, MaterialProperty isLeftOnly, MaterialProperty isRightOnly, MaterialProperty shouldCopy, MaterialProperty shouldFlipMirror, MaterialProperty shouldFlipCopy, MaterialProperty tex, MaterialProperty SR, MaterialProperty angle, MaterialProperty decalAnimation, MaterialProperty decalSubParam, MaterialProperty uvMode)
+        private void UV4Decal(MaterialProperty isDecal, MaterialProperty isLeftOnly, MaterialProperty isRightOnly,
+            MaterialProperty shouldCopy, MaterialProperty shouldFlipMirror, MaterialProperty shouldFlipCopy,
+            MaterialProperty tex, MaterialProperty SR, MaterialProperty angle, MaterialProperty decalAnimation,
+            MaterialProperty decalSubParam, MaterialProperty uvMode)
         {
-            lilEditorGUI.UV4Decal(m_MaterialEditor, isDecal, isLeftOnly, isRightOnly, shouldCopy, shouldFlipMirror, shouldFlipCopy, tex, SR, angle, decalAnimation, decalSubParam, uvMode);
+            lilEditorGUI.UV4Decal(m_MaterialEditor, isDecal, isLeftOnly, isRightOnly, shouldCopy, shouldFlipMirror,
+                shouldFlipCopy, tex, SR, angle, decalAnimation, decalSubParam, uvMode);
         }
 
         private void ToneCorrectionGUI(MaterialProperty hsvg)
@@ -88,9 +88,12 @@ namespace lilToon
             lilEditorGUI.UVSettingGUI(m_MaterialEditor, uvst, uvsr);
         }
 
-        private void BlendSettingGUI(ref bool isShow, string labelName, MaterialProperty srcRGB, MaterialProperty dstRGB, MaterialProperty srcA, MaterialProperty dstA, MaterialProperty opRGB, MaterialProperty opA)
+        private void BlendSettingGUI(ref bool isShow, string labelName, MaterialProperty srcRGB,
+            MaterialProperty dstRGB, MaterialProperty srcA, MaterialProperty dstA, MaterialProperty opRGB,
+            MaterialProperty opA)
         {
-            lilEditorGUI.BlendSettingGUI(m_MaterialEditor, isCustomEditor, ref isShow, labelName, srcRGB, dstRGB, srcA, dstA, opRGB, opA);
+            lilEditorGUI.BlendSettingGUI(m_MaterialEditor, isCustomEditor, ref isShow, labelName, srcRGB, dstRGB, srcA,
+                dstA, opRGB, opA);
         }
 
         private void TextureGUI(ref bool isShow, GUIContent guiContent, MaterialProperty textureName)
@@ -98,39 +101,55 @@ namespace lilToon
             lilEditorGUI.TextureGUI(m_MaterialEditor, isCustomEditor, ref isShow, guiContent, textureName);
         }
 
-        private void TextureGUI(ref bool isShow, GUIContent guiContent, MaterialProperty textureName, MaterialProperty rgba)
+        private void TextureGUI(ref bool isShow, GUIContent guiContent, MaterialProperty textureName,
+            MaterialProperty rgba)
         {
             lilEditorGUI.TextureGUI(m_MaterialEditor, isCustomEditor, ref isShow, guiContent, textureName, rgba);
         }
 
-        private void TextureGUI(ref bool isShow, GUIContent guiContent, MaterialProperty textureName, MaterialProperty rgba, MaterialProperty uvMode, string sUVMode)
+        private void TextureGUI(ref bool isShow, GUIContent guiContent, MaterialProperty textureName,
+            MaterialProperty rgba, MaterialProperty uvMode, string sUVMode)
         {
-            lilEditorGUI.TextureGUI(m_MaterialEditor, isCustomEditor, ref isShow, guiContent, textureName, rgba, uvMode, sUVMode);
+            lilEditorGUI.TextureGUI(m_MaterialEditor, isCustomEditor, ref isShow, guiContent, textureName, rgba, uvMode,
+                sUVMode);
         }
 
-        private void TextureGUI(ref bool isShow, GUIContent guiContent, MaterialProperty textureName, MaterialProperty rgba, MaterialProperty scrollRotate)
+        private void TextureGUI(ref bool isShow, GUIContent guiContent, MaterialProperty textureName,
+            MaterialProperty rgba, MaterialProperty scrollRotate)
         {
-            lilEditorGUI.TextureGUI(m_MaterialEditor, isCustomEditor, ref isShow, guiContent, textureName, rgba, scrollRotate);
+            lilEditorGUI.TextureGUI(m_MaterialEditor, isCustomEditor, ref isShow, guiContent, textureName, rgba,
+                scrollRotate);
         }
 
-        private void TextureGUI(ref bool isShow, GUIContent guiContent, MaterialProperty textureName, MaterialProperty rgba, MaterialProperty scrollRotate, bool useCustomUV, bool useUVAnimation)
+        private void TextureGUI(ref bool isShow, GUIContent guiContent, MaterialProperty textureName,
+            MaterialProperty rgba, MaterialProperty scrollRotate, bool useCustomUV, bool useUVAnimation)
         {
-            lilEditorGUI.TextureGUI(m_MaterialEditor, isCustomEditor, ref isShow, guiContent, textureName, rgba, scrollRotate, useCustomUV, useUVAnimation);
+            lilEditorGUI.TextureGUI(m_MaterialEditor, isCustomEditor, ref isShow, guiContent, textureName, rgba,
+                scrollRotate, useCustomUV, useUVAnimation);
         }
 
-        private void TextureGUI(ref bool isShow, GUIContent guiContent, MaterialProperty textureName, MaterialProperty rgba, MaterialProperty scrollRotate, MaterialProperty uvMode, bool useCustomUV, bool useUVAnimation)
+        private void TextureGUI(ref bool isShow, GUIContent guiContent, MaterialProperty textureName,
+            MaterialProperty rgba, MaterialProperty scrollRotate, MaterialProperty uvMode, bool useCustomUV,
+            bool useUVAnimation)
         {
-            lilEditorGUI.TextureGUI(m_MaterialEditor, isCustomEditor, ref isShow, guiContent, textureName, rgba, scrollRotate, uvMode, useCustomUV, useUVAnimation);
+            lilEditorGUI.TextureGUI(m_MaterialEditor, isCustomEditor, ref isShow, guiContent, textureName, rgba,
+                scrollRotate, uvMode, useCustomUV, useUVAnimation);
         }
 
-        private void MatCapTextureGUI(ref bool isShow, GUIContent guiContent, MaterialProperty textureName, MaterialProperty blendUV1, MaterialProperty zRotCancel, MaterialProperty perspective, MaterialProperty vrParallaxStrength)
+        private void MatCapTextureGUI(ref bool isShow, GUIContent guiContent, MaterialProperty textureName,
+            MaterialProperty blendUV1, MaterialProperty zRotCancel, MaterialProperty perspective,
+            MaterialProperty vrParallaxStrength)
         {
-            lilEditorGUI.MatCapTextureGUI(m_MaterialEditor, isCustomEditor, ref isShow, guiContent, textureName, blendUV1, zRotCancel, perspective, vrParallaxStrength);
+            lilEditorGUI.MatCapTextureGUI(m_MaterialEditor, isCustomEditor, ref isShow, guiContent, textureName,
+                blendUV1, zRotCancel, perspective, vrParallaxStrength);
         }
 
-        private void MatCapTextureGUI(ref bool isShow, GUIContent guiContent, MaterialProperty textureName, MaterialProperty rgba, MaterialProperty blendUV1, MaterialProperty zRotCancel, MaterialProperty perspective, MaterialProperty vrParallaxStrength)
+        private void MatCapTextureGUI(ref bool isShow, GUIContent guiContent, MaterialProperty textureName,
+            MaterialProperty rgba, MaterialProperty blendUV1, MaterialProperty zRotCancel, MaterialProperty perspective,
+            MaterialProperty vrParallaxStrength)
         {
-            lilEditorGUI.MatCapTextureGUI(m_MaterialEditor, isCustomEditor, ref isShow, guiContent, textureName, rgba, blendUV1, zRotCancel, perspective, vrParallaxStrength);
+            lilEditorGUI.MatCapTextureGUI(m_MaterialEditor, isCustomEditor, ref isShow, guiContent, textureName, rgba,
+                blendUV1, zRotCancel, perspective, vrParallaxStrength);
         }
 
         private void RenderQueueField()
@@ -163,8 +182,12 @@ namespace lilToon
             // 4 : 1st Simple Button
             // 5 : 2nd Simple Button
             // 6 : 3rd Simple Button
-            string[] sBake = {GetLoc("sBakeAll"), GetLoc("sBake1st"), GetLoc("sBake2nd"), GetLoc("sBake3rd"), GetLoc("sBake"), GetLoc("sBake"), GetLoc("sBake")};
-            if(lilEditorGUI.Button(sBake[bakeType]))
+            string[] sBake =
+            {
+                GetLoc("sBakeAll"), GetLoc("sBake1st"), GetLoc("sBake2nd"), GetLoc("sBake3rd"), GetLoc("sBake"),
+                GetLoc("sBake"), GetLoc("sBake")
+            };
+            if (lilEditorGUI.Button(sBake[bakeType]))
             {
                 Undo.RecordObject(material, "Bake");
                 TextureBake(material, bakeType);
@@ -173,10 +196,10 @@ namespace lilToon
 
         private void AlphamaskToTextureGUI(Material material)
         {
-            if(mainTex.textureValue != null && lilEditorGUI.Button(GetLoc("sBakeAlphamask")))
+            if (mainTex.textureValue != null && lilEditorGUI.Button(GetLoc("sBakeAlphamask")))
             {
                 var bakedTexture = AutoBakeAlphaMask(material);
-                if(bakedTexture == mainTex.textureValue) return;
+                if (bakedTexture == mainTex.textureValue) return;
 
                 mainTex.textureValue = bakedTexture;
                 alphaMaskMode.floatValue = 0.0f;
@@ -184,6 +207,7 @@ namespace lilToon
                 alphaMaskValue.floatValue = 0.0f;
             }
         }
+
         #endregion
     }
 }

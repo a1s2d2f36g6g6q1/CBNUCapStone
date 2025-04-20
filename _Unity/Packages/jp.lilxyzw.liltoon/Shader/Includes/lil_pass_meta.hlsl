@@ -20,7 +20,7 @@
 //------------------------------------------------------------------------------------------------------------------------------
 // Structure
 #if !defined(LIL_CUSTOM_V2F_MEMBER)
-    #define LIL_CUSTOM_V2F_MEMBER(id0,id1,id2,id3,id4,id5,id6,id7)
+#define LIL_CUSTOM_V2F_MEMBER(id0,id1,id2,id3,id4,id5,id6,id7)
 #endif
 
 #define LIL_V2F_POSITION_CS
@@ -31,14 +31,14 @@
 
 struct v2f
 {
-    float4 positionCS   : SV_POSITION;
-    float4 uv01         : TEXCOORD0;
-    float4 uv23         : TEXCOORD1;
+    float4 positionCS : SV_POSITION;
+    float4 uv01 : TEXCOORD0;
+    float4 uv23 : TEXCOORD1;
     #if defined(EDITOR_VISUALIZATION) && !defined(LIL_HDRP)
         float2 vizUV        : TEXCOORD2;
         float4 lightCoord   : TEXCOORD3;
     #endif
-    LIL_CUSTOM_V2F_MEMBER(4,5,6,7,8,9,10,11)
+    LIL_CUSTOM_V2F_MEMBER(4, 5, 6, 7, 8, 9, 10, 11)
     LIL_VERTEX_INPUT_INSTANCE_ID
     LIL_VERTEX_OUTPUT_STEREO
 };
@@ -73,13 +73,13 @@ float4 frag(v2f input) : SV_Target
 
     BEFORE_EMISSION_1ST
     #if defined(LIL_FEATURE_EMISSION_1ST) || defined(LIL_LITE)
-        OVERRIDE_EMISSION_1ST
+    OVERRIDE_EMISSION_1ST
     #endif
     #if !defined(LIL_LITE)
-        BEFORE_EMISSION_1ST
-        #if defined(LIL_FEATURE_EMISSION_2ND)
-            OVERRIDE_EMISSION_2ND
-        #endif
+    BEFORE_EMISSION_1ST
+    #if defined(LIL_FEATURE_EMISSION_2ND)
+    OVERRIDE_EMISSION_2ND
+    #endif
     #endif
     BEFORE_BLEND_EMISSION
     OVERRIDE_BLEND_EMISSION
@@ -88,16 +88,16 @@ float4 frag(v2f input) : SV_Target
         if(!unity_MetaFragmentControl.y) fd.col.rgb = clamp(pow(abs(fd.albedo), saturate(unity_OneOverOutputBoost)), 0, unity_MaxOutputValue);
         return fd.col;
     #else
-        MetaInput metaInput;
-        LIL_INITIALIZE_STRUCT(MetaInput, metaInput);
-        metaInput.Albedo = abs(fd.albedo);
-        metaInput.Emission = fd.col.rgb;
-        #ifdef EDITOR_VISUALIZATION
+    MetaInput metaInput;
+    LIL_INITIALIZE_STRUCT(MetaInput, metaInput);
+    metaInput.Albedo = abs(fd.albedo);
+    metaInput.Emission = fd.col.rgb;
+    #ifdef EDITOR_VISUALIZATION
             metaInput.VizUV = input.vizUV;
             metaInput.LightCoord = input.lightCoord;
-        #endif
+    #endif
 
-        return MetaFragment(metaInput);
+    return MetaFragment(metaInput);
     #endif
 }
 

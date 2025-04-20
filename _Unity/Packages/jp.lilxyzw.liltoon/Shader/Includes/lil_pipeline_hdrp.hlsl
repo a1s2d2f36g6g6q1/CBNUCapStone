@@ -2,11 +2,11 @@
 
 #define LIGHTLOOP_DISABLE_TILE_AND_CLUSTER
 #if !defined(SHADOW_LOW) && !defined(SHADOW_MEDIUM) && !defined(SHADOW_HIGH)
-    #define SHADOW_LOW
+#define SHADOW_LOW
 #endif
 #if defined(SHADOW_LOW)
-    #define PUNCTUAL_SHADOW_LOW
-    #define DIRECTIONAL_SHADOW_LOW
+#define PUNCTUAL_SHADOW_LOW
+#define DIRECTIONAL_SHADOW_LOW
 #elif defined(SHADOW_MEDIUM)
     #define PUNCTUAL_SHADOW_MEDIUM
     #define DIRECTIONAL_SHADOW_MEDIUM

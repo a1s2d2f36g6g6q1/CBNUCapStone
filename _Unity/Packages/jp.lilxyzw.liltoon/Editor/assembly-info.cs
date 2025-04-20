@@ -1,2 +1,3 @@
 using System.Runtime.CompilerServices;
-[assembly:InternalsVisibleTo("lilToon.Editor.External")]
+
+[assembly: InternalsVisibleTo("lilToon.Editor.External")]

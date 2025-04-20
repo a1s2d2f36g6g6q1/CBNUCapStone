@@ -10,10 +10,10 @@ float lilAcos(float x)
         float res = sqrt(1.0 - abs(x)) * LIL_HALF_PI;
         return (x >= 0.0) ? res : LIL_PI - res;
     #else
-        float ox = abs(x);
-        float res = -0.156583 * ox + LIL_HALF_PI;
-        res *= sqrt(1.0 - ox);
-        return (x >= 0.0) ? res : LIL_PI - res;
+    float ox = abs(x);
+    float res = -0.156583 * ox + LIL_HALF_PI;
+    res *= sqrt(1.0 - ox);
+    return (x >= 0.0) ? res : LIL_PI - res;
     #endif
 }
 
@@ -25,9 +25,9 @@ float lilAsin(float x)
 float lilAtanPos(float x)
 {
     #if 1
-        float t0 = (x < 1.0f) ? x : 1.0f / x;
-        float t1 = (-0.269408 * t0 + 1.05863) * t0;
-        return (x < 1.0f) ? t1 : LIL_HALF_PI - t1;
+    float t0 = (x < 1.0f) ? x : 1.0f / x;
+    float t1 = (-0.269408 * t0 + 1.05863) * t0;
+    return (x < 1.0f) ? t1 : LIL_HALF_PI - t1;
     #else
         float t0 = (x < 1.0) ? x : 1.0 / x;
         float t1 = t0 * t0;
@@ -47,7 +47,7 @@ float lilAtan(float x)
 
 float lilAtan(float x, float y)
 {
-    return lilAtan(x/y) + LIL_PI * (y<0) * (x<0?-1:1);
+    return lilAtan(x / y) + LIL_PI * (y < 0) * (x < 0 ? -1 : 1);
 }
 
 //------------------------------------------------------------------------------------------------------------------------------
@@ -74,15 +74,15 @@ void lilHashRGB4(float2 pos, out float3 noise0, out float3 noise1, out float3 no
     #define M2 3812015801U
     #define M3 2912667907U
     uint2 q = (uint2)pos;
-    uint4 q2 = uint4(q.x, q.y, q.x+1, q.y+1) * uint4(M1, M2, M1, M2);
+    uint4 q2 = uint4(q.x, q.y, q.x + 1, q.y + 1) * uint4(M1, M2, M1, M2);
     uint3 n0 = (q2.x ^ q2.y) * uint3(M1, M2, M3);
     uint3 n1 = (q2.z ^ q2.y) * uint3(M1, M2, M3);
     uint3 n2 = (q2.x ^ q2.w) * uint3(M1, M2, M3);
     uint3 n3 = (q2.z ^ q2.w) * uint3(M1, M2, M3);
-    noise0 = float3(n0) * (1.0/float(0xffffffffU));
-    noise1 = float3(n1) * (1.0/float(0xffffffffU));
-    noise2 = float3(n2) * (1.0/float(0xffffffffU));
-    noise3 = float3(n3) * (1.0/float(0xffffffffU));
+    noise0 = float3(n0) * (1.0 / float(0xffffffffU));
+    noise1 = float3(n1) * (1.0 / float(0xffffffffU));
+    noise2 = float3(n2) * (1.0 / float(0xffffffffU));
+    noise3 = float3(n3) * (1.0 / float(0xffffffffU));
     #undef M1
     #undef M2
     #undef M3
@@ -94,13 +94,13 @@ void lilHashRGB4(float2 pos, out float3 noise0, out float3 noise1, out float3 no
 bool lilCheckAudioLink()
 {
     #if defined(LIL_FEATURE_AUDIOLINK)
-        #if defined(LIL_LWTEX)
+    #if defined(LIL_LWTEX)
             return _AudioTexture_TexelSize.z > 16;
-        #else
-            int width, height;
-            _AudioTexture.GetDimensions(width, height);
-            return width > 16;
-        #endif
+    #else
+    int width, height;
+    _AudioTexture.GetDimensions(width, height);
+    return width > 16;
+    #endif
     #else
         return false;
     #endif
@@ -218,7 +218,7 @@ bool lilUDIMDiscard(
 )
 {
     // Branchless (inspired by s-ilent)
-    float2 udim = 0; 
+    float2 udim = 0;
     // Select UV
     udim += (uv0 * (udimDiscardUV == 0));
     udim += (uv1 * (udimDiscardUV == 1));
@@ -226,17 +226,22 @@ bool lilUDIMDiscard(
     udim += (uv3 * (udimDiscardUV == 3));
 
     float isDiscarded = 0;
-    float4 xMask = float4(  (udim.x >= 0 && udim.x < 1), 
-                            (udim.x >= 1 && udim.x < 2),
-                            (udim.x >= 2 && udim.x < 3),
-                            (udim.x >= 3 && udim.x < 4));
+    float4 xMask = float4((udim.x >= 0 && udim.x < 1),
+                          (udim.x >= 1 && udim.x < 2),
+                          (udim.x >= 2 && udim.x < 3),
+                          (udim.x >= 3 && udim.x < 4));
 
-    isDiscarded += (udim.y >= 0 && udim.y < 1) * dot(float4(udimDiscardRow0_0, udimDiscardRow0_1, udimDiscardRow0_2, udimDiscardRow0_3), xMask);
-    isDiscarded += (udim.y >= 1 && udim.y < 2) * dot(float4(udimDiscardRow1_0, udimDiscardRow1_1, udimDiscardRow1_2, udimDiscardRow1_3), xMask);
-    isDiscarded += (udim.y >= 2 && udim.y < 3) * dot(float4(udimDiscardRow2_0, udimDiscardRow2_1, udimDiscardRow2_2, udimDiscardRow2_3), xMask);
-    isDiscarded += (udim.y >= 3 && udim.y < 4) * dot(float4(udimDiscardRow3_0, udimDiscardRow3_1, udimDiscardRow3_2, udimDiscardRow3_3), xMask);
+    isDiscarded += (udim.y >= 0 && udim.y < 1) * dot(
+        float4(udimDiscardRow0_0, udimDiscardRow0_1, udimDiscardRow0_2, udimDiscardRow0_3), xMask);
+    isDiscarded += (udim.y >= 1 && udim.y < 2) * dot(
+        float4(udimDiscardRow1_0, udimDiscardRow1_1, udimDiscardRow1_2, udimDiscardRow1_3), xMask);
+    isDiscarded += (udim.y >= 2 && udim.y < 3) * dot(
+        float4(udimDiscardRow2_0, udimDiscardRow2_1, udimDiscardRow2_2, udimDiscardRow2_3), xMask);
+    isDiscarded += (udim.y >= 3 && udim.y < 4) * dot(
+        float4(udimDiscardRow3_0, udimDiscardRow3_1, udimDiscardRow3_2, udimDiscardRow3_3), xMask);
 
-    isDiscarded *= any(float4(udim.y >= 0, udim.y < 4, udim.x >= 0, udim.x < 4)); // never discard outside 4x4 grid in pos coords 
+    isDiscarded *= any(float4(udim.y >= 0, udim.y < 4, udim.x >= 0, udim.x < 4));
+    // never discard outside 4x4 grid in pos coords 
 
     // Use a threshold so that there's some room for animations to be close to 0, but not exactly 0
     const float threshold = 0.001;

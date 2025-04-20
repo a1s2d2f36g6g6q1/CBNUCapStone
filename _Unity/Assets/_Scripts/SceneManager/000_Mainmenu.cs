@@ -1,54 +1,57 @@
-using UnityEngine;
-using UnityEngine.SceneManagement;
 using TMPro;
+using UnityEngine;
 using UnityEngine.UI;
 
 public class MainMenuUIController : MonoBehaviour
 {
-    [Header("Fade")]
-    public FadeController fadeController;
+    [Header("Fade")] public FadeController fadeController;
 
-    [Header("패널들")]
-    public GameObject loginPanel;
+    [Header("패널들")] public GameObject loginPanel;
+
     public GameObject signupPanel;
     public GameObject settingsPanel;
 
-    [Header("입력 필드 - 로그인")]
-    public TMP_InputField loginIdField;
+    [Header("입력 필드 - 로그인")] public TMP_InputField loginIdField;
+
     public TMP_InputField loginPwField;
 
-    [Header("입력 필드 - 회원가입")]
-    public TMP_InputField signupIdField;
+    [Header("입력 필드 - 회원가입")] public TMP_InputField signupIdField;
+
     public TMP_InputField signupPw1Field;
     public TMP_InputField signupPw2Field;
     public TMP_InputField signupNicknameField;
 
-    [Header("중복확인 관련")]
-    public TMP_Text idCheckResultText;
-    
-    [Header("ID 체크 상태 텍스트들")]
-    public GameObject idCheck_Default;      // '_'
-    public GameObject idCheck_Checked;      // '✔'
-    public GameObject idCheck_Duplicated;   // 'X'
+    [Header("중복확인 관련")] public TMP_Text idCheckResultText;
 
-    [Header("회원가입 버튼")]
-    public Button signupButton;
-    
-    [Header("TR 버튼 그룹")]
-    public GameObject[] loginOnlyButtons;    // 친구, 유저정보 버튼 (로그인 후) + 로그아웃버튼
-    public GameObject[] guestOnlyButtons;    // 로그인, 회원가입 버튼 (비로그인 상태)
-    public GameObject settingsButton;        // 항상 보이는 설정 버튼
+    [Header("ID 체크 상태 텍스트들")] public GameObject idCheck_Default; // '_'
 
-    private bool isLoggedIn = false;
+    public GameObject idCheck_Checked; // '✔'
+    public GameObject idCheck_Duplicated; // 'X'
 
-    void Start()
+    [Header("회원가입 버튼")] public Button signupButton;
+
+    [Header("TR 버튼 그룹")] public GameObject[] loginOnlyButtons; // 친구, 유저정보 버튼 (로그인 후) + 로그아웃버튼
+
+    public GameObject[] guestOnlyButtons; // 로그인, 회원가입 버튼 (비로그인 상태)
+    public GameObject settingsButton; // 항상 보이는 설정 버튼
+
+    private bool isLoggedIn;
+
+    private void Start()
     {
         UpdateTopRightButtons();
-        
+
         signupIdField.onValueChanged.AddListener(OnIDInputChanged);
         SetIDCheckState_Default();
         UpdateSignupButtonInteractable();
     }
+
+
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Escape)) CloseAllPanels();
+    }
+
     // ========================
     // ID 중복 검사
     // ========================
@@ -57,23 +60,19 @@ public class MainMenuUIController : MonoBehaviour
         SetIDCheckState_Default();
         UpdateSignupButtonInteractable();
     }
-    
+
     public void CheckDuplicateID()
     {
-        string id = signupIdField.text;
+        var id = signupIdField.text;
 
         if (id == "test123")
-        {
             SetIDCheckState_Duplicated();
-        }
         else
-        {
             SetIDCheckState_Checked();
-        }
 
         UpdateSignupButtonInteractable();
     }
-    
+
     private void SetIDCheckState_Default()
     {
         idCheck_Default.SetActive(true);
@@ -102,8 +101,7 @@ public class MainMenuUIController : MonoBehaviour
         signupButton.interactable = idCheck_Checked.activeSelf;
     }
 
-    
-    
+
     // ========================
     // Static 버튼 동작
     // ========================
@@ -147,10 +145,12 @@ public class MainMenuUIController : MonoBehaviour
     {
         OpenPanel(loginPanel);
     }
+
     public void OnClick_OpenSignup()
     {
         OpenPanel(signupPanel);
     }
+
     public void OnClick_OpenSettings()
     {
         OpenPanel(settingsPanel);
@@ -158,10 +158,10 @@ public class MainMenuUIController : MonoBehaviour
 
     public void UpdateTopRightButtons()
     {
-        foreach (GameObject go in guestOnlyButtons)
+        foreach (var go in guestOnlyButtons)
             go.SetActive(!isLoggedIn);
 
-        foreach (GameObject go in loginOnlyButtons)
+        foreach (var go in loginOnlyButtons)
             go.SetActive(isLoggedIn);
 
         settingsButton.SetActive(true);
@@ -171,13 +171,9 @@ public class MainMenuUIController : MonoBehaviour
     {
         CloseAllPanels();
         if (panel != null)
-        {
             panel.SetActive(true);
-        }
         else
-        {
             Debug.LogWarning("⚠ panel is NULL");
-        }
     }
 
 
@@ -201,8 +197,8 @@ public class MainMenuUIController : MonoBehaviour
     // ========================
     public void TryLogin()
     {
-        string id = loginIdField.text;
-        string pw = loginPwField.text;
+        var id = loginIdField.text;
+        var pw = loginPwField.text;
 
         if (id == "asdf" && pw == "asdf")
         {
@@ -219,10 +215,10 @@ public class MainMenuUIController : MonoBehaviour
 
     public void TrySignup()
     {
-        string id = signupIdField.text;
-        string pw1 = signupPw1Field.text;
-        string pw2 = signupPw2Field.text;
-        string nickname = signupNicknameField.text;
+        var id = signupIdField.text;
+        var pw1 = signupPw1Field.text;
+        var pw2 = signupPw2Field.text;
+        var nickname = signupNicknameField.text;
 
         if (pw1 != pw2)
         {
@@ -232,15 +228,5 @@ public class MainMenuUIController : MonoBehaviour
 
         Debug.Log($"회원가입 요청: {id}, {nickname}");
         signupPanel.SetActive(false);
-    }
-
-
-
-    void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.Escape))
-        {
-            CloseAllPanels();
-        }
     }
 }

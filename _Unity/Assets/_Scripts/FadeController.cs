@@ -1,25 +1,20 @@
-using UnityEngine;
-using UnityEngine.UI;
-using UnityEngine.SceneManagement;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class FadeController : MonoBehaviour
 {
-    public Image fadeImage;              // FadePanel의 Image
+    public Image fadeImage; // FadePanel의 Image
     public float fadeDuration = 0.4f; // 페이드 시간
 
-    public static class SceneHistory
-    {
-        public static Stack<string> history = new Stack<string>();
-    }
-    
-    void Awake()
+    private void Awake()
     {
         fadeDuration = 0.4f; // Inspector 값 무시하고 코드로 덮어쓰기
     }
 
-    
+
     private void Start()
     {
         if (fadeImage == null)
@@ -36,12 +31,12 @@ public class FadeController : MonoBehaviour
         StartCoroutine(FadeIn());
     }
 
-    
+
     public void GoBack()
     {
         if (SceneHistory.history.Count > 0)
         {
-            string previousScene = SceneHistory.history.Pop();
+            var previousScene = SceneHistory.history.Pop();
             StartCoroutine(FadeOut(previousScene));
         }
         else
@@ -50,25 +45,24 @@ public class FadeController : MonoBehaviour
         }
     }
 
-    
 
     public void FadeToScene(string sceneName)
     {
-        string currentScene = SceneManager.GetActiveScene().name;
+        var currentScene = SceneManager.GetActiveScene().name;
         SceneHistory.history.Push(currentScene); // 현재 씬 저장
         StartCoroutine(FadeOut(sceneName));
     }
 
 
-    IEnumerator FadeIn()
+    private IEnumerator FadeIn()
     {
         fadeImage.gameObject.SetActive(true);
 
-        float t = 0f;
+        var t = 0f;
         while (t < fadeDuration)
         {
             t += Time.unscaledDeltaTime; // <- unscaledDeltaTime 추천
-            float a = Mathf.Lerp(1f, 0f, t / fadeDuration);
+            var a = Mathf.Lerp(1f, 0f, t / fadeDuration);
             fadeImage.color = new Color(0, 0, 0, a);
             yield return null;
         }
@@ -78,17 +72,16 @@ public class FadeController : MonoBehaviour
     }
 
 
-
-    IEnumerator FadeOut(string sceneName)
+    private IEnumerator FadeOut(string sceneName)
     {
         fadeImage.gameObject.SetActive(true);
-        float t = 0f;
+        var t = 0f;
 
         while (t < fadeDuration)
         {
             t += Time.deltaTime;
-            float linear = Mathf.Clamp01(t / fadeDuration);
-            float eased = 1f - Mathf.Pow(1f - linear, 2f); // Ease Out
+            var linear = Mathf.Clamp01(t / fadeDuration);
+            var eased = 1f - Mathf.Pow(1f - linear, 2f); // Ease Out
 
             fadeImage.color = new Color(0, 0, 0, eased);
             yield return null;
@@ -98,4 +91,8 @@ public class FadeController : MonoBehaviour
         SceneManager.LoadScene(sceneName);
     }
 
+    public static class SceneHistory
+    {
+        public static Stack<string> history = new();
+    }
 }

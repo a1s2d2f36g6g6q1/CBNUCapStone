@@ -15,60 +15,42 @@ namespace lilToon
             // LWRP : LightweightPipeline.LightweightRenderPipelineAsset
             // URP : Universal.UniversalRenderPipelineAsset
             // HDRP : HighDefinition.HDRenderPipelineAsset
-            string renderPipelineName = "";
-            #if UNITY_2019_3_OR_NEWER
-                if(GraphicsSettings.currentRenderPipeline != null)
-                {
-                    renderPipelineName = GraphicsSettings.currentRenderPipeline.ToString();
-                }
-            #else
+            var renderPipelineName = "";
+#if UNITY_2019_3_OR_NEWER
+            if (GraphicsSettings.currentRenderPipeline != null)
+                renderPipelineName = GraphicsSettings.currentRenderPipeline.ToString();
+#else
                 if(GraphicsSettings.renderPipelineAsset != null)
                 {
                     renderPipelineName = GraphicsSettings.renderPipelineAsset.ToString();
                 }
-            #endif
-            if(renderPipelineName.Contains("Universal"))
-            {
+#endif
+            if (renderPipelineName.Contains("Universal"))
                 return lilRenderPipeline.URP;
-            }
-            else if(renderPipelineName.Contains("Lightweight"))
-            {
+            if (renderPipelineName.Contains("Lightweight"))
                 return lilRenderPipeline.LWRP;
-            }
-            else if(renderPipelineName.Contains("HDRenderPipeline"))
-            {
-                return lilRenderPipeline.HDRP;
-            }
+            if (renderPipelineName.Contains("HDRenderPipeline")) return lilRenderPipeline.HDRP;
             return lilRenderPipeline.BRP;
         }
 
         public static PackageVersionInfos GetRPInfos()
         {
-            string renderPipelineName = "";
-            #if UNITY_2019_3_OR_NEWER
-                if(GraphicsSettings.currentRenderPipeline != null)
-                {
-                    renderPipelineName = GraphicsSettings.currentRenderPipeline.ToString();
-                }
-            #else
+            var renderPipelineName = "";
+#if UNITY_2019_3_OR_NEWER
+            if (GraphicsSettings.currentRenderPipeline != null)
+                renderPipelineName = GraphicsSettings.currentRenderPipeline.ToString();
+#else
                 if(GraphicsSettings.renderPipelineAsset != null)
                 {
                     renderPipelineName = GraphicsSettings.renderPipelineAsset.ToString();
                 }
-            #endif
-            if(renderPipelineName.Contains("Universal"))
-            {
+#endif
+            if (renderPipelineName.Contains("Universal"))
                 return GetURPVersion();
-            }
-            else if(renderPipelineName.Contains("Lightweight"))
-            {
+            if (renderPipelineName.Contains("Lightweight"))
                 return GetLWRPVersion();
-            }
-            else if(renderPipelineName.Contains("HDRenderPipeline"))
-            {
-                return GetHDRPVersion();
-            }
-            return new PackageVersionInfos()
+            if (renderPipelineName.Contains("HDRenderPipeline")) return GetHDRPVersion();
+            return new PackageVersionInfos
             {
                 RP = lilRenderPipeline.BRP,
                 Major = 0,
@@ -79,12 +61,13 @@ namespace lilToon
 
         private static PackageVersionInfos GetURPVersion()
         {
-            string path = AssetDatabase.GUIDToAssetPath("30648b8d550465f4bb77f1e1afd0b37d");
+            var path = AssetDatabase.GUIDToAssetPath("30648b8d550465f4bb77f1e1afd0b37d");
             var package = JsonUtility.FromJson<PackageInfos>(File.ReadAllText(path));
-            string guid =
-                package.displayName.Contains("SLZ") ?
-                "753d1ac2429a21a44ac5f937cbbb409f" : // Core
-                "30648b8d550465f4bb77f1e1afd0b37d";  // URP
+            var guid =
+                package.displayName.Contains("SLZ")
+                    ? "753d1ac2429a21a44ac5f937cbbb409f"
+                    : // Core
+                    "30648b8d550465f4bb77f1e1afd0b37d"; // URP
             var version = ReadVersion(guid);
             version.RP = lilRenderPipeline.URP;
             return version;
@@ -106,9 +89,9 @@ namespace lilToon
 
         private static PackageVersionInfos ReadVersion(string guid)
         {
-            string version = "";
-            string path = AssetDatabase.GUIDToAssetPath(guid);
-            if(!string.IsNullOrEmpty(path))
+            var version = "";
+            var path = AssetDatabase.GUIDToAssetPath(guid);
+            if (!string.IsNullOrEmpty(path))
             {
                 var package = JsonUtility.FromJson<PackageInfos>(File.ReadAllText(path));
                 version = package.version;
@@ -116,7 +99,7 @@ namespace lilToon
 
             PackageVersionInfos infos;
             infos.RP = lilRenderPipeline.BRP;
-            if(string.IsNullOrEmpty(version))
+            if (string.IsNullOrEmpty(version))
             {
                 infos.Major = 0;
                 infos.Minor = 0;
@@ -129,13 +112,14 @@ namespace lilToon
                 infos.Minor = parser.minor;
                 infos.Patch = parser.patch;
             }
+
             return infos;
         }
 
         private class PackageInfos
         {
-            public string displayName = "";
-            public string version = "";
+            public readonly string displayName = "";
+            public readonly string version = "";
         }
     }
 

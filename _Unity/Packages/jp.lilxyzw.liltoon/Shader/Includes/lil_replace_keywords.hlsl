@@ -64,7 +64,7 @@
 #elif defined(UNITY_UI_ALPHACLIP) || defined(LIL_FUR)
     #define LIL_RENDER 1
 #else
-    #define LIL_RENDER 0
+#define LIL_RENDER 0
 #endif
 
 #if defined(UNITY_UI_CLIP_RECT)

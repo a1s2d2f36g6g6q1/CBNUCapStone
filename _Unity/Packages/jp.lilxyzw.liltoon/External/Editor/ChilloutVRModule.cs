@@ -19,11 +19,14 @@ namespace lilToon.External
             try
             {
                 var type = Assembly.Load("Assembly-CSharp-Editor").GetType("ABI.CCK.Scripts.Editor.CCK_BuildUtility");
-                var preAvatarBundleEvent = type.GetField("PreAvatarBundleEvent", BindingFlags.Static | BindingFlags.Public);
+                var preAvatarBundleEvent =
+ type.GetField("PreAvatarBundleEvent", BindingFlags.Static | BindingFlags.Public);
                 var prePropBundleEvent = type.GetField("PrePropBundleEvent", BindingFlags.Static | BindingFlags.Public);
                 var method = typeof(UnityEvent<GameObject>).GetMethod("AddListener");
-                var methodOnBuild = typeof(ChilloutVRModule).GetMethod("OnBuildRequested", BindingFlags.Static | BindingFlags.Public);
-                var m = (UnityAction<GameObject>)Delegate.CreateDelegate(typeof(UnityAction<GameObject>), null, methodOnBuild);
+                var methodOnBuild =
+ typeof(ChilloutVRModule).GetMethod("OnBuildRequested", BindingFlags.Static | BindingFlags.Public);
+                var m =
+ (UnityAction<GameObject>)Delegate.CreateDelegate(typeof(UnityAction<GameObject>), null, methodOnBuild);
                 method.Invoke(preAvatarBundleEvent.GetValue(null), new object[]{m});
                 method.Invoke(prePropBundleEvent.GetValue(null), new object[]{m});
             }
