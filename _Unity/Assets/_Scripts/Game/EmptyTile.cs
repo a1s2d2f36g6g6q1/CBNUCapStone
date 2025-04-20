@@ -20,6 +20,16 @@ public class EmptyTile : MonoBehaviour
         c.a = Mathf.Clamp01(alpha);
         mat.color = c;
     }
+    
+    public void SetFadeOut(float t)
+    {
+        if (mat == null || !mat.HasProperty(ColorID)) return;
+
+        Color c = mat.color;
+        c.a = Mathf.Lerp(1f, 0f, t);
+        mat.SetColor(ColorID, c);
+    }
+
 
 
 

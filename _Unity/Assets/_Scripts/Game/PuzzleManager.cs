@@ -25,9 +25,11 @@ public class PuzzleManager : MonoBehaviour
 
     private Tile[,] tiles;
     private bool tilesRevealed;
-    private bool waitingForClickToRestore;
     private bool waitingForReveal;
 
+    private bool puzzleCleared = false;
+
+    
     private void Start()
     {
         if (GameData.difficulty < 2 || GameData.difficulty > 5) GameData.difficulty = 3; // 기본값
@@ -107,12 +109,25 @@ public class PuzzleManager : MonoBehaviour
                 mat.color = c;
             }
 
+            // 🔧 EmptyTile도 같이 페이드 처리
+            if (emptyTileInstance != null)
+            {
+                var empty = emptyTileInstance.GetComponent<EmptyTile>();
+                empty.SetFadeOut(t / duration);
+            }
+
             yield return null;
         }
 
-        // 투명도 0이 되면 타일 숨김
-        foreach (var tile in GetComponentsInChildren<Tile>()) tile.gameObject.SetActive(false);
+        // 기존 타일 비활성화
+        foreach (var tile in GetComponentsInChildren<Tile>())
+            tile.gameObject.SetActive(false);
+
+        // 🔧 EmptyTile 비활성화도 포함
+        if (emptyTileInstance != null)
+            emptyTileInstance.SetActive(false);
     }
+
 
     private void GeneratePuzzle()
     {
@@ -218,7 +233,6 @@ public class PuzzleManager : MonoBehaviour
         clickToStartText.gameObject.SetActive(true);
 
 
-        waitingForClickToRestore = true; // 클릭 감지 대기 시작
     }
 
 
@@ -243,13 +257,17 @@ public class PuzzleManager : MonoBehaviour
 
     public void TryMove(int x, int y)
     {
+        // ✅ 게임이 이미 끝났다면 이동 불가
+        if (puzzleCleared) return;
+
         if (Mathf.Abs(x - emptyPos.x) + Mathf.Abs(y - emptyPos.y) != 1) return;
 
         var tile = tiles[x, y];
         if (tile == null) return;
 
         // 퍼즐이 완성된 상태에서 다른 타일을 이동시키면 EmptyTile 제거
-        if (emptyTileInstance != null && CheckCompleteStatus()) RemoveEmptyTile();
+        if (emptyTileInstance != null && CheckCompleteStatus())
+            RemoveEmptyTile();
 
         tiles[emptyPos.x, emptyPos.y] = tile;
         tiles[x, y] = null;
@@ -259,8 +277,10 @@ public class PuzzleManager : MonoBehaviour
 
         tile.MoveTo(oldEmpty);
 
-        if (!isShuffling) CheckComplete();
+        if (!isShuffling)
+            CheckComplete();
     }
+
 
     private void ShowEmptyTile()
     {
@@ -358,6 +378,9 @@ public class PuzzleManager : MonoBehaviour
         // ✅ 타이머 종료
         timerManager.StopTimer();
 
+        puzzleCleared = true;
+
+        
         // ✅ 모든 타일 입력 차단
         foreach (var tile in tiles)
             if (tile != null)
