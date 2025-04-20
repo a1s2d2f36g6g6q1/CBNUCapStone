@@ -10,6 +10,9 @@ public class PuzzleManager : MonoBehaviour
     private bool tilesRevealed = false;
     public TMP_Text clickToStartText;
 
+    
+    public GameObject emptyTilePrefab; // EmptyTile 프리팹을 위한 변수
+    private GameObject emptyTileInstance; // EmptyTile 인스턴스
 
     public Texture2D puzzleImage;
     private bool waitingForClickToRestore = false;
@@ -120,18 +123,14 @@ public class PuzzleManager : MonoBehaviour
             tile.gameObject.SetActive(false);
         }
     }
-
-
+    
     void GeneratePuzzle()
     {
-        // 기존 타일이 있으면 삭제
         foreach (Transform child in transform)
-        {
             Destroy(child.gameObject);
-        }
-
+    
         tiles = new Tile[width, height];
-
+    
         for (int y = 0; y < height; y++)
         {
             for (int x = 0; x < width; x++)
@@ -139,20 +138,31 @@ public class PuzzleManager : MonoBehaviour
                 if (x == 0 && y == 0)
                 {
                     emptyPos = new Vector2Int(x, y);
+    
+                    // 초기에는 보이지 않게 생성 (알파 0)
+                    emptyTileInstance = Instantiate(emptyTilePrefab, transform);
+                    emptyTileInstance.transform.localPosition = GetTilePosition(x, y);
+    
+                    EmptyTile emptyTile = emptyTileInstance.GetComponent<EmptyTile>();
+                    emptyTile.Init(puzzleImage, width, height, x, y);
+                    emptyTile.SetAlpha(0f); // 초기에 보이지 않도록 설정
+                    emptyTile.OnClick += HandleEmptyTileClick;
+    
                     continue;
                 }
-
+    
                 GameObject obj = Instantiate(tilePrefab, transform);
                 obj.transform.localPosition = GetTilePosition(x, y);
-
+    
                 Tile tile = obj.GetComponent<Tile>();
                 tile.Init(this, x, y, x, y, puzzleImage, width, height);
                 tiles[x, y] = tile;
             }
         }
-
+    
         Debug.Log("퍼즐 생성!!");
     }
+
 
     public Vector3 GetTilePosition(int x, int y)
     {
@@ -228,38 +238,108 @@ public class PuzzleManager : MonoBehaviour
     {
         TryMove(tile.gridPosition.x, tile.gridPosition.y);
     }
+    
+    bool CheckCompleteStatus()
+    {
+        bool isComplete = true;
+    
+        foreach (Tile tile in tiles)
+        {
+            if (tile != null && !tile.IsCorrect())
+            {
+                isComplete = false;
+                break;
+            }
+        }
+    
+        return isComplete;
+    }
 
     public void TryMove(int x, int y)
     {
         if (Mathf.Abs(x - emptyPos.x) + Mathf.Abs(y - emptyPos.y) != 1) return;
-
+    
         Tile tile = tiles[x, y];
         if (tile == null) return;
-
+    
+        // 퍼즐이 완성된 상태에서 다른 타일을 이동시키면 EmptyTile 제거
+        if (emptyTileInstance != null && CheckCompleteStatus())
+        {
+            RemoveEmptyTile();
+        }
+    
         tiles[emptyPos.x, emptyPos.y] = tile;
         tiles[x, y] = null;
-
+    
         Vector2Int oldEmpty = emptyPos;
         emptyPos = new Vector2Int(x, y);
-
+    
         tile.MoveTo(oldEmpty);
-
+    
         if (!isShuffling)
         {
             CheckComplete();
         }
     }
+    
+void ShowEmptyTile()
+{
+    if (emptyTileInstance == null) return;
 
+    emptyTileInstance.SetActive(true); // 객체 활성화 (사실 알파 0이라 안 보임)
+    emptyTileInstance.GetComponent<Collider>().enabled = true;
+}
+
+    
+void RemoveEmptyTile()
+{
+    if (emptyTileInstance != null)
+    {
+        emptyTileInstance.GetComponent<EmptyTile>().SetAlpha(0f); // 다시 감춤
+        emptyTileInstance.GetComponent<Collider>().enabled = false; // 클릭도 비활성화
+    }
+}
+
+    
     void CheckComplete()
     {
+        bool isComplete = true;
+    
         foreach (Tile tile in tiles)
         {
             if (tile != null && !tile.IsCorrect())
-                return;
+            {
+                isComplete = false;
+                break;
+            }
         }
-
-        Debug.Log("퍼즐 완료!! 🎉");
+    
+        if (isComplete)
+        {
+            Debug.Log("퍼즐 완료: 빈 타일 배치 대기중");
+            
+            // 퍼즐이 맞았을 때만 EmptyTile 표시
+            ShowEmptyTile();
+        }
     }
+    
+void HandleEmptyTileClick()
+{
+    if (emptyTileInstance != null)
+    {
+        EmptyTile tile = emptyTileInstance.GetComponent<EmptyTile>();
+        tile.SetAlpha(1f); // 알파값 1 → 시각적으로 표시
+    }
+
+    timerManager.StopTimer();
+    Debug.Log("게임 완료!! 🎉");
+
+    // 모든 타일의 입력 막기
+    foreach (Tile tile in tiles)
+        if (tile != null)
+            tile.enabled = false;
+}
+
 
     public void FadeAndBack(FadeController fadeController)
     {
