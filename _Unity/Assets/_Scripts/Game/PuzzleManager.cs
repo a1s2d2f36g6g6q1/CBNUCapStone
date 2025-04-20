@@ -1,12 +1,14 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
 
 public class PuzzleManager : MonoBehaviour
 {
     public TimerManager timerManager;
     private bool waitingForReveal = false;
     private bool tilesRevealed = false;
+    public TMP_Text clickToStartText;
 
 
     public Texture2D puzzleImage;
@@ -33,6 +35,7 @@ public class PuzzleManager : MonoBehaviour
         width = GameData.difficulty;
         height = GameData.difficulty;
 
+        clickToStartText.gameObject.SetActive(false);
         GeneratePuzzle();
         CacheMaterials();
         StartCoroutine(FadeInTiles());
@@ -52,6 +55,8 @@ public class PuzzleManager : MonoBehaviour
                 tilesRevealed = true;
                 waitingForReveal = false;
                 timerManager.StartTimer(); // 여기서 타이머 시작
+                clickToStartText.gameObject.SetActive(false);
+
             }
         }
     }
@@ -211,6 +216,8 @@ public class PuzzleManager : MonoBehaviour
         tilesRevealed = false;   // 아직 복원되지 않음
         
         CheckComplete();
+        clickToStartText.gameObject.SetActive(true);
+
 
         waitingForClickToRestore = true; // 클릭 감지 대기 시작
     }

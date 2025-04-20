@@ -19,7 +19,7 @@ public class Tile : MonoBehaviour
         correctPosition = new Vector2Int(correctX, correctY);
 
         Renderer renderer = GetComponent<Renderer>();
-        mat = new Material(renderer.material);
+        mat = renderer.material;
         renderer.material = mat;
 
         // 텍스처 세팅
@@ -66,17 +66,26 @@ public class Tile : MonoBehaviour
         return gridPosition == correctPosition;
     }
 
-    // 📘 중간 페이드: 흰색 → 회색
     public void SetFadeGray(float t)
     {
         if (!mat.HasProperty(ColorID)) return;
-
-        Color from = Color.white;
-        Color to = Color.gray;
-        Color c = Color.Lerp(from, to, t);
-        c.a = 1f;
+    
+        // 흰색에서 검정으로 직접 변화 (회색도 포함되지만, 최종적으로 검정까지 확실히 변경)
+        Color from = Color.white; // 흰색
+        Color to = new Color(0.5f, 0.5f, 0.5f); // 중간 회색으로 설정
+        Color c = Color.Lerp(from, to, t); // 색상 보간 (회색 범위까지 확장)
+        
+        // 회색에서 검정으로 확실히 변경
+        Color black = new Color(0f, 0f, 0f); // 검정색으로 가는 최종 목표
+    
+        // 회색에서 검정으로 최종적으로 가기 위한 보간 추가
+        c = Color.Lerp(c, black, t);
+    
+        // 최종 색상과 알파 값 설정
+        c.a = 1f;  // 알파는 완전 불투명
         mat.SetColor(ColorID, c);
     }
+
 
     // 📕 완전 페이드아웃: 검정색으로 고정
     public void FadeToBlack()
