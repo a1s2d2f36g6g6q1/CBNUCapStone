@@ -141,6 +141,11 @@ public class MainMenuUIController : MonoBehaviour
     // TR 버튼 관련
     // ========================
 
+    public void OnClick_Friend()
+    {
+        fadeController.FadeToScene("F001_Friend");
+    }
+
     public void OnClick_OpenLogin()
     {
         OpenPanel(loginPanel);
