@@ -5,6 +5,8 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Random = UnityEngine.Random;
+using UnityEngine.Networking;
+using System.Text;
 
 public class TagInputManager : MonoBehaviour
 {
@@ -24,6 +26,7 @@ public class TagInputManager : MonoBehaviour
 
     private readonly bool[] isRolling = new bool[4]; // 0: Style, 1: Subject, 2: Mood, 3: Background
     private int selectedDifficulty = 3; // 기본 3*3 선택
+    [SerializeField] private string apiUrl = "http://localhost:3000/api/tags";
 
     private void Start()
     {
@@ -55,9 +58,7 @@ public class TagInputManager : MonoBehaviour
     // 게임 시작 버튼 클릭 시 호출
     public void OnStartGame()
     {
-        for (var i = 0; i < 4; i++) GameData.tags[i] = inputFields[i].text;
-        GameData.difficulty = selectedDifficulty;
-        fadeController.FadeToScene("G002_Game");
+        StartCoroutine(UploadTagsAndStartGame());
     }
 
     // 뒤로가기 버튼 클릭 시 호출
@@ -162,5 +163,52 @@ public class TagInputManager : MonoBehaviour
         }
 
         return null;
+    }
+
+    // 태그 API 전송 후 게임 씬 이동
+    private IEnumerator UploadTagsAndStartGame()
+    {
+        // 입력값 가져오기
+        string tag0 = inputFields[0].text;
+        string tag1 = inputFields[1].text;
+        string tag2 = inputFields[2].text;
+        string tag3 = inputFields[3].text;
+
+        // 유효성 검사 (옵션)
+        if (string.IsNullOrWhiteSpace(tag0) || string.IsNullOrWhiteSpace(tag1) ||
+            string.IsNullOrWhiteSpace(tag2) || string.IsNullOrWhiteSpace(tag3))
+        {
+            Debug.LogWarning("⚠ 모든 태그를 입력해주세요.");
+            yield break;
+        }
+
+        // JSON 만들기
+        string json = $"{{\"tag0\":\"{tag0}\",\"tag1\":\"{tag1}\",\"tag2\":\"{tag2}\",\"tag3\":\"{tag3}\"}}";
+        byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
+
+        // API 요청 설정
+        UnityWebRequest request = new UnityWebRequest(apiUrl, "POST");
+        request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+        request.downloadHandler = new DownloadHandlerBuffer();
+        request.SetRequestHeader("Content-Type", "application/json");
+
+        // 요청 보내기
+        yield return request.SendWebRequest();
+
+        if (request.result == UnityWebRequest.Result.Success)
+        {
+            Debug.Log("✅ 태그 업로드 성공: " + request.downloadHandler.text);
+
+            // GameData에 저장 후 씬 전환
+            for (var i = 0; i < 4; i++)
+                GameData.tags[i] = inputFields[i].text;
+
+            GameData.difficulty = selectedDifficulty;
+            fadeController.FadeToScene("G002_Game");
+        }
+        else
+        {
+            Debug.LogError("❌ 태그 업로드 실패: " + request.error);
+        }
     }
 }
