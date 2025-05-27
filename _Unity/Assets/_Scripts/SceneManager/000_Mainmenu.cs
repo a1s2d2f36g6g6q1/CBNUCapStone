@@ -7,16 +7,14 @@ public class MainMenuUIController : MonoBehaviour
     [Header("Fade")] public FadeController fadeController;
 
     [Header("패널들")] public GameObject loginPanel;
-
     public GameObject signupPanel;
     public GameObject settingsPanel;
+    public GameObject profilePanel;
 
     [Header("입력 필드 - 로그인")] public TMP_InputField loginIdField;
-
     public TMP_InputField loginPwField;
 
     [Header("입력 필드 - 회원가입")] public TMP_InputField signupIdField;
-
     public TMP_InputField signupPw1Field;
     public TMP_InputField signupPw2Field;
     public TMP_InputField signupNicknameField;
@@ -24,18 +22,14 @@ public class MainMenuUIController : MonoBehaviour
     [Header("중복확인 관련")] public TMP_Text idCheckResultText;
 
     [Header("ID 체크 상태 텍스트들")] public GameObject idCheck_Default; // '_'
-
     public GameObject idCheck_Checked; // '✔'
     public GameObject idCheck_Duplicated; // 'X'
 
     [Header("회원가입 버튼")] public Button signupButton;
 
     [Header("TR 버튼 그룹")] public GameObject[] loginOnlyButtons; // 친구, 유저정보 버튼 (로그인 후) + 로그아웃버튼
-
     public GameObject[] guestOnlyButtons; // 로그인, 회원가입 버튼 (비로그인 상태)
     public GameObject settingsButton; // 항상 보이는 설정 버튼
-
-    private bool isLoggedIn;
 
     private void Start()
     {
@@ -46,6 +40,10 @@ public class MainMenuUIController : MonoBehaviour
         UpdateSignupButtonInteractable();
     }
 
+    private void OnEnable()
+    {
+        UpdateTopRightButtons(); // 씬 돌아올 때 로그인 상태 갱신
+    }
 
     private void Update()
     {
@@ -101,7 +99,6 @@ public class MainMenuUIController : MonoBehaviour
         signupButton.interactable = idCheck_Checked.activeSelf;
     }
 
-
     // ========================
     // Static 버튼 동작
     // ========================
@@ -109,7 +106,6 @@ public class MainMenuUIController : MonoBehaviour
     {
         fadeController.FadeToScene("G001_TagInput");
     }
-
 
     public void OnClick_CreateParty()
     {
@@ -140,10 +136,14 @@ public class MainMenuUIController : MonoBehaviour
     // ========================
     // TR 버튼 관련
     // ========================
-
     public void OnClick_Friend()
     {
         fadeController.FadeToScene("F001_Friend");
+    }
+
+    public void OnClick_UserInfo()
+    {
+        OpenPanel(profilePanel);
     }
 
     public void OnClick_OpenLogin()
@@ -163,6 +163,8 @@ public class MainMenuUIController : MonoBehaviour
 
     public void UpdateTopRightButtons()
     {
+        bool isLoggedIn = UserSession.Instance != null && UserSession.Instance.IsLoggedIn;
+
         foreach (var go in guestOnlyButtons)
             go.SetActive(!isLoggedIn);
 
@@ -181,17 +183,17 @@ public class MainMenuUIController : MonoBehaviour
             Debug.LogWarning("⚠ panel is NULL");
     }
 
-
     public void CloseAllPanels()
     {
         loginPanel.SetActive(false);
         signupPanel.SetActive(false);
         settingsPanel.SetActive(false);
+        profilePanel.SetActive(false);
     }
 
     public void Logout()
     {
-        isLoggedIn = false;
+        UserSession.Instance.Logout();
         UpdateTopRightButtons();
         CloseAllPanels();
         Debug.Log("로그아웃 완료!");
@@ -207,7 +209,7 @@ public class MainMenuUIController : MonoBehaviour
 
         if (id == "asdf" && pw == "asdf")
         {
-            isLoggedIn = true;
+            UserSession.Instance.SetUserInfo(id, "Test Account"); // 기본 닉네임
             UpdateTopRightButtons();
             CloseAllPanels();
             Debug.Log("로그인 성공!");
