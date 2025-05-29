@@ -1,6 +1,9 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections;
+using System.Text;
+using UnityEngine.Networking;
 
 public class MainMenuUIController : MonoBehaviour
 {
@@ -161,10 +164,9 @@ public class MainMenuUIController : MonoBehaviour
         OpenPanel(settingsPanel);
     }
 
+    private bool isLoggedIn = UserSession.Instance != null && UserSession.Instance.IsLoggedIn;
     public void UpdateTopRightButtons()
     {
-        bool isLoggedIn = UserSession.Instance != null && UserSession.Instance.IsLoggedIn;
-
         foreach (var go in guestOnlyButtons)
             go.SetActive(!isLoggedIn);
 
@@ -200,40 +202,82 @@ public class MainMenuUIController : MonoBehaviour
     }
 
     // ========================
-    // 로그인 / 회원가입
+    // 로그인
     // ========================
     public void TryLogin()
     {
-        var id = loginIdField.text;
-        var pw = loginPwField.text;
+        StartCoroutine(SendLoginRequest());
+    }
 
-        if (id == "asdf" && pw == "asdf")
+    private IEnumerator SendLoginRequest()
+    {
+        string id = loginIdField.text;
+        string password = loginPwField.text;
+
+        string json = $"{{\"id\":\"{id}\",\"password\":\"{password}\"}}";
+        byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
+
+        UnityWebRequest request = new UnityWebRequest("http://localhost:3000/api/login", "POST");
+        request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+        request.downloadHandler = new DownloadHandlerBuffer();
+        request.SetRequestHeader("Content-Type", "application/json");
+
+        yield return request.SendWebRequest();
+
+        if (request.result == UnityWebRequest.Result.Success)
         {
-            UserSession.Instance.SetUserInfo(id, "Test Account"); // 기본 닉네임
+            Debug.Log("로그인 성공: " + request.downloadHandler.text);
+            isLoggedIn = true;
             UpdateTopRightButtons();
             CloseAllPanels();
-            Debug.Log("로그인 성공!");
         }
         else
         {
-            Debug.Log("로그인 실패");
+            Debug.Log("❌ 로그인 실패: " + request.error);
+            Debug.Log("서버 응답: " + request.downloadHandler.text);
         }
     }
 
+    // ========================
+    // 회원가입
+    // ========================
     public void TrySignup()
     {
-        var id = signupIdField.text;
-        var pw1 = signupPw1Field.text;
-        var pw2 = signupPw2Field.text;
-        var nickname = signupNicknameField.text;
+        StartCoroutine(SendSignupRequest());
+    }
 
-        if (pw1 != pw2)
+    private IEnumerator SendSignupRequest()
+    {
+        string id = signupIdField.text;
+        string pw = signupPw1Field.text;
+        string pw2 = signupPw2Field.text;
+        string nickname = signupNicknameField.text;
+
+        if (pw != pw2)
         {
-            Debug.Log("비밀번호 불일치");
-            return;
+            Debug.LogWarning("비밀번호 불일치");
+            yield break;
         }
 
-        Debug.Log($"회원가입 요청: {id}, {nickname}");
-        signupPanel.SetActive(false);
+        string json = $"{{\"user_id\":\"{id}\",\"password\":\"{pw}\",\"nickname\":\"{nickname}\"}}";
+        byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
+
+        UnityWebRequest request = new UnityWebRequest("http://localhost:3000/api/auth/signup", "POST");
+        request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+        request.downloadHandler = new DownloadHandlerBuffer();
+        request.SetRequestHeader("Content-Type", "application/json");
+
+        yield return request.SendWebRequest();
+
+        if (request.result == UnityWebRequest.Result.Success)
+        {
+            Debug.Log("회원가입 성공: " + request.downloadHandler.text);
+            CloseAllPanels();
+        }
+        else
+        {
+            Debug.Log("회원가입 실패: " + request.error);
+            Debug.Log("서버 응답: " + request.downloadHandler.text);
+        }
     }
 }
