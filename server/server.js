@@ -51,3 +51,7 @@ app.post('/api/tags', (req, res) => {
 app.listen(PORT, () => {
   console.log(`서버 실행됨: http://localhost:${PORT}`);
 });
+
+// friends 라우터
+const friendsRouter = require('./routes/friends');
+app.use('/api/friends', friendsRouter);
