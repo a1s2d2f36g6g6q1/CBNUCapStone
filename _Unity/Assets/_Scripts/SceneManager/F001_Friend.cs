@@ -7,7 +7,7 @@ public class F001_Friend : MonoBehaviour
     public FadeController fadeController;
 
     [Header("UI 연결")]
-    public Transform friendListContainer; // Scroll View > Content
+    public Transform friendListContainer;
     public GameObject friendCardPrefab;
 
     [Header("패널들")]
@@ -15,8 +15,8 @@ public class F001_Friend : MonoBehaviour
     public GameObject profilePanel;
 
     [Header("TR 버튼 그룹")]
-    public GameObject[] loginOnlyButtons; // 친구, 유저정보 버튼 (로그인 후) + 로그아웃버튼
-    public GameObject settingsButton; // 항상 보이는 설정 버튼
+    public GameObject[] loginOnlyButtons;
+    public GameObject settingsButton;
 
     private void Start()
     {
@@ -26,54 +26,7 @@ public class F001_Friend : MonoBehaviour
 
     private void OnEnable()
     {
-        UpdateTopRightButtons(); // 씬 돌아올 때 로그인 상태 갱신
-    }
-
-    private void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.Escape)) CloseAllPanels();
-    }
-
-    private void LoadFriendList()
-    {
-        List<string> dummyNames = new();
-
-        for (int i = 1; i <= 30; i++) // 충분한 수로 확장
-        {
-            dummyNames.Add($"Test Friend {i}");
-        }
-
-        foreach (var name in dummyNames)
-        {
-            var card = Instantiate(friendCardPrefab, friendListContainer);
-            var friendCard = card.GetComponent<FriendCard>();
-            friendCard.Init(name);
-        }
-    }
-
-    public void Back()
-    {
-        fadeController.FadeToScene("000_MainMenu");
-    }
-
-    // ========================
-    // TR 버튼 관련
-    // ========================
-    public void OnClick_UserInfo()
-    {
-        OpenPanel(profilePanel);
-    }
-
-    public void OnClick_OpenSettings()
-    {
-        OpenPanel(settingsPanel);
-    }
-
-    public void Logout()
-    {
-        UserSession.Instance.Logout();
-        fadeController.FadeToScene("000_MainMenu");
-        Debug.Log("로그아웃 완료, 메인 메뉴로 이동");
+        UpdateTopRightButtons();
     }
 
     public void UpdateTopRightButtons()
@@ -100,4 +53,51 @@ public class F001_Friend : MonoBehaviour
         settingsPanel.SetActive(false);
         profilePanel.SetActive(false);
     }
+
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Escape)) CloseAllPanels();
+    }
+
+    private void LoadFriendList()
+    {
+        List<string> dummyNames = new();
+
+        for (int i = 1; i <= 30; i++)
+        {
+            dummyNames.Add($"Test Friend {i}");
+        }
+
+        foreach (var name in dummyNames)
+        {
+            var card = Instantiate(friendCardPrefab, friendListContainer);
+            var friendCard = card.GetComponent<FriendCard>();
+            friendCard.Init(name);
+        }
+    }
+
+    public void Back()
+    {
+        fadeController.FadeToScene("000_MainMenu");
+    }
+
+    public void OnClick_UserInfo()
+    {
+        OpenPanel(profilePanel);
+    }
+
+    public void OnClick_OpenSettings()
+    {
+        OpenPanel(settingsPanel);
+    }
+
+    public void Logout()
+    {
+        UserSession.Instance.Logout();
+        fadeController.FadeToScene("000_MainMenu");
+        Debug.Log("로그아웃 완료, 메인 메뉴로 이동");
+    }
+
+
+
 }

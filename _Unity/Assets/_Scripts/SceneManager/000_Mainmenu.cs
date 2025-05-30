@@ -7,37 +7,44 @@ using UnityEngine.Networking;
 
 public class MainMenuUIController : MonoBehaviour
 {
-    [Header("Fade")] public FadeController fadeController;
+    [Header("Fade")]
+    public FadeController fadeController;
 
-    [Header("패널들")] public GameObject loginPanel;
+    [Header("패널들")]
+    public GameObject loginPanel;
     public GameObject signupPanel;
     public GameObject settingsPanel;
     public GameObject profilePanel;
 
-    [Header("입력 필드 - 로그인")] public TMP_InputField loginIdField;
+    [Header("입력 필드 - 로그인")]
+    public TMP_InputField loginIdField;
     public TMP_InputField loginPwField;
 
-    [Header("입력 필드 - 회원가입")] public TMP_InputField signupIdField;
+    [Header("입력 필드 - 회원가입")]
+    public TMP_InputField signupIdField;
     public TMP_InputField signupPw1Field;
     public TMP_InputField signupPw2Field;
     public TMP_InputField signupNicknameField;
 
-    [Header("중복확인 관련")] public TMP_Text idCheckResultText;
+    [Header("중복확인 관련")]
+    public TMP_Text idCheckResultText;
 
-    [Header("ID 체크 상태 텍스트들")] public GameObject idCheck_Default; // '_'
-    public GameObject idCheck_Checked; // '✔'
-    public GameObject idCheck_Duplicated; // 'X'
+    [Header("ID 체크 상태 텍스트들")]
+    public GameObject idCheck_Default;
+    public GameObject idCheck_Checked;
+    public GameObject idCheck_Duplicated;
 
-    [Header("회원가입 버튼")] public Button signupButton;
+    [Header("회원가입 버튼")]
+    public Button signupButton;
 
-    [Header("TR 버튼 그룹")] public GameObject[] loginOnlyButtons; // 친구, 유저정보 버튼 (로그인 후) + 로그아웃버튼
-    public GameObject[] guestOnlyButtons; // 로그인, 회원가입 버튼 (비로그인 상태)
-    public GameObject settingsButton; // 항상 보이는 설정 버튼
+    [Header("TR 버튼 그룹")]
+    public GameObject[] loginOnlyButtons;
+    public GameObject[] guestOnlyButtons;
+    public GameObject settingsButton;
 
     private void Start()
     {
         UpdateTopRightButtons();
-
         signupIdField.onValueChanged.AddListener(OnIDInputChanged);
         SetIDCheckState_Default();
         UpdateSignupButtonInteractable();
@@ -45,7 +52,7 @@ public class MainMenuUIController : MonoBehaviour
 
     private void OnEnable()
     {
-        UpdateTopRightButtons(); // 씬 돌아올 때 로그인 상태 갱신
+        UpdateTopRightButtons();
     }
 
     private void Update()
@@ -53,9 +60,6 @@ public class MainMenuUIController : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Escape)) CloseAllPanels();
     }
 
-    // ========================
-    // ID 중복 검사
-    // ========================
     private void OnIDInputChanged(string newText)
     {
         SetIDCheckState_Default();
@@ -66,7 +70,7 @@ public class MainMenuUIController : MonoBehaviour
     {
         var id = signupIdField.text;
 
-        if (id == "test123")
+        if (id == "asdf")
             SetIDCheckState_Duplicated();
         else
             SetIDCheckState_Checked();
@@ -102,9 +106,6 @@ public class MainMenuUIController : MonoBehaviour
         signupButton.interactable = idCheck_Checked.activeSelf;
     }
 
-    // ========================
-    // Static 버튼 동작
-    // ========================
     public void OnClick_SinglePlay()
     {
         fadeController.FadeToScene("G001_TagInput");
@@ -122,12 +123,12 @@ public class MainMenuUIController : MonoBehaviour
 
     public void OnClick_MyPlanet()
     {
-        fadeController.FadeToScene("P001_MyPlanet");
+        fadeController.FadeToScene("P002_MyPlanet");
     }
 
     public void OnClick_PlanetTravel()
     {
-        fadeController.FadeToScene("P002_PlanetTravel");
+        fadeController.FadeToScene("P001_PlanetTravel");
     }
 
     public void OnClick_Exit()
@@ -136,9 +137,6 @@ public class MainMenuUIController : MonoBehaviour
         Debug.Log("게임 종료!");
     }
 
-    // ========================
-    // TR 버튼 관련
-    // ========================
     public void OnClick_Friend()
     {
         fadeController.FadeToScene("F001_Friend");
@@ -164,9 +162,10 @@ public class MainMenuUIController : MonoBehaviour
         OpenPanel(settingsPanel);
     }
 
-    private bool isLoggedIn = UserSession.Instance != null && UserSession.Instance.IsLoggedIn;
     public void UpdateTopRightButtons()
     {
+        bool isLoggedIn = UserSession.Instance != null && UserSession.Instance.IsLoggedIn;
+
         foreach (var go in guestOnlyButtons)
             go.SetActive(!isLoggedIn);
 
@@ -201,9 +200,6 @@ public class MainMenuUIController : MonoBehaviour
         Debug.Log("로그아웃 완료!");
     }
 
-    // ========================
-    // 로그인
-    // ========================
     public void TryLogin()
     {
         StartCoroutine(SendLoginRequest());
@@ -213,6 +209,15 @@ public class MainMenuUIController : MonoBehaviour
     {
         string id = loginIdField.text;
         string password = loginPwField.text;
+
+        if (id == "asdf" && password == "asdf")
+        {
+            Debug.Log("로컬 테스트 (ID: asdf, PW: asdf)");
+            UserSession.Instance.SetUserInfo(id, "TestUser");
+            UpdateTopRightButtons();
+            CloseAllPanels();
+            yield break;
+        }
 
         string json = $"{{\"id\":\"{id}\",\"password\":\"{password}\"}}";
         byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
@@ -227,7 +232,7 @@ public class MainMenuUIController : MonoBehaviour
         if (request.result == UnityWebRequest.Result.Success)
         {
             Debug.Log("로그인 성공: " + request.downloadHandler.text);
-            isLoggedIn = true;
+            UserSession.Instance.SetUserInfo(id, "서버닉네임");
             UpdateTopRightButtons();
             CloseAllPanels();
         }
@@ -238,9 +243,6 @@ public class MainMenuUIController : MonoBehaviour
         }
     }
 
-    // ========================
-    // 회원가입
-    // ========================
     public void TrySignup()
     {
         StartCoroutine(SendSignupRequest());
