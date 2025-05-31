@@ -35,7 +35,9 @@ public class GuestbookUIController : MonoBehaviour
     {
         if (string.IsNullOrEmpty(inputField.text)) return;
 
-        PlanetDataManager.Instance.AddGuestbookEntry("Visitor", inputField.text);
+        string author = UserSession.Instance != null ? UserSession.Instance.Nickname : "Unknown";
+        
+        PlanetDataManager.Instance.AddGuestbookEntry(author, inputField.text);
         inputField.text = "";
         LoadGuestbook();
     }
