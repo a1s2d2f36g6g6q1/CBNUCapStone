@@ -5,6 +5,10 @@ using System.IO;
 
 public class MyPlanetUIController : MonoBehaviour
 {
+    
+    [Header("그리드 크기 조절")]
+    public GridContentResizer gridResizer;
+
     [Header("Gallery 설정")]
     public GameObject photoCardPrefab;
     public Transform galleryContainer;
@@ -172,7 +176,11 @@ public class MyPlanetUIController : MonoBehaviour
             var photoCard = card.GetComponent<PhotoCard>();
             photoCard.Init(this, photoData);
         }
+
+        // 📌 카드 생성 후 Content 사이즈 조정
+        gridResizer.AdjustContentSize();
     }
+
 
     private Sprite LoadSpriteFromPath(string path)
     {
