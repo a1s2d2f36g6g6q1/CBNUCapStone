@@ -5,6 +5,7 @@ using System.IO;
 
 public class MyPlanetUIController : MonoBehaviour
 {
+    public bool isMine = true; // 내 행성, 남의 행성 구분용
     
     [Header("그리드 크기 조절")]
     public GridContentResizer gridResizer;
@@ -54,8 +55,8 @@ public class MyPlanetUIController : MonoBehaviour
         // 테스트용: 카드 20장 생성
         for (int i = 1; i <= 20; i++)
         {
-            string description = $"테스트 설명 {i}";
-            string[] tags = new string[] { $"#태그{i}", "#샘플" };
+            string description = $"Image {i}\nDescription";
+            string[] tags = new string[] { $"[ Tag 1 ]", $"[ Tag 2 ]", $"[ Tag 3 ]", $"[ Tag 4 ]" };
             PlanetDataManager.Instance?.AddPhoto(description, tags);
         }
 
@@ -95,9 +96,10 @@ public class MyPlanetUIController : MonoBehaviour
         var photoController = panelPhoto.GetComponent<PhotoPanelController>();
         if (photoController != null)
         {
-            photoController.SetPhotoData(data);
+            photoController.SetPhotoData(data, isMine);
         }
     }
+
 
     public void OpenGuestbook()
     {
