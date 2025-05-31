@@ -43,8 +43,13 @@ public class MyPlanetUIController : MonoBehaviour
     [Header("Fade")]
     public FadeController fadeController;
 
-    private void Start()
+    void Start()
     {
+        string myId = UserSession.Instance != null ? UserSession.Instance.UserID : "";
+        string planetId = PlanetSession.Instance != null ? PlanetSession.Instance.CurrentPlanetOwnerID :  "";
+
+        isMine = (myId == planetId);
+
         CloseContentPanels();
         CloseModalPanels();
         OpenGallery();
@@ -62,6 +67,7 @@ public class MyPlanetUIController : MonoBehaviour
 
         LoadGallery();
     }
+    
     private void UpdateSidebarButtonStates(GameObject activePanel)
     {
         buttonGallery.image.color = normalColor;
@@ -106,6 +112,12 @@ public class MyPlanetUIController : MonoBehaviour
         CloseContentPanels();
         panelGuestbook.SetActive(true);
         UpdateSidebarButtonStates(panelGuestbook);
+
+        var guestbook = panelGuestbook.GetComponent<GuestbookUIController>();
+        if (guestbook != null)
+        {
+            guestbook.LoadGuestbook();
+        }
     }
 
     public void CloseModalPanels()

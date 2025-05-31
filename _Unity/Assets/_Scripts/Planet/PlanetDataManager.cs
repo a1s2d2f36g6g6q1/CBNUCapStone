@@ -6,6 +6,24 @@ public class PlanetDataManager : MonoBehaviour
     public static PlanetDataManager Instance { get; private set; }
 
     [System.Serializable]
+    public class GuestbookEntry
+    {
+        public string author;
+        public string content;
+        public System.DateTime timestamp;
+    }
+
+    public List<GuestbookEntry> guestbookEntries = new List<GuestbookEntry>();
+
+    public void AddGuestbookEntry(string author, string content)
+    {
+        guestbookEntries.Add(new GuestbookEntry
+        {
+            author = author,
+            content = content,
+            timestamp = System.DateTime.Now
+        });
+    }
     public class PlanetPhotoData
     {
         public string description;
