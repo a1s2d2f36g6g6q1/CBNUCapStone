@@ -6,12 +6,19 @@ public class PuzzleLoader : MonoBehaviour
     [Header("UI Reference")]
     public GameObject loadingPanel;         // Inspector에서 할당
     public PuzzleManager puzzleManager;     // Inspector에서 할당
+    public LoadingPanelFade loadingPanelFade;
+    public GameObject timerManagerObj; // Inspector에 TimerManager 오브젝트 할당
+    public GameObject backButtonObj;   // Inspector에 BackButton 오브젝트 할당
+
 
     private void Start()
     {
-        // 로딩 패널만 보여주고, 퍼즐매니저는 직접 초기화 시점까지 대기
         if (loadingPanel != null)
             loadingPanel.SetActive(true);
+        if (timerManagerObj != null)
+            timerManagerObj.SetActive(false);
+        if (backButtonObj != null)
+            backButtonObj.SetActive(false);
 
         StartCoroutine(LoadAndInitPuzzleCoroutine());
     }
@@ -57,17 +64,17 @@ public class PuzzleLoader : MonoBehaviour
         }
 
         // 4. 실패 시 fallback (Resources/test.png)
-if (puzzleTexture == null)
-{
-    Debug.LogWarning("[PuzzleLoader] AI 이미지 로딩 실패, test.png로 대체");
-    puzzleTexture = Resources.Load<Texture2D>("test");
-    if (puzzleTexture == null)
-    {
-        Debug.LogError("Resources/test.png 로드 실패 - 퍼즐 생성 불가!");
-        // 플레이 진행을 막거나, 완전히 fallback 처리를 할 것
-        yield break;
-    }
-}
+        if (puzzleTexture == null)
+        {
+            Debug.LogWarning("[PuzzleLoader] AI 이미지 로딩 실패, test.png로 대체");
+            puzzleTexture = Resources.Load<Texture2D>("test");
+            if (puzzleTexture == null)
+            {
+                Debug.LogError("Resources/test.png 로드 실패 - 퍼즐 생성 불가!");
+                // 플레이 진행을 막거나, 완전히 fallback 처리를 할 것
+                yield break;
+            }
+        }
         // 5. 퍼즐 초기화 함수 직접 호출 (퍼즐매니저의 Start는 사용 X)
         if (puzzleManager != null)
         {
@@ -80,7 +87,16 @@ if (puzzleTexture == null)
         }
 
         // 6. 로딩 패널 종료
-        if (loadingPanel != null)
+        if (timerManagerObj != null)
+            timerManagerObj.SetActive(true);
+        if (backButtonObj != null)
+            backButtonObj.SetActive(true);
+
+        if (loadingPanelFade != null)
+            loadingPanelFade.Hide();
+        else if (loadingPanel != null)
             loadingPanel.SetActive(false);
+
+
     }
 }

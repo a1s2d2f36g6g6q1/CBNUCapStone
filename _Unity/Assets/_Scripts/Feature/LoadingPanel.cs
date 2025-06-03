@@ -1,63 +1,50 @@
-using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections;
 
-public class LoadingPanelController : MonoBehaviour
+public class LoadingPanelFade : MonoBehaviour
 {
-    public Image loadingImage; // 로딩 패널의 Image
-    public float fadeDuration = 0.4f;
+    public Image loadingImage; // 반드시 "검은색" Image를 연결
+    public float fadeDuration = 0.6f;
 
     private void Awake()
     {
-        if (loadingImage == null)
+        // 완전히 투명하게 시작 (혹은 필요하면 알파=1로 시작)
+        if (loadingImage != null)
+            loadingImage.color = new Color(0, 0, 0, 1f);
+
+        gameObject.SetActive(false);
+    }
+
+    public void Show()
+    {
+        gameObject.SetActive(true);
+        if (loadingImage != null)
         {
-            Debug.LogError("loadingImage가 연결되지 않았습니다!");
+            loadingImage.color = new Color(0, 0, 0, 1f);
         }
-
-        loadingImage.gameObject.SetActive(false);
     }
 
-    public void ShowLoading()
+    public void Hide()
     {
-        StopAllCoroutines();
-        StartCoroutine(FadeIn());
+        if (loadingImage != null)
+            StartCoroutine(FadeOutAndDeactivate());
+        else
+            gameObject.SetActive(false);
     }
 
-    public void HideLoading()
+    private IEnumerator FadeOutAndDeactivate()
     {
-        StopAllCoroutines();
-        StartCoroutine(FadeOut());
-    }
-
-    private IEnumerator FadeIn()
-    {
-        loadingImage.gameObject.SetActive(true);
-        var t = 0f;
-
+        float t = 0f;
+        Color c = loadingImage.color;
         while (t < fadeDuration)
         {
             t += Time.unscaledDeltaTime;
-            var a = Mathf.Lerp(0f, 1f, t / fadeDuration);
-            loadingImage.color = new Color(loadingImage.color.r, loadingImage.color.g, loadingImage.color.b, a);
+            float a = Mathf.Lerp(1f, 0f, t / fadeDuration);
+            loadingImage.color = new Color(c.r, c.g, c.b, a);
             yield return null;
         }
-
-        loadingImage.color = new Color(loadingImage.color.r, loadingImage.color.g, loadingImage.color.b, 1f);
-    }
-
-    private IEnumerator FadeOut()
-    {
-        var t = 0f;
-
-        while (t < fadeDuration)
-        {
-            t += Time.unscaledDeltaTime;
-            var a = Mathf.Lerp(1f, 0f, t / fadeDuration);
-            loadingImage.color = new Color(loadingImage.color.r, loadingImage.color.g, loadingImage.color.b, a);
-            yield return null;
-        }
-
-        loadingImage.color = new Color(loadingImage.color.r, loadingImage.color.g, loadingImage.color.b, 0f);
-        loadingImage.gameObject.SetActive(false);
+        loadingImage.color = new Color(c.r, c.g, c.b, 0f);
+        gameObject.SetActive(false);
     }
 }
