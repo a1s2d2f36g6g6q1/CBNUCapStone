@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 public class UserSession : MonoBehaviour
 {
@@ -38,4 +39,6 @@ public class UserSession : MonoBehaviour
         UserID = "";
         Nickname = "";
     }
+
+        public List<string> Tags { get; set; } // 태그 데이터 저장
 }

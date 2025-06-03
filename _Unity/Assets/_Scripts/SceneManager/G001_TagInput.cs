@@ -52,13 +52,25 @@ public class TagInputManager : MonoBehaviour
     }
 
 
-    // 게임 시작 버튼 클릭 시 호출
-    public void OnStartGame()
-    {
-        for (var i = 0; i < 4; i++) GameData.tags[i] = inputFields[i].text;
-        GameData.difficulty = selectedDifficulty;
-        fadeController.FadeToScene("G002_Game");
-    }
+public void OnStartGame()
+{
+    // 태그 4개 리스트로 저장
+    var selectedTags = new List<string>();
+    for (var i = 0; i < 4; i++)
+        selectedTags.Add(inputFields[i].text);
+
+    // UserSession에 태그 저장
+    UserSession.Instance.Tags = selectedTags;
+
+    // 기존 GameData에도 저장
+    for (var i = 0; i < 4; i++)
+        GameData.tags[i] = inputFields[i].text;
+    GameData.difficulty = selectedDifficulty;
+
+Debug.Log("[TagInputManager] 세션 태그: " + string.Join(", ", UserSession.Instance.Tags));
+    // 씬 전환
+    fadeController.FadeToScene("G002_Game");
+}
 
     // 뒤로가기 버튼 클릭 시 호출
     public void Back()
@@ -163,4 +175,6 @@ public class TagInputManager : MonoBehaviour
 
         return null;
     }
+
+
 }

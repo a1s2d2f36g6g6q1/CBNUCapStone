@@ -9,8 +9,7 @@ public class PuzzleManager : MonoBehaviour
     public TMP_Text clickToStartText;
     public FlashEffect flashEffect;
 
-    public GameObject emptyTilePrefab; // EmptyTile 프리팹을 위한 변수
-
+    public GameObject emptyTilePrefab;
     public Texture2D puzzleImage;
 
     public GameObject tilePrefab;
@@ -18,35 +17,26 @@ public class PuzzleManager : MonoBehaviour
     public int height = 3;
     public float spacing = 0.1f;
     public float fadeDuration = 0.4f;
+
     private Vector2Int emptyPos;
-    private GameObject emptyTileInstance; // EmptyTile 인스턴스
+    private GameObject emptyTileInstance;
     private bool isShuffling = true;
     private Material[] puzzleMaterials;
-
     private Tile[,] tiles;
     private bool tilesRevealed;
     private bool waitingForReveal;
-
     private bool puzzleCleared = false;
 
-    
+    // 퍼즐 초기화 전에는 아무 동작 안 함
     private void Start()
     {
-        if (GameData.difficulty < 2 || GameData.difficulty > 5) GameData.difficulty = 3; // 기본값
-
-        width = GameData.difficulty;
-        height = GameData.difficulty;
-
-        clickToStartText.gameObject.SetActive(false);
-        GeneratePuzzle();
-        CacheMaterials();
-        StartCoroutine(FadeInTiles());
-        StartCoroutine(ShufflePuzzle());
+        // 이제 퍼즐 생성 로직은 InitializePuzzle에서만 동작
     }
 
     private void Update()
     {
         if (waitingForReveal && !tilesRevealed)
+        {
             if (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.Space))
             {
                 foreach (var tile in tiles)
@@ -55,13 +45,33 @@ public class PuzzleManager : MonoBehaviour
 
                 tilesRevealed = true;
                 waitingForReveal = false;
-                timerManager.StartTimer(); // 여기서 타이머 시작
+                timerManager.StartTimer();
                 clickToStartText.gameObject.SetActive(false);
             }
+        }
     }
 
+    /// <summary>
+    /// 외부에서 명시적으로 호출하는 퍼즐 초기화 함수
+    /// </summary>
+    public void InitializePuzzle(Texture2D texture, int width, int height)
+    {
+        this.puzzleImage = texture;
+        this.width = width;
+        this.height = height;
+        this.puzzleCleared = false;
+        this.tilesRevealed = false;
+        this.waitingForReveal = false;
 
-    // 퍼즐 페이드 관련
+        clickToStartText.gameObject.SetActive(false);
+
+        GeneratePuzzle();
+        CacheMaterials();
+        StartCoroutine(FadeInTiles());
+        StartCoroutine(ShufflePuzzle());
+    }
+
+    // 이하 기존 함수 동일
     private void CacheMaterials()
     {
         var renderers = GetComponentsInChildren<Renderer>();
@@ -90,7 +100,6 @@ public class PuzzleManager : MonoBehaviour
                 var c = mat.color;
                 mat.color = new Color(c.r, c.g, c.b, a);
             }
-
             yield return null;
         }
     }
@@ -108,26 +117,18 @@ public class PuzzleManager : MonoBehaviour
                 c.a = alpha;
                 mat.color = c;
             }
-
-            // 🔧 EmptyTile도 같이 페이드 처리
             if (emptyTileInstance != null)
             {
                 var empty = emptyTileInstance.GetComponent<EmptyTile>();
                 empty.SetFadeOut(t / duration);
             }
-
             yield return null;
         }
-
-        // 기존 타일 비활성화
         foreach (var tile in GetComponentsInChildren<Tile>())
             tile.gameObject.SetActive(false);
-
-        // 🔧 EmptyTile 비활성화도 포함
         if (emptyTileInstance != null)
             emptyTileInstance.SetActive(false);
     }
-
 
     private void GeneratePuzzle()
     {
@@ -143,13 +144,12 @@ public class PuzzleManager : MonoBehaviour
             {
                 emptyPos = new Vector2Int(x, y);
 
-                // 초기에는 보이지 않게 생성 (알파 0)
                 emptyTileInstance = Instantiate(emptyTilePrefab, transform);
                 emptyTileInstance.transform.localPosition = GetTilePosition(x, y);
 
                 var emptyTile = emptyTileInstance.GetComponent<EmptyTile>();
                 emptyTile.Init(puzzleImage, width, height, x, y);
-                emptyTile.SetAlpha(0f); // 초기에 보이지 않도록 설정
+                emptyTile.SetAlpha(0f);
                 emptyTile.OnClick += HandleEmptyTileClick;
 
                 continue;
@@ -166,13 +166,12 @@ public class PuzzleManager : MonoBehaviour
         Debug.Log("퍼즐 생성!!");
     }
 
-
     public Vector3 GetTilePosition(int x, int y)
     {
         var centerOffset = new Vector3((width - 1) / 2f, (height - 1) / 2f, 0);
         return new Vector3(
             (x - centerOffset.x) * (1 + spacing),
-            (centerOffset.y - y) * (1 + spacing), // 위에서 아래로 Y축 정렬
+            (centerOffset.y - y) * (1 + spacing),
             0f
         );
     }
@@ -193,7 +192,6 @@ public class PuzzleManager : MonoBehaviour
 
         for (var i = 0; i < 100; i++)
         {
-            // 유효 방향 계산
             var validMoves = new List<Vector2Int>();
             foreach (var dir in directions)
             {
@@ -204,7 +202,6 @@ public class PuzzleManager : MonoBehaviour
                     validMoves.Add(dir);
             }
 
-            // 이동
             if (validMoves.Count > 0)
             {
                 var move = validMoves[Random.Range(0, validMoves.Count)];
@@ -213,10 +210,9 @@ public class PuzzleManager : MonoBehaviour
                 previousMove = move;
             }
 
-            // 페이드 처리
             if (i >= 60)
             {
-                var fadeT = Mathf.InverseLerp(60, 80, i); // 0~1 범위
+                var fadeT = Mathf.InverseLerp(60, 80, i);
                 foreach (var tile in tiles)
                     if (tile != null)
                         tile.SetFadeGray(fadeT);
@@ -226,46 +222,31 @@ public class PuzzleManager : MonoBehaviour
         }
 
         isShuffling = false;
-        waitingForReveal = true; // 입력 대기 상태 진입
-        tilesRevealed = false; // 아직 복원되지 않음
+        waitingForReveal = true;
+        tilesRevealed = false;
 
         CheckComplete();
         clickToStartText.gameObject.SetActive(true);
-
-
     }
 
-
-    public void TryMove(Tile tile)
-    {
-        TryMove(tile.gridPosition.x, tile.gridPosition.y);
-    }
+    public void TryMove(Tile tile) => TryMove(tile.gridPosition.x, tile.gridPosition.y);
 
     private bool CheckCompleteStatus()
     {
-        var isComplete = true;
-
         foreach (var tile in tiles)
             if (tile != null && !tile.IsCorrect())
-            {
-                isComplete = false;
-                break;
-            }
-
-        return isComplete;
+                return false;
+        return true;
     }
 
     public void TryMove(int x, int y)
     {
-        // ✅ 게임이 이미 끝났다면 이동 불가
         if (puzzleCleared) return;
-
         if (Mathf.Abs(x - emptyPos.x) + Mathf.Abs(y - emptyPos.y) != 1) return;
 
         var tile = tiles[x, y];
         if (tile == null) return;
 
-        // 퍼즐이 완성된 상태에서 다른 타일을 이동시키면 EmptyTile 제거
         if (emptyTileInstance != null && CheckCompleteStatus())
             RemoveEmptyTile();
 
@@ -281,22 +262,19 @@ public class PuzzleManager : MonoBehaviour
             CheckComplete();
     }
 
-
     private void ShowEmptyTile()
     {
         if (emptyTileInstance == null) return;
-
-        emptyTileInstance.SetActive(true); // 객체 활성화 (사실 알파 0이라 안 보임)
+        emptyTileInstance.SetActive(true);
         emptyTileInstance.GetComponent<Collider>().enabled = true;
     }
-
 
     private void RemoveEmptyTile()
     {
         if (emptyTileInstance != null)
         {
-            emptyTileInstance.GetComponent<EmptyTile>().SetAlpha(0f); // 다시 감춤
-            emptyTileInstance.GetComponent<Collider>().enabled = false; // 클릭도 비활성화
+            emptyTileInstance.GetComponent<EmptyTile>().SetAlpha(0f);
+            emptyTileInstance.GetComponent<Collider>().enabled = false;
         }
     }
 
@@ -309,10 +287,9 @@ public class PuzzleManager : MonoBehaviour
                 tile.MoveToFinal(target);
             }
 
-        // 🔧 EmptyTile 이동 추가
         if (emptyTileInstance != null)
         {
-            Vector3 target = GetCollapsedTilePosition(0, 0); // emptyPos도 가능
+            Vector3 target = GetCollapsedTilePosition(0, 0);
             StartCoroutine(MoveEmptyTile(target));
         }
     }
@@ -320,75 +297,50 @@ public class PuzzleManager : MonoBehaviour
     private IEnumerator MoveEmptyTile(Vector3 target)
     {
         Transform t = emptyTileInstance.transform;
-
         while (Vector3.Distance(t.localPosition, target) > 0.01f)
         {
             t.localPosition = Vector3.Lerp(t.localPosition, target, Time.deltaTime * 8f);
             yield return null;
         }
-
         t.localPosition = target;
     }
-
 
     public Vector3 GetCollapsedTilePosition(int x, int y)
     {
         var centerOffset = new Vector3((width - 1) / 2f, (height - 1) / 2f, 0);
         return new Vector3(
-            x - centerOffset.x, // spacing 없이
+            x - centerOffset.x,
             centerOffset.y - y,
             0f
         );
     }
 
-
     private void CheckComplete()
     {
-        var isComplete = true;
-
         foreach (var tile in tiles)
             if (tile != null && !tile.IsCorrect())
-            {
-                isComplete = false;
-                break;
-            }
+                return;
 
-        if (isComplete)
-        {
-            Debug.Log("퍼즐 완료: 빈 타일 배치 대기중");
-
-            // 퍼즐이 맞았을 때만 EmptyTile 표시
-            ShowEmptyTile();
-        }
+        Debug.Log("퍼즐 완료: 빈 타일 배치 대기중");
+        ShowEmptyTile();
     }
 
     private void HandleEmptyTileClick()
     {
         if (emptyTileInstance != null)
-        {
-            emptyTileInstance.GetComponent<EmptyTile>().SetAlpha(1f); // ✅ 명시적으로 추가
-        }
-        
-        // ✅ 섬광 효과
+            emptyTileInstance.GetComponent<EmptyTile>().SetAlpha(1f);
+
         flashEffect.PlayFlash();
-
-        // ✅ 타일 수렴 애니메이션
         CollapseTiles();
-
-        // ✅ 타이머 종료
         timerManager.StopTimer();
-
         puzzleCleared = true;
 
-        
-        // ✅ 모든 타일 입력 차단
         foreach (var tile in tiles)
             if (tile != null)
                 tile.enabled = false;
 
         Debug.Log("게임 완료!! 🎉");
     }
-
 
     public void FadeAndBack(FadeController fadeController)
     {
