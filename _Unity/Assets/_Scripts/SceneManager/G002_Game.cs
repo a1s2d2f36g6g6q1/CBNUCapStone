@@ -12,8 +12,12 @@ public class Game : MonoBehaviour
         if (loadingPanel != null)
             loadingPanel.SetActive(true);
     }
+
     public void Back()
     {
-        fadeController.FadeToScene("G001_TagInput");
+        if (fadeController != null)
+            fadeController.FadeToScene("G001_TagInput");
+        else
+            Debug.LogWarning("FadeController가 연결되지 않았습니다.");
     }
 }

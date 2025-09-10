@@ -68,12 +68,52 @@ public class MainMenuUIController : MonoBehaviour
 
     public void CheckDuplicateID()
     {
-        var id = signupIdField.text;
+        StartCoroutine(SendIDCheckRequest());
+    }
 
+    private IEnumerator SendIDCheckRequest()
+    {
+        string id = signupIdField.text;
+
+        if (string.IsNullOrEmpty(id))
+        {
+            Debug.LogWarning("ID가 비어있습니다.");
+            yield break;
+        }
+
+        // 더미 데이터 체크 (개발용)
         if (id == "asdf")
+        {
             SetIDCheckState_Duplicated();
+            UpdateSignupButtonInteractable();
+            yield break;
+        }
+
+        // 서버 통신
+        string json = JsonUtility.ToJson(new { id = id });
+        byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
+
+        UnityWebRequest request = new UnityWebRequest("http://localhost:3000/api/check-id", "POST");
+        request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+        request.downloadHandler = new DownloadHandlerBuffer();
+        request.SetRequestHeader("Content-Type", "application/json");
+
+        yield return request.SendWebRequest();
+
+        if (request.result == UnityWebRequest.Result.Success)
+        {
+            // 서버 응답에 따라 처리
+            var response = request.downloadHandler.text;
+            if (response.Contains("available"))
+                SetIDCheckState_Checked();
+            else
+                SetIDCheckState_Duplicated();
+        }
         else
-            SetIDCheckState_Checked();
+        {
+            Debug.LogError("ID 중복확인 실패: " + request.error);
+            SetIDCheckState_Default();
+        }
 
         UpdateSignupButtonInteractable();
     }
@@ -210,6 +250,13 @@ public class MainMenuUIController : MonoBehaviour
         string id = loginIdField.text;
         string password = loginPwField.text;
 
+        if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(password))
+        {
+            Debug.LogWarning("ID 또는 비밀번호가 비어있습니다.");
+            yield break;
+        }
+
+        // 더미 데이터 체크 (개발용)
         if (id == "asdf" && password == "asdf")
         {
             Debug.Log("로컬 테스트 (ID: asdf, PW: asdf)");
@@ -219,7 +266,9 @@ public class MainMenuUIController : MonoBehaviour
             yield break;
         }
 
-        string json = $"{{\"id\":\"{id}\",\"password\":\"{password}\"}}";
+        // 서버 통신
+        var loginData = new { id = id, password = password };
+        string json = JsonUtility.ToJson(loginData);
         byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
 
         UnityWebRequest request = new UnityWebRequest("http://localhost:3000/api/login", "POST");
@@ -238,8 +287,9 @@ public class MainMenuUIController : MonoBehaviour
         }
         else
         {
-            Debug.Log("❌ 로그인 실패: " + request.error);
-            Debug.Log("서버 응답: " + request.downloadHandler.text);
+            Debug.LogError("로그인 실패: " + request.error);
+            if (!string.IsNullOrEmpty(request.downloadHandler.text))
+                Debug.LogError("서버 응답: " + request.downloadHandler.text);
         }
     }
 
@@ -255,13 +305,21 @@ public class MainMenuUIController : MonoBehaviour
         string pw2 = signupPw2Field.text;
         string nickname = signupNicknameField.text;
 
-        if (pw != pw2)
+        if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(pw) || string.IsNullOrEmpty(nickname))
         {
-            Debug.LogWarning("비밀번호 불일치");
+            Debug.LogWarning("모든 필드를 입력해주세요.");
             yield break;
         }
 
-        string json = $"{{\"user_id\":\"{id}\",\"password\":\"{pw}\",\"nickname\":\"{nickname}\"}}";
+        if (pw != pw2)
+        {
+            Debug.LogWarning("비밀번호가 일치하지 않습니다.");
+            yield break;
+        }
+
+        // 서버 통신
+        var signupData = new { user_id = id, password = pw, nickname = nickname };
+        string json = JsonUtility.ToJson(signupData);
         byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
 
         UnityWebRequest request = new UnityWebRequest("http://localhost:3000/api/auth/signup", "POST");
@@ -278,8 +336,9 @@ public class MainMenuUIController : MonoBehaviour
         }
         else
         {
-            Debug.Log("회원가입 실패: " + request.error);
-            Debug.Log("서버 응답: " + request.downloadHandler.text);
+            Debug.LogError("회원가입 실패: " + request.error);
+            if (!string.IsNullOrEmpty(request.downloadHandler.text))
+                Debug.LogError("서버 응답: " + request.downloadHandler.text);
         }
     }
 }

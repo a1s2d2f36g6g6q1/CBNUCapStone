@@ -45,8 +45,10 @@ public class PuzzleManager : MonoBehaviour
 
                 tilesRevealed = true;
                 waitingForReveal = false;
-                timerManager.StartTimer();
-                clickToStartText.gameObject.SetActive(false);
+                if (timerManager != null)
+                    timerManager.StartTimer();
+                if (clickToStartText != null)
+                    clickToStartText.gameObject.SetActive(false);
             }
         }
     }
@@ -63,7 +65,8 @@ public class PuzzleManager : MonoBehaviour
         this.tilesRevealed = false;
         this.waitingForReveal = false;
 
-        clickToStartText.gameObject.SetActive(false);
+        if (clickToStartText != null)
+            clickToStartText.gameObject.SetActive(false);
 
         GeneratePuzzle();
         CacheMaterials();
@@ -120,7 +123,8 @@ public class PuzzleManager : MonoBehaviour
             if (emptyTileInstance != null)
             {
                 var empty = emptyTileInstance.GetComponent<EmptyTile>();
-                empty.SetFadeOut(t / duration);
+                if (empty != null)
+                    empty.SetFadeOut(t / duration);
             }
             yield return null;
         }
@@ -138,30 +142,30 @@ public class PuzzleManager : MonoBehaviour
         tiles = new Tile[width, height];
 
         for (var y = 0; y < height; y++)
-        for (var x = 0; x < width; x++)
-        {
-            if (x == 0 && y == 0)
+            for (var x = 0; x < width; x++)
             {
-                emptyPos = new Vector2Int(x, y);
+                if (x == 0 && y == 0)
+                {
+                    emptyPos = new Vector2Int(x, y);
 
-                emptyTileInstance = Instantiate(emptyTilePrefab, transform);
-                emptyTileInstance.transform.localPosition = GetTilePosition(x, y);
+                    emptyTileInstance = Instantiate(emptyTilePrefab, transform);
+                    emptyTileInstance.transform.localPosition = GetTilePosition(x, y);
 
-                var emptyTile = emptyTileInstance.GetComponent<EmptyTile>();
-                emptyTile.Init(puzzleImage, width, height, x, y);
-                emptyTile.SetAlpha(0f);
-                emptyTile.OnClick += HandleEmptyTileClick;
+                    var emptyTile = emptyTileInstance.GetComponent<EmptyTile>();
+                    emptyTile.Init(puzzleImage, width, height, x, y);
+                    emptyTile.SetAlpha(0f);
+                    emptyTile.OnClick += HandleEmptyTileClick;
 
-                continue;
+                    continue;
+                }
+
+                var obj = Instantiate(tilePrefab, transform);
+                obj.transform.localPosition = GetTilePosition(x, y);
+
+                var tile = obj.GetComponent<Tile>();
+                tile.Init(this, x, y, x, y, puzzleImage, width, height);
+                tiles[x, y] = tile;
             }
-
-            var obj = Instantiate(tilePrefab, transform);
-            obj.transform.localPosition = GetTilePosition(x, y);
-
-            var tile = obj.GetComponent<Tile>();
-            tile.Init(this, x, y, x, y, puzzleImage, width, height);
-            tiles[x, y] = tile;
-        }
 
         Debug.Log("퍼즐 생성!!");
     }
@@ -226,7 +230,8 @@ public class PuzzleManager : MonoBehaviour
         tilesRevealed = false;
 
         CheckComplete();
-        clickToStartText.gameObject.SetActive(true);
+        if (clickToStartText != null)
+            clickToStartText.gameObject.SetActive(true);
     }
 
     public void TryMove(Tile tile) => TryMove(tile.gridPosition.x, tile.gridPosition.y);
@@ -242,114 +247,44 @@ public class PuzzleManager : MonoBehaviour
     public void TryMove(int x, int y)
     {
         if (puzzleCleared) return;
-        if (Mathf.Abs(x - emptyPos.x) + Mathf.Abs(y - emptyPos.y) != 1) return;
+        if (isShuffling && tilesRevealed) return; // 게임 시작 후에만 셔플링 체크
+
+        var distance = Mathf.Abs(emptyPos.x - x) + Mathf.Abs(emptyPos.y - y);
+        if (distance != 1) return;
 
         var tile = tiles[x, y];
         if (tile == null) return;
 
-        if (emptyTileInstance != null && CheckCompleteStatus())
-            RemoveEmptyTile();
-
         tiles[emptyPos.x, emptyPos.y] = tile;
         tiles[x, y] = null;
 
-        var oldEmpty = emptyPos;
+        tile.MoveTo(emptyPos);
         emptyPos = new Vector2Int(x, y);
 
-        tile.MoveTo(oldEmpty);
-
-        if (!isShuffling)
-            CheckComplete();
-    }
-
-    private void ShowEmptyTile()
-    {
-        if (emptyTileInstance == null) return;
-        emptyTileInstance.SetActive(true);
-        emptyTileInstance.GetComponent<Collider>().enabled = true;
-    }
-
-    private void RemoveEmptyTile()
-    {
         if (emptyTileInstance != null)
-        {
-            emptyTileInstance.GetComponent<EmptyTile>().SetAlpha(0f);
-            emptyTileInstance.GetComponent<Collider>().enabled = false;
-        }
-    }
+            emptyTileInstance.transform.localPosition = GetTilePosition(emptyPos.x, emptyPos.y);
 
-    public void CollapseTiles()
-    {
-        foreach (var tile in tiles)
-            if (tile != null)
-            {
-                var target = GetCollapsedTilePosition(tile.gridPosition.x, tile.gridPosition.y);
-                tile.MoveToFinal(target);
-            }
-
-        if (emptyTileInstance != null)
-        {
-            Vector3 target = GetCollapsedTilePosition(0, 0);
-            StartCoroutine(MoveEmptyTile(target));
-        }
-    }
-
-    private IEnumerator MoveEmptyTile(Vector3 target)
-    {
-        Transform t = emptyTileInstance.transform;
-        while (Vector3.Distance(t.localPosition, target) > 0.01f)
-        {
-            t.localPosition = Vector3.Lerp(t.localPosition, target, Time.deltaTime * 8f);
-            yield return null;
-        }
-        t.localPosition = target;
-    }
-
-    public Vector3 GetCollapsedTilePosition(int x, int y)
-    {
-        var centerOffset = new Vector3((width - 1) / 2f, (height - 1) / 2f, 0);
-        return new Vector3(
-            x - centerOffset.x,
-            centerOffset.y - y,
-            0f
-        );
+        CheckComplete();
     }
 
     private void CheckComplete()
     {
-        foreach (var tile in tiles)
-            if (tile != null && !tile.IsCorrect())
-                return;
+        if (CheckCompleteStatus() && !isShuffling)
+        {
+            puzzleCleared = true;
 
-        Debug.Log("퍼즐 완료: 빈 타일 배치 대기중");
-        ShowEmptyTile();
+            if (timerManager != null)
+                timerManager.StopTimer();
+
+            if (flashEffect != null)
+                flashEffect.PlayFlash();
+
+            Debug.Log("퍼즐 클리어!");
+        }
     }
 
     private void HandleEmptyTileClick()
     {
-        if (emptyTileInstance != null)
-            emptyTileInstance.GetComponent<EmptyTile>().SetAlpha(1f);
-
-        flashEffect.PlayFlash();
-        CollapseTiles();
-        timerManager.StopTimer();
-        puzzleCleared = true;
-
-        foreach (var tile in tiles)
-            if (tile != null)
-                tile.enabled = false;
-
-        Debug.Log("게임 완료!! 🎉");
-    }
-
-    public void FadeAndBack(FadeController fadeController)
-    {
-        StartCoroutine(FadeAndLoad(fadeController));
-    }
-
-    private IEnumerator FadeAndLoad(FadeController fadeController)
-    {
-        yield return StartCoroutine(FadeOutTiles(puzzleMaterials, fadeDuration));
-        fadeController.GoBack();
+        Debug.Log("빈 타일 클릭됨");
     }
 }
