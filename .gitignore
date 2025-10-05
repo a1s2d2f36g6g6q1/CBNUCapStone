@@ -9,3 +9,8 @@ MemoryCaptures/
 .DS_Store
 Thumbs.db
 .env
+
+**/obj/
+**/bin/
+**/*.csproj
+!/*.csproj
