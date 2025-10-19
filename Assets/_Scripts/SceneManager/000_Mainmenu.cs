@@ -45,10 +45,11 @@ public class MainMenuUIController : MonoBehaviour
     [Header("로딩/에러 메시지")]
     public GameObject loadingPanel; // 로딩 UI (선택사항)
     public TMP_Text errorMessageText; // 에러 메시지 표시용
+    private Coroutine currentCheckCoroutine; // 이거 추가
+
 
     private void Start()
     {
-        UpdateTopRightButtons();
         signupIdField.onValueChanged.AddListener(OnIDInputChanged);
         SetIDCheckState_Default();
         UpdateSignupButtonInteractable();
@@ -56,7 +57,22 @@ public class MainMenuUIController : MonoBehaviour
 
     private void OnEnable()
     {
+        // UserSession 이벤트 구독
+        if (UserSession.Instance != null)
+        {
+            UserSession.Instance.OnLoginStateChanged += UpdateTopRightButtons;
+        }
+
         UpdateTopRightButtons();
+    }
+
+    private void OnDisable()
+    {
+        // 이벤트 구독 해제
+        if (UserSession.Instance != null)
+        {
+            UserSession.Instance.OnLoginStateChanged -= UpdateTopRightButtons;
+        }
     }
 
     private void Update()
@@ -64,10 +80,16 @@ public class MainMenuUIController : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Escape)) CloseAllPanels();
     }
 
+
+
     private void OnIDInputChanged(string newText)
     {
         SetIDCheckState_Default();
         UpdateSignupButtonInteractable();
+
+        // 기존 중복 체크 결과 초기화
+        if (idCheckResultText != null)
+            idCheckResultText.text = "";
     }
 
     #region ID 중복 확인
@@ -81,26 +103,36 @@ public class MainMenuUIController : MonoBehaviour
             return;
         }
 
-        StartCoroutine(CheckUsernameCoroutine(username));
+        // 기존 체크 중단
+        if (currentCheckCoroutine != null)
+        {
+            StopCoroutine(currentCheckCoroutine);
+        }
+
+        currentCheckCoroutine = StartCoroutine(CheckUsernameCoroutine(username));
     }
 
     private IEnumerator CheckUsernameCoroutine(string username)
     {
         SetLoadingState(true);
+        Debug.Log($"중복 체크 시작: {username}");
 
         yield return APIManager.Instance.Get(
             $"/users/check-username?username={username}",
             onSuccess: (response) =>
             {
-                // 응답 파싱
-                ApiResponse apiResponse = JsonUtility.FromJson<ApiResponse>(response);
+                Debug.Log($"서버 응답: {response}");
 
-                if (apiResponse.success)
+                // CheckUsernameResponse 사용 (ApiResponse 아님!)
+                CheckUsernameResponse apiResponse = JsonUtility.FromJson<CheckUsernameResponse>(response);
+                Debug.Log($"파싱 결과 - available: {apiResponse.available}");
+
+                if (apiResponse.available) // available == true → 사용 가능
                 {
                     SetIDCheckState_Checked();
                     Debug.Log("사용 가능한 아이디입니다.");
                 }
-                else
+                else // available == false → 중복
                 {
                     SetIDCheckState_Duplicated();
                     Debug.Log("이미 사용 중인 아이디입니다.");
@@ -131,7 +163,7 @@ public class MainMenuUIController : MonoBehaviour
         idCheck_Default.SetActive(false);
         idCheck_Checked.SetActive(true);
         idCheck_Duplicated.SetActive(false);
-        idCheckResultText.text = "사용 가능한 ID입니다";
+        idCheckResultText.text = "ID Available";
     }
 
     private void SetIDCheckState_Duplicated()
@@ -139,7 +171,7 @@ public class MainMenuUIController : MonoBehaviour
         idCheck_Default.SetActive(false);
         idCheck_Checked.SetActive(false);
         idCheck_Duplicated.SetActive(true);
-        idCheckResultText.text = "이미 사용 중인 ID입니다";
+        idCheckResultText.text = "ID Already Taken";
     }
 
     private void UpdateSignupButtonInteractable()
@@ -236,35 +268,40 @@ public class MainMenuUIController : MonoBehaviour
     {
         SetLoadingState(true);
 
-        LoginRequest loginData = new LoginRequest
-        {
-            username = username,
-            password = password
-        };
+        LoginRequest loginData = new LoginRequest { username = username, password = password };
 
-        yield return APIManager.Instance.Post(
-            "/users/login",
-            loginData,
+        yield return APIManager.Instance.Post("/users/login", loginData,
             onSuccess: (response) =>
             {
-                LoginResponse loginResponse = JsonUtility.FromJson<LoginResponse>(response);
+                Debug.Log($"원본 서버 응답: {response}");
 
-                // JWT 토큰 저장
+                LoginResponse loginResponse = JsonUtility.FromJson<LoginResponse>(response);
                 APIManager.Instance.SetToken(loginResponse.token);
 
-                // 유저 세션 설정
-                UserSession.Instance.SetUserInfo(
-                    loginResponse.user.username,
-                    loginResponse.user.nickname
-                );
+                // 토큰 저장 후 프로필 불러오기
+                StartCoroutine(LoadUserProfileAfterLogin());
+            },
+            onError: (error) =>
+            {
+                ShowError("로그인 실패: " + error);
+                SetLoadingState(false);
+            }
+        );
+    }
 
-                Debug.Log($"로그인 성공! 환영합니다, {loginResponse.user.nickname}님");
+    private IEnumerator LoadUserProfileAfterLogin()
+    {
+        yield return APIManager.Instance.Get("/users/profile",
+            onSuccess: (response) =>
+            {
+                UserData userData = JsonUtility.FromJson<UserData>(response);
+                UserSession.Instance.SetUserInfo(userData.username, userData.nickname);
 
-                // UI 업데이트
+                Debug.Log($"로그인 성공! 환영합니다, {userData.nickname}님");
+
                 UpdateTopRightButtons();
                 CloseAllPanels();
 
-                // 입력 필드 초기화
                 loginIdField.text = "";
                 loginPwField.text = "";
 
@@ -272,7 +309,7 @@ public class MainMenuUIController : MonoBehaviour
             },
             onError: (error) =>
             {
-                ShowError("로그인 실패: 아이디 또는 비밀번호를 확인해주세요.");
+                ShowError("프로필 로드 실패: " + error);
                 SetLoadingState(false);
             }
         );
@@ -321,13 +358,44 @@ public class MainMenuUIController : MonoBehaviour
     {
         bool isLoggedIn = UserSession.Instance != null && UserSession.Instance.IsLoggedIn;
 
-        foreach (var go in guestOnlyButtons)
-            go.SetActive(!isLoggedIn);
+        Debug.Log($"UpdateTopRightButtons 호출 - isLoggedIn: {isLoggedIn}");
+        Debug.Log($"guestOnlyButtons 길이: {guestOnlyButtons?.Length ?? 0}");
+        Debug.Log($"loginOnlyButtons 길이: {loginOnlyButtons?.Length ?? 0}");
 
-        foreach (var go in loginOnlyButtons)
-            go.SetActive(isLoggedIn);
+        if (guestOnlyButtons != null)
+        {
+            foreach (var go in guestOnlyButtons)
+            {
+                if (go != null)
+                {
+                    go.SetActive(!isLoggedIn);
+                    Debug.Log($"Guest 버튼 '{go.name}' → Active: {!isLoggedIn}");
+                }
+                else
+                {
+                    Debug.LogWarning("guestOnlyButtons에 null 오브젝트 있음!");
+                }
+            }
+        }
 
-        settingsButton.SetActive(true);
+        if (loginOnlyButtons != null)
+        {
+            foreach (var go in loginOnlyButtons)
+            {
+                if (go != null)
+                {
+                    go.SetActive(isLoggedIn);
+                    Debug.Log($"Login 버튼 '{go.name}' → Active: {isLoggedIn}");
+                }
+                else
+                {
+                    Debug.LogWarning("loginOnlyButtons에 null 오브젝트 있음!");
+                }
+            }
+        }
+
+        if (settingsButton != null)
+            settingsButton.SetActive(true);
     }
 
     public void OpenPanel(GameObject panel)

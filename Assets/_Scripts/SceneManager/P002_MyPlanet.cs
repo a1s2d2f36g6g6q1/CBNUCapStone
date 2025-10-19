@@ -2,11 +2,13 @@ using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
 using System.IO;
+using System.Collections;
+using System.Collections.Generic;
 
 public class MyPlanetUIController : MonoBehaviour
 {
-    public bool isMine = true; // 내 행성, 남의 행성 구분용
-    
+    public bool isMine = true;
+
     [Header("그리드 크기 조절")]
     public GridContentResizer gridResizer;
 
@@ -43,31 +45,128 @@ public class MyPlanetUIController : MonoBehaviour
     [Header("Fade")]
     public FadeController fadeController;
 
+    private PlanetDetailResponse currentPlanetData;
+    private List<GalleryItem> galleryItems = new();
+
     void Start()
     {
-        string myId = UserSession.Instance != null ? UserSession.Instance.UserID : "";
-        string planetId = PlanetSession.Instance != null ? PlanetSession.Instance.CurrentPlanetOwnerID :  "";
-
-        isMine = (myId == planetId);
-
         CloseContentPanels();
         CloseModalPanels();
-        OpenGallery();
-
         UpdateTopRightButtons();
-        UpdateVisitorCount(300);
 
-        // 테스트용: 카드 20장 생성
-        for (int i = 1; i <= 20; i++)
+        // 행성 정보 로드
+        StartCoroutine(LoadPlanetData());
+    }
+
+    #region 행성 데이터 로드
+    private IEnumerator LoadPlanetData()
+    {
+        // 현재 보고 있는 행성 ID 확인
+        string targetPlanetId = GetTargetPlanetId();
+
+        if (string.IsNullOrEmpty(targetPlanetId))
         {
-            string description = $"Image {i}\nDescription";
-            string[] tags = new string[] { $"[ Tag 1 ]", $"[ Tag 2 ]", $"[ Tag 3 ]", $"[ Tag 4 ]" };
-            PlanetDataManager.Instance?.AddPhoto(description, tags);
+            Debug.LogError("행성 ID를 찾을 수 없습니다.");
+            yield break;
         }
 
-        LoadGallery();
+        // 행성 상세 정보 조회
+        yield return APIManager.Instance.Get(
+            $"/planets/{targetPlanetId}",
+            onSuccess: (response) =>
+            {
+                currentPlanetData = JsonUtility.FromJson<PlanetDetailResponse>(response);
+
+                // 내 행성인지 확인
+                isMine = (UserSession.Instance.UserID == currentPlanetData.ownerUsername);
+
+                Debug.Log($"행성 로드 완료: {currentPlanetData.ownerNickname}, 내 행성: {isMine}");
+
+                // UI 업데이트
+                UpdateVisitorCount(currentPlanetData.visitCount);
+
+                // 갤러리 로드
+                StartCoroutine(LoadGallery());
+
+                // 기본 패널 열기
+                OpenGallery();
+            },
+            onError: (error) =>
+            {
+                Debug.LogError("행성 정보 로드 실패: " + error);
+            }
+        );
     }
-    
+
+    private string GetTargetPlanetId()
+    {
+        // PlanetSession에서 planetId 가져오기
+        string planetId = PlanetSession.Instance?.CurrentPlanetId;
+
+        // PlanetSession에 정보가 없으면 내 username 사용
+        if (string.IsNullOrEmpty(planetId))
+        {
+            planetId = UserSession.Instance.UserID;  // username = planetId
+        }
+
+        return planetId;
+    }
+    #endregion
+
+    #region 갤러리 로드
+    private IEnumerator LoadGallery()
+    {
+        string planetId = currentPlanetData?.planetId;
+
+        if (string.IsNullOrEmpty(planetId))
+        {
+            Debug.LogWarning("갤러리를 로드할 행성 ID가 없습니다.");
+            yield break;
+        }
+
+        yield return APIManager.Instance.Get(
+            $"/planets/{planetId}/gallery",
+            onSuccess: (response) =>
+            {
+                GalleryListResponse galleryResponse = JsonUtility.FromJson<GalleryListResponse>(response);
+                galleryItems = new List<GalleryItem>(galleryResponse.result);
+
+                Debug.Log($"갤러리 로드 성공: {galleryItems.Count}개");
+
+                RefreshGalleryUI();
+            },
+            onError: (error) =>
+            {
+                Debug.LogWarning("갤러리 로드 실패: " + error);
+                galleryItems.Clear();
+                RefreshGalleryUI();
+            }
+        );
+    }
+
+    private void RefreshGalleryUI()
+    {
+        // 기존 카드 삭제
+        foreach (Transform child in galleryContainer)
+        {
+            Destroy(child.gameObject);
+        }
+
+        // 새 카드 생성
+        foreach (var item in galleryItems)
+        {
+            var card = Instantiate(photoCardPrefab, galleryContainer);
+            var photoCard = card.GetComponent<PhotoCard>();
+            photoCard.Init(this, item);
+        }
+
+        // Content 사이즈 조정
+        if (gridResizer != null)
+            gridResizer.AdjustContentSize();
+    }
+    #endregion
+
+    #region 패널 전환
     private void UpdateSidebarButtonStates(GameObject activePanel)
     {
         buttonGallery.image.color = normalColor;
@@ -93,7 +192,7 @@ public class MyPlanetUIController : MonoBehaviour
         UpdateSidebarButtonStates(panelGallery);
     }
 
-    public void OpenPhoto(PlanetDataManager.PlanetPhotoData data)
+    public void OpenPhoto(GalleryItem item)
     {
         CloseContentPanels();
         panelPhoto.SetActive(true);
@@ -102,10 +201,9 @@ public class MyPlanetUIController : MonoBehaviour
         var photoController = panelPhoto.GetComponent<PhotoPanelController>();
         if (photoController != null)
         {
-            photoController.SetPhotoData(data, isMine);
+            photoController.SetPhotoData(item, isMine);
         }
     }
-
 
     public void OpenGuestbook()
     {
@@ -116,7 +214,8 @@ public class MyPlanetUIController : MonoBehaviour
         var guestbook = panelGuestbook.GetComponent<GuestbookUIController>();
         if (guestbook != null)
         {
-            guestbook.LoadGuestbook();
+            string planetId = currentPlanetData?.planetId;
+            guestbook.LoadGuestbook(planetId);
         }
     }
 
@@ -137,7 +236,9 @@ public class MyPlanetUIController : MonoBehaviour
         CloseModalPanels();
         panelSettings.SetActive(true);
     }
+    #endregion
 
+    #region UI 버튼 핸들러
     public void OnClick_Back()
     {
         fadeController.FadeToScene("000_MainMenu");
@@ -174,34 +275,5 @@ public class MyPlanetUIController : MonoBehaviour
     {
         visitorCountText.text = $"Visitor : {count}";
     }
-
-    public void LoadGallery()
-    {
-        var photos = PlanetDataManager.Instance.GetAllPhotos();
-
-        foreach (Transform child in galleryContainer)
-        {
-            Destroy(child.gameObject);
-        }
-
-        foreach (var photoData in photos)
-        {
-            var card = Instantiate(photoCardPrefab, galleryContainer);
-            var photoCard = card.GetComponent<PhotoCard>();
-            photoCard.Init(this, photoData);
-        }
-
-        // 📌 카드 생성 후 Content 사이즈 조정
-        gridResizer.AdjustContentSize();
-    }
-
-
-    private Sprite LoadSpriteFromPath(string path)
-    {
-        if (!File.Exists(path)) return null;
-        byte[] fileData = File.ReadAllBytes(path);
-        Texture2D tex = new Texture2D(2, 2);
-        tex.LoadImage(fileData);
-        return Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
-    }
+    #endregion
 }

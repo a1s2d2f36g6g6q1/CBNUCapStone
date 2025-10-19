@@ -1,6 +1,5 @@
 ﻿using UnityEngine;
 using TMPro;
-using System;
 
 public class GuestbookCard : MonoBehaviour
 {
@@ -8,10 +7,10 @@ public class GuestbookCard : MonoBehaviour
     public TMP_Text contentText;
     public TMP_Text timestampText;
 
-    public void SetData(string author, string content, DateTime timestamp)
+    public void SetData(GuestbookEntry entry)
     {
-        authorText.text = author;
-        contentText.text = content;
-        timestampText.text = timestamp.ToString("yyyy-MM-dd HH:mm");
+        authorText.text = entry.author;
+        contentText.text = entry.content;
+        timestampText.text = entry.createdAt;  // 백엔드에서 포맷된 문자열로 옴
     }
 }

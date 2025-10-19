@@ -8,12 +8,12 @@ public class PhotoPanelController : MonoBehaviour
     public TMP_Text descriptionText;          // 남의 행성용 (읽기 전용)
     public TMP_Text tagText;
 
-    private PlanetDataManager.PlanetPhotoData currentPhotoData;
-    private bool isMine = true;  // 기본값: 내 행성
+    private GalleryItem currentGalleryItem;
+    private bool isMine = true;
 
-    public void SetPhotoData(PlanetDataManager.PlanetPhotoData data, bool isMine = true)
+    public void SetPhotoData(GalleryItem item, bool isMine = true)
     {
-        currentPhotoData = data;
+        currentGalleryItem = item;
         this.isMine = isMine;
 
         descriptionField.gameObject.SetActive(isMine);
@@ -21,21 +21,22 @@ public class PhotoPanelController : MonoBehaviour
 
         if (isMine)
         {
-            descriptionField.text = data.description;
+            descriptionField.text = item.description;
         }
         else
         {
-            descriptionText.text = data.description;
+            descriptionText.text = item.description;
         }
 
-        tagText.text = string.Join(" ", data.tags);
+        tagText.text = string.Join(" ", item.tags);
     }
 
     public void OnDescriptionChanged()
     {
-        if (currentPhotoData != null && isMine)
+        if (currentGalleryItem != null && isMine)
         {
-            currentPhotoData.description = descriptionField.text;
+            currentGalleryItem.description = descriptionField.text;
+            // TODO: 설명 수정 API 호출
         }
     }
 }

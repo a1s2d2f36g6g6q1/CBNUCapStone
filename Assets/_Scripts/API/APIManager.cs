@@ -8,7 +8,7 @@ public class APIManager : MonoBehaviour
 {
     public static APIManager Instance { get; private set; }
 
-    private const string BASE_URL = "http://13.209.33.42:80";
+    private const string BASE_URL = "http://13.209.33.42:3000";
     private string jwtToken = "";
 
     private void Awake()

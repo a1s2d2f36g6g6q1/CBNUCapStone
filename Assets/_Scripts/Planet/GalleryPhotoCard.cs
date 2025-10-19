@@ -7,19 +7,22 @@ public class PhotoCard : MonoBehaviour
     public Image thumbnailImage;
 
     private MyPlanetUIController uiController;
-    private PlanetDataManager.PlanetPhotoData photoData;
+    private GalleryItem galleryItem;
 
-    public void Init(MyPlanetUIController controller, PlanetDataManager.PlanetPhotoData data)
+    public void Init(MyPlanetUIController controller, GalleryItem item)
     {
         uiController = controller;
-        photoData = data;
+        galleryItem = item;
+
+        // TODO: imageUrl로 썸네일 로드
+        // 현재는 기본 이미지 사용
     }
 
     public void OnClick()
     {
-        if (uiController != null && photoData != null)
+        if (uiController != null && galleryItem != null)
         {
-            uiController.OpenPhoto(photoData);
+            uiController.OpenPhoto(galleryItem);
         }
         else
         {

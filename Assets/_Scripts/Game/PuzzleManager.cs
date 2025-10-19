@@ -27,7 +27,6 @@ public class PuzzleManager : MonoBehaviour
     private Tile[,] tiles;
     private bool tilesRevealed;
     private bool waitingForReveal;
-    private bool puzzleCleared = false;
 
     // 새로 추가되는 상태 변수들 (완료 처리용)
     private bool puzzleCompleted = false; // 퍼즐이 맞춰진 상태 (아직 클리어 아님)
@@ -77,7 +76,6 @@ public class PuzzleManager : MonoBehaviour
         this.puzzleImage = texture;
         this.width = width;
         this.height = height;
-        this.puzzleCleared = false;
         this.tilesRevealed = false;
         this.waitingForReveal = false;
         // 새로 추가된 상태 변수들 초기화
@@ -347,7 +345,6 @@ public class PuzzleManager : MonoBehaviour
 
         gameFinished = true;
         waitingForFinalClick = false;
-        puzzleCleared = true;
 
         // 타이머 정지
         if (timerManager != null)
@@ -358,7 +355,52 @@ public class PuzzleManager : MonoBehaviour
             flashEffect.PlayFlash();
 
         // 빈 타일 채우기 및 클리어 연출
+        StartCoroutine(SavePuzzleResult());
         StartCoroutine(CompletePuzzleAnimation());
+    }
+    private System.Collections.IEnumerator SavePuzzleResult()
+    {
+        if (puzzleImage == null)
+        {
+            Debug.LogWarning("저장할 이미지가 없습니다.");
+            yield break;
+        }
+
+        // 이미지를 Base64로 인코딩
+        byte[] imageBytes = puzzleImage.EncodeToPNG();
+        string base64Image = System.Convert.ToBase64String(imageBytes);
+
+        // 태그 정보 가져오기
+        string[] tags = UserSession.Instance.Tags?.ToArray() ?? new string[] { "puzzle", "cleared" };
+
+        // 클리어 시간 설명
+        string clearTime = timerManager != null ? timerManager.GetFormattedTime() : "Unknown";
+        string description = $"Puzzle cleared in {clearTime}";
+
+        // 업로드 요청 데이터
+        GalleryUploadRequest uploadData = new GalleryUploadRequest
+        {
+            imageBase64 = base64Image,
+            description = description,
+            tags = tags
+        };
+
+        Debug.Log("갤러리에 이미지 업로드 중...");
+
+        yield return APIManager.Instance.Post(
+            $"/planets/{UserSession.Instance.UserID}/gallery",  // 내 행성에 업로드
+            uploadData,
+            onSuccess: (response) =>
+            {
+                GalleryUploadResponse uploadResponse = JsonUtility.FromJson<GalleryUploadResponse>(response);
+                Debug.Log($"갤러리 업로드 성공! ImageId: {uploadResponse.imageId}");
+            },
+            onError: (error) =>
+            {
+                Debug.LogError("갤러리 업로드 실패: " + error);
+                // 업로드 실패해도 게임은 계속 진행
+            }
+        );
     }
 
     // 클리어 연출 코루틴 (새로 추가)

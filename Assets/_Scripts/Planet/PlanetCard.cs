@@ -9,8 +9,9 @@ public class PlanetCard : MonoBehaviour
     public Button bookmarkButton;
     public Image bookmarkIcon;
 
-    private string planetOwner;
+    private PlanetListItem planetData;
     private bool isBookmarked = false;
+    private P001_Planet planetManager;
     private FadeController fadeController;
 
     private static readonly Color bookmarkedColor = new Color32(0xFA, 0xFF, 0x55, 0xFF);
@@ -21,12 +22,18 @@ public class PlanetCard : MonoBehaviour
         fadeController = FindObjectOfType<FadeController>();
     }
 
-    public void Init(string nickname)
+    public void Init(PlanetListItem data, bool isFavorite, P001_Planet manager)
     {
-        planetOwner = nickname;
-        nicknameText.text = nickname;
+        planetData = data;
+        isBookmarked = isFavorite;
+        planetManager = manager;
 
+        nicknameText.text = data.ownerNickname;
+
+        visitButton.onClick.RemoveAllListeners();
         visitButton.onClick.AddListener(OnClick_Visit);
+
+        bookmarkButton.onClick.RemoveAllListeners();
         bookmarkButton.onClick.AddListener(OnClick_ToggleBookmark);
 
         UpdateBookmarkColor();
@@ -34,16 +41,54 @@ public class PlanetCard : MonoBehaviour
 
     private void OnClick_Visit()
     {
-        Debug.Log($"{planetOwner}의 행성 방문 요청");
-        fadeController.FadeToScene("P003_OtherPlanet");
+        // planetId가 비어있으면 username 사용
+        string actualPlanetId = string.IsNullOrEmpty(planetData.planetId) ?
+            planetData.ownerUsername :
+            planetData.planetId;
+
+        Debug.Log($"{planetData.ownerNickname}의 행성 방문 (planetId: {actualPlanetId})");
+
+        // PlanetSession에 저장
+        if (PlanetSession.Instance != null)
+        {
+            PlanetSession.Instance.CurrentPlanetOwnerID = planetData.ownerUsername;
+            PlanetSession.Instance.CurrentPlanetId = actualPlanetId;
+        }
+
+        // 행성 방문 기록
+        StartCoroutine(RecordVisit(actualPlanetId));
+
+        // P002_MyPlanet으로 이동
+        fadeController.FadeToScene("P002_MyPlanet");
+    }
+
+    private System.Collections.IEnumerator RecordVisit(string planetId)
+    {
+        yield return APIManager.Instance.Post(
+            $"/planets/{planetId}/visit",
+            new { },
+            onSuccess: (response) =>
+            {
+                Debug.Log($"{planetData.ownerNickname} 행성 방문 기록 완료");
+            },
+            onError: (error) =>
+            {
+                Debug.LogWarning("행성 방문 기록 실패: " + error);
+            }
+        );
     }
 
     private void OnClick_ToggleBookmark()
     {
-        isBookmarked = !isBookmarked;
-        UpdateBookmarkColor();
+        // planetId가 비어있으면 username 사용
+        string actualPlanetId = string.IsNullOrEmpty(planetData.planetId) ?
+            planetData.ownerUsername :
+            planetData.planetId;
 
-        Debug.Log($"{planetOwner} 즐겨찾기 상태: {isBookmarked}");
+        if (planetManager != null)
+        {
+            planetManager.ToggleFavorite(actualPlanetId, isBookmarked);
+        }
     }
 
     private void UpdateBookmarkColor()
@@ -53,5 +98,5 @@ public class PlanetCard : MonoBehaviour
     }
 
     public bool IsBookmarked => isBookmarked;
-    public string PlanetOwner => planetOwner;
+    public string PlanetOwner => planetData?.ownerNickname ?? "";
 }

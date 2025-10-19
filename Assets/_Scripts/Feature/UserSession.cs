@@ -31,6 +31,11 @@ public class UserSession : MonoBehaviour
             // 토큰이 있으면 프로필 정보 불러오기
             StartCoroutine(LoadUserProfile());
         }
+        else
+        {
+            // 토큰 없으면 즉시 UI 업데이트 트리거
+            BroadcastLoginStateChanged();
+        }
     }
 
     private System.Collections.IEnumerator LoadUserProfile()
@@ -41,15 +46,26 @@ public class UserSession : MonoBehaviour
                 UserData userData = JsonUtility.FromJson<UserData>(response);
                 SetUserInfo(userData.username, userData.nickname);
                 Debug.Log("자동 로그인 성공");
+
+                BroadcastLoginStateChanged(); // 추가
             },
             onError: (error) =>
             {
                 Debug.LogWarning("자동 로그인 실패: " + error);
                 Logout();
+                BroadcastLoginStateChanged(); // 추가
             }
         );
     }
 
+    public System.Action OnLoginStateChanged; // 이벤트 추가
+
+    private void BroadcastLoginStateChanged()
+    {
+        OnLoginStateChanged?.Invoke();
+    }
+
+    // UserSession.cs 수정
     public void SetUserInfo(string id, string nickname)
     {
         if (string.IsNullOrEmpty(id))
@@ -61,6 +77,8 @@ public class UserSession : MonoBehaviour
         UserID = id;
         Nickname = nickname;
         IsLoggedIn = true;
+
+        Debug.Log($"SetUserInfo 호출됨 - ID: {id}, Nickname: {nickname}, IsLoggedIn: {IsLoggedIn}"); // 추가
     }
 
     public void UpdateNickname(string newNickname)

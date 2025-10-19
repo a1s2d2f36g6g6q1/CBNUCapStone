@@ -9,37 +9,47 @@ public class FriendCard : MonoBehaviour
     public Button visitButton;
     public Button deleteButton;
 
-    private string friendName;
+    private FriendItem friendData;
     private FadeController fadeController;
 
     private void Awake()
     {
-        // FadeController는 메인 씬에서 찾거나 주입
         fadeController = FindObjectOfType<FadeController>();
     }
 
-    public void Init(string nickname)
+    public void Init(FriendItem friend)
     {
-        friendName = nickname;
-        nicknameText.text = nickname;
+        friendData = friend;
+        nicknameText.text = friend.nickname;
 
+        visitButton.onClick.RemoveAllListeners();
         visitButton.onClick.AddListener(OnClick_Visit);
+
+        deleteButton.onClick.RemoveAllListeners();
         deleteButton.onClick.AddListener(OnClick_Delete);
     }
 
     public void OnClick_Visit()
     {
-        Debug.Log($"{friendName}의 행성 방문 요청");
-        // TODO: friendName을 기반으로 방문할 행성 데이터 전달
+        Debug.Log($"{friendData.nickname}의 행성 방문");
 
-        // 지금은 그냥 메인 메뉴로 이동
-        fadeController.FadeToScene("000_MainMenu");
+        // PlanetSession에 친구 행성 정보 저장
+        if (PlanetSession.Instance != null)
+        {
+            PlanetSession.Instance.CurrentPlanetOwnerID = friendData.username;
+            PlanetSession.Instance.CurrentPlanetId = friendData.planetId;
+        }
+
+        // P002_MyPlanet으로 이동 (자동으로 타인 행성으로 인식됨)
+        fadeController.FadeToScene("P002_MyPlanet");
     }
 
     public void OnClick_Delete()
     {
-        Debug.Log($"{friendName} 삭제 요청");
+        Debug.Log($"{friendData.nickname} 삭제 요청");
+
+        // TODO: 친구 삭제 API 호출
+        // 지금은 UI에서만 제거
         Destroy(gameObject);
-        // TODO: friendName을 기반으로 DB 삭제 요청 전송 필요
     }
 }

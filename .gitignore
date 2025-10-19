@@ -9,3 +9,6 @@ MemoryCaptures/
 .DS_Store
 Thumbs.db
 .env
+
+[Oo]bj/
+[Bb]in/
