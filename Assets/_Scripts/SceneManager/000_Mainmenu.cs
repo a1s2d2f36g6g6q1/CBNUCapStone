@@ -50,6 +50,21 @@ public class MainMenuUIController : MonoBehaviour
 
     private void Start()
     {
+        // SocketIOManager 자동 생성
+        if (SocketIOManager.Instance == null)
+        {
+            GameObject socketObj = new GameObject("SocketIOManager");
+            socketObj.AddComponent<SocketIOManager>();
+            Debug.Log("SocketIOManager 자동 생성");
+        }
+
+        // MultiplaySession 자동 생성
+        if (MultiplaySession.Instance == null)
+        {
+            GameObject sessionObj = new GameObject("MultiplaySession");
+            sessionObj.AddComponent<MultiplaySession>();
+            Debug.Log("MultiplaySession 자동 생성");
+        }
         signupIdField.onValueChanged.AddListener(OnIDInputChanged);
         SetIDCheckState_Default();
         UpdateSignupButtonInteractable();
@@ -422,9 +437,78 @@ public class MainMenuUIController : MonoBehaviour
         fadeController.FadeToScene("G001_TagInput");
     }
 
+    // MainMenuUIController.cs에 추가/수정
+
     public void OnClick_CreateParty()
     {
-        fadeController.FadeToScene("B001_CreateParty");
+        SetLoadingState(true);
+
+        if (SocketIOManager.Instance != null)
+        {
+            SocketIOManager.Instance.OnConnected += OnSocketConnectedForCreate;
+            SocketIOManager.Instance.OnConnectionError += OnSocketConnectionError;
+            SocketIOManager.Instance.Connect();
+        }
+        else
+        {
+            Debug.LogError("SocketIOManager가 없습니다.");
+            SetLoadingState(false);
+        }
+    }
+
+    private void OnSocketConnectedForCreate()
+    {
+        SocketIOManager.Instance.OnConnected -= OnSocketConnectedForCreate;
+        SocketIOManager.Instance.OnConnectionError -= OnSocketConnectionError;
+
+        Debug.Log("웹소켓 연결 성공, 방 생성 중...");
+
+        // 멀티플레이 이벤트 등록
+        SocketIOManager.Instance.RegisterMultiplayEvents();
+
+        // 방 생성 API 호출
+        StartCoroutine(CreateRoomCoroutine());
+    }
+
+    private void OnSocketConnectionError(string error)
+    {
+        SocketIOManager.Instance.OnConnected -= OnSocketConnectedForCreate;
+        SocketIOManager.Instance.OnConnectionError -= OnSocketConnectionError;
+
+        ShowError("웹소켓 연결 실패: " + error);
+        SetLoadingState(false);
+    }
+
+    private IEnumerator CreateRoomCoroutine()
+    {
+        CreateRoomRequest request = new CreateRoomRequest();
+
+        yield return APIManager.Instance.Post(
+            "/games/multiplay/rooms/create",
+            request,
+            onSuccess: (response) =>
+            {
+                CreateRoomResponse roomResponse = JsonUtility.FromJson<CreateRoomResponse>(response);
+
+                // MultiplaySession에 방 정보 저장 (호스트)
+                MultiplaySession.Instance.SetRoomInfo(
+                    roomResponse.roomId,
+                    roomResponse.sessionCode,
+                    true // 호스트
+                );
+
+                Debug.Log($"방 생성 성공! RoomId: {roomResponse.roomId}, Code: {roomResponse.sessionCode}");
+
+                SetLoadingState(false);
+                fadeController.FadeToScene("B001_CreateParty");
+            },
+            onError: (error) =>
+            {
+                ShowError("방 생성 실패: " + error);
+                SetLoadingState(false);
+                SocketIOManager.Instance.Disconnect();
+            }
+        );
     }
 
     public void OnClick_JoinParty()

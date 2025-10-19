@@ -55,8 +55,9 @@ public class PlanetData
 [Serializable]
 public class PlanetListResponse
 {
-    public PlanetListItem[] result;  // ← 이 필드 추가
+    public PlanetListItem[] result;
 }
+
 [Serializable]
 public class GalleryItem
 {
@@ -84,7 +85,7 @@ public class GuestbookEntry
 [Serializable]
 public class GuestbookListResponse
 {
-    public GuestbookEntry[] guestbook;  // ← 배열로 유지
+    public GuestbookEntry[] guestbook;
 }
 
 [Serializable]
@@ -99,11 +100,13 @@ public class ApiResponse
     public bool success;
     public string message;
 }
+
 [Serializable]
 public class CheckUsernameResponse
 {
     public bool available;
 }
+
 [Serializable]
 public class PlanetDetailResponse
 {
@@ -126,7 +129,7 @@ public class PlanetListItem
 [Serializable]
 public class FavoriteListResponse
 {
-    public PlanetListItem[] result;  // ← 이 필드 추가
+    public PlanetListItem[] result;
 }
 
 [Serializable]
@@ -136,12 +139,13 @@ public class VisitResponse
     public string message;
     public int visitCount;
 }
+
 [Serializable]
 public class FriendItem
 {
     public string username;
     public string nickname;
-    public string planetId;  // 나중에 planetId 준비되면 사용
+    public string planetId;
 }
 
 [Serializable]
@@ -149,10 +153,11 @@ public class FriendListResponse
 {
     public FriendItem[] result;
 }
+
 [Serializable]
 public class GalleryUploadRequest
 {
-    public string imageBase64;  // Base64 인코딩된 이미지
+    public string imageBase64;
     public string description;
     public string[] tags;
 }
@@ -163,4 +168,53 @@ public class GalleryUploadResponse
     public bool success;
     public string imageId;
     public string message;
+}
+
+// 멀티플레이 관련 추가
+[Serializable]
+public class PlayerData
+{
+    public string userId;
+    public string nickname;
+    public bool isReady;
+    public bool isHost;
+    public float clearTime = -1f;
+    public int rank = 0;
+}
+
+[Serializable]
+public class RoomData
+{
+    public string roomId;
+    public string sessionCode;
+    public string hostId;
+    public List<PlayerData> players;
+    public bool isGameStarted;
+    public int maxPlayers = 4;
+}
+
+[Serializable]
+public class CreateRoomRequest
+{
+    // 빈 클래스
+}
+
+[Serializable]
+public class CreateRoomResponse
+{
+    public string roomId;
+    public string sessionCode;
+}
+
+[Serializable]
+public class JoinRoomRequest
+{
+    public string sessionCode;
+}
+
+[Serializable]
+public class JoinRoomResponse
+{
+    public string roomId;
+    public RoomData roomData;
 }

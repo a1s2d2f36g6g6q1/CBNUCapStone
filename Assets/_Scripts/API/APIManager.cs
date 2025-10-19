@@ -25,6 +25,11 @@ public class APIManager : MonoBehaviour
         LoadToken();
     }
 
+    public string GetToken()
+    {
+        return jwtToken;
+    }
+
     #region Token Management
     public void SetToken(string token)
     {
