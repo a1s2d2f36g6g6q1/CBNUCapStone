@@ -45,8 +45,8 @@ public class MyPlanetUIController : MonoBehaviour
     [Header("Fade")]
     public FadeController fadeController;
 
-    private PlanetDetailResponse currentPlanetData;
     private List<GalleryItem> galleryItems = new();
+    private string currentPlanetUsername; // username 저장
 
     void Start()
     {
@@ -61,35 +61,53 @@ public class MyPlanetUIController : MonoBehaviour
     #region 행성 데이터 로드
     private IEnumerator LoadPlanetData()
     {
-        // 현재 보고 있는 행성 ID 확인
-        string targetPlanetId = GetTargetPlanetId();
+        // 현재 보고 있는 행성 username 확인
+        string targetUsername = GetTargetUsername();
 
-        if (string.IsNullOrEmpty(targetPlanetId))
+        Debug.Log($"[LoadPlanetData] targetUsername: {targetUsername}");
+
+        if (string.IsNullOrEmpty(targetUsername))
         {
-            Debug.LogError("행성 ID를 찾을 수 없습니다.");
+            Debug.LogError("username을 찾을 수 없습니다.");
             yield break;
         }
 
         // 행성 상세 정보 조회
         yield return APIManager.Instance.Get(
-            $"/planets/{targetPlanetId}",
+            $"/planets/{targetUsername}",
             onSuccess: (response) =>
             {
-                currentPlanetData = JsonUtility.FromJson<PlanetDetailResponse>(response);
+                Debug.Log($"[API 응답 원본] {response}");
 
-                // 내 행성인지 확인
-                isMine = (UserSession.Instance.UserID == currentPlanetData.ownerUsername);
+                PlanetDetailResponse wrapper = JsonUtility.FromJson<PlanetDetailResponse>(response);
 
-                Debug.Log($"행성 로드 완료: {currentPlanetData.ownerNickname}, 내 행성: {isMine}");
+                if (wrapper != null && wrapper.result != null)
+                {
+                    PlanetDetail planet = wrapper.result;
 
-                // UI 업데이트
-                UpdateVisitorCount(currentPlanetData.visitCount);
+                    // username 저장
+                    currentPlanetUsername = planet.ownerUsername;
 
-                // 갤러리 로드
-                StartCoroutine(LoadGallery());
+                    Debug.Log($"[파싱 결과] ownerUsername: {planet.ownerUsername}, title: {planet.title}");
 
-                // 기본 패널 열기
-                OpenGallery();
+                    // 내 행성인지 확인
+                    isMine = (UserSession.Instance.UserID == planet.ownerUsername);
+
+                    Debug.Log($"행성 로드 완료: {planet.title}, 내 행성: {isMine}");
+
+                    // UI 업데이트
+                    UpdateVisitorCount(planet.visitCount);
+
+                    // 갤러리 로드
+                    StartCoroutine(LoadGallery(planet.ownerUsername));
+
+                    // 기본 패널 열기
+                    OpenGallery();
+                }
+                else
+                {
+                    Debug.LogError("행성 데이터 파싱 실패");
+                }
             },
             onError: (error) =>
             {
@@ -98,40 +116,51 @@ public class MyPlanetUIController : MonoBehaviour
         );
     }
 
-    private string GetTargetPlanetId()
+    private string GetTargetUsername()
     {
-        // PlanetSession에서 planetId 가져오기
-        string planetId = PlanetSession.Instance?.CurrentPlanetId;
+        // PlanetSession에서 username 가져오기
+        string username = PlanetSession.Instance?.CurrentPlanetOwnerID;
+
+        Debug.Log($"[GetTargetUsername] PlanetSession username: {username}");
 
         // PlanetSession에 정보가 없으면 내 username 사용
-        if (string.IsNullOrEmpty(planetId))
+        if (string.IsNullOrEmpty(username))
         {
-            planetId = UserSession.Instance.UserID;  // username = planetId
+            username = UserSession.Instance.UserID;
+            Debug.Log($"[GetTargetUsername] UserSession username: {username}");
         }
 
-        return planetId;
+        return username;
     }
     #endregion
 
     #region 갤러리 로드
-    private IEnumerator LoadGallery()
+    private IEnumerator LoadGallery(string username)
     {
-        string planetId = currentPlanetData?.planetId;
-
-        if (string.IsNullOrEmpty(planetId))
+        if (string.IsNullOrEmpty(username))
         {
-            Debug.LogWarning("갤러리를 로드할 행성 ID가 없습니다.");
+            Debug.LogWarning("갤러리를 로드할 username이 없습니다.");
             yield break;
         }
 
         yield return APIManager.Instance.Get(
-            $"/planets/{planetId}/gallery",
+            $"/planets/{username}/gallery",
             onSuccess: (response) =>
             {
-                GalleryListResponse galleryResponse = JsonUtility.FromJson<GalleryListResponse>(response);
-                galleryItems = new List<GalleryItem>(galleryResponse.result);
+                Debug.Log($"[갤러리 API 응답] {response}");
 
-                Debug.Log($"갤러리 로드 성공: {galleryItems.Count}개");
+                GalleryListResponse galleryResponse = JsonUtility.FromJson<GalleryListResponse>(response);
+
+                if (galleryResponse != null && galleryResponse.result != null && galleryResponse.result.galleries != null)
+                {
+                    galleryItems = new List<GalleryItem>(galleryResponse.result.galleries);
+                    Debug.Log($"갤러리 로드 성공: {galleryItems.Count}개");
+                }
+                else
+                {
+                    Debug.LogWarning("갤러리 result가 null");
+                    galleryItems.Clear();
+                }
 
                 RefreshGalleryUI();
             },
@@ -214,8 +243,7 @@ public class MyPlanetUIController : MonoBehaviour
         var guestbook = panelGuestbook.GetComponent<GuestbookUIController>();
         if (guestbook != null)
         {
-            string planetId = currentPlanetData?.planetId;
-            guestbook.LoadGuestbook(planetId);
+            guestbook.LoadGuestbook(currentPlanetUsername);
         }
     }
 

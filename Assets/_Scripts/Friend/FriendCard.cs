@@ -31,13 +31,13 @@ public class FriendCard : MonoBehaviour
 
     public void OnClick_Visit()
     {
-        Debug.Log($"{friendData.nickname}의 행성 방문");
+        Debug.Log($"{friendData.nickname}의 행성 방문 (username: {friendData.username})");
 
         // PlanetSession에 친구 행성 정보 저장
         if (PlanetSession.Instance != null)
         {
             PlanetSession.Instance.CurrentPlanetOwnerID = friendData.username;
-            PlanetSession.Instance.CurrentPlanetId = friendData.planetId;
+            PlanetSession.Instance.CurrentPlanetId = friendData.username; // username = planetId
         }
 
         // P002_MyPlanet으로 이동 (자동으로 타인 행성으로 인식됨)

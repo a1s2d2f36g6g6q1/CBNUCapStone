@@ -11,22 +11,22 @@ public class GuestbookUIController : MonoBehaviour
     public TMP_InputField inputField;
     public Button submitButton;
 
-    private string currentPlanetId;
+    private string currentPlanetUsername;
 
-    public void LoadGuestbook(string planetId)
+    public void LoadGuestbook(string ownerUsername)
     {
-        currentPlanetId = planetId;
+        currentPlanetUsername = ownerUsername;
 
-        if (string.IsNullOrEmpty(planetId))
+        if (string.IsNullOrEmpty(ownerUsername))
         {
-            Debug.LogWarning("행성 ID가 없어 방명록을 로드할 수 없습니다.");
+            Debug.LogWarning("username이 없어 방명록을 로드할 수 없습니다.");
             return;
         }
 
-        StartCoroutine(LoadGuestbookCoroutine(planetId));
+        StartCoroutine(LoadGuestbookCoroutine(ownerUsername));
     }
 
-    private IEnumerator LoadGuestbookCoroutine(string planetId)
+    private IEnumerator LoadGuestbookCoroutine(string ownerUsername)
     {
         // 기존 카드 삭제
         foreach (Transform child in contentContainer)
@@ -35,18 +35,27 @@ public class GuestbookUIController : MonoBehaviour
         }
 
         yield return APIManager.Instance.Get(
-            $"/planets/{planetId}/guestbook",
+            $"/planets/{ownerUsername}/guestbook",
             onSuccess: (response) =>
             {
+                Debug.Log($"[방명록 API 응답] {response}");
+
                 GuestbookListResponse guestbookResponse = JsonUtility.FromJson<GuestbookListResponse>(response);
 
-                Debug.Log($"방명록 로드 성공: {guestbookResponse.guestbook.Length}개");  // ← 여기
-
-                foreach (var entry in guestbookResponse.guestbook)
+                if (guestbookResponse != null && guestbookResponse.result != null && guestbookResponse.result.guestbooks != null)
                 {
-                    var card = Instantiate(guestbookCardPrefab, contentContainer);
-                    var cardUI = card.GetComponent<GuestbookCard>();
-                    cardUI.SetData(entry);
+                    Debug.Log($"방명록 로드 성공: {guestbookResponse.result.guestbooks.Length}개");
+
+                    foreach (var entry in guestbookResponse.result.guestbooks)
+                    {
+                        var card = Instantiate(guestbookCardPrefab, contentContainer);
+                        var cardUI = card.GetComponent<GuestbookCard>();
+                        cardUI.SetData(entry);
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning("방명록 데이터가 null입니다.");
                 }
 
                 // 로그인 상태에 따라 작성 가능 여부 설정
@@ -69,9 +78,9 @@ public class GuestbookUIController : MonoBehaviour
             return;
         }
 
-        if (string.IsNullOrEmpty(currentPlanetId))
+        if (string.IsNullOrEmpty(currentPlanetUsername))
         {
-            Debug.LogWarning("행성 ID가 없어 방명록을 작성할 수 없습니다.");
+            Debug.LogWarning("username이 없어 방명록을 작성할 수 없습니다.");
             return;
         }
 
@@ -86,7 +95,7 @@ public class GuestbookUIController : MonoBehaviour
         };
 
         yield return APIManager.Instance.Post(
-            $"/planets/{currentPlanetId}/guestbook",
+            $"/planets/{currentPlanetUsername}/guestbook",
             requestData,
             onSuccess: (response) =>
             {
@@ -94,7 +103,7 @@ public class GuestbookUIController : MonoBehaviour
                 inputField.text = "";
 
                 // 방명록 새로고침
-                LoadGuestbook(currentPlanetId);
+                LoadGuestbook(currentPlanetUsername);
             },
             onError: (error) =>
             {

@@ -9,8 +9,24 @@ public class GuestbookCard : MonoBehaviour
 
     public void SetData(GuestbookEntry entry)
     {
-        authorText.text = entry.author;
+        authorText.text = entry.authorUsername;
         contentText.text = entry.content;
-        timestampText.text = entry.createdAt;  // 백엔드에서 포맷된 문자열로 옴
+        timestampText.text = FormatTimestamp(entry.written_at);
+    }
+
+    private string FormatTimestamp(string isoDate)
+    {
+        if (string.IsNullOrEmpty(isoDate))
+            return "";
+
+        try
+        {
+            System.DateTime dateTime = System.DateTime.Parse(isoDate);
+            return dateTime.ToString("yyyy-MM-dd HH:mm");
+        }
+        catch
+        {
+            return isoDate; // 파싱 실패하면 원본 그대로
+        }
     }
 }

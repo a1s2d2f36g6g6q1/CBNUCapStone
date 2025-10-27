@@ -41,31 +41,26 @@ public class PlanetCard : MonoBehaviour
 
     private void OnClick_Visit()
     {
-        // planetId가 비어있으면 username 사용
-        string actualPlanetId = string.IsNullOrEmpty(planetData.planetId) ?
-            planetData.ownerUsername :
-            planetData.planetId;
-
-        Debug.Log($"{planetData.ownerNickname}의 행성 방문 (planetId: {actualPlanetId})");
+        Debug.Log($"{planetData.ownerNickname}의 행성 방문 (username: {planetData.ownerUsername})");
 
         // PlanetSession에 저장
         if (PlanetSession.Instance != null)
         {
             PlanetSession.Instance.CurrentPlanetOwnerID = planetData.ownerUsername;
-            PlanetSession.Instance.CurrentPlanetId = actualPlanetId;
+            PlanetSession.Instance.CurrentPlanetId = planetData.ownerUsername; // username = planetId
         }
 
         // 행성 방문 기록
-        StartCoroutine(RecordVisit(actualPlanetId));
+        StartCoroutine(RecordVisit(planetData.ownerUsername));
 
         // P002_MyPlanet으로 이동
         fadeController.FadeToScene("P002_MyPlanet");
     }
 
-    private System.Collections.IEnumerator RecordVisit(string planetId)
+    private System.Collections.IEnumerator RecordVisit(string ownerUsername)
     {
         yield return APIManager.Instance.Post(
-            $"/planets/{planetId}/visit",
+            $"/planets/{ownerUsername}/visit",
             new { },
             onSuccess: (response) =>
             {
@@ -80,14 +75,9 @@ public class PlanetCard : MonoBehaviour
 
     private void OnClick_ToggleBookmark()
     {
-        // planetId가 비어있으면 username 사용
-        string actualPlanetId = string.IsNullOrEmpty(planetData.planetId) ?
-            planetData.ownerUsername :
-            planetData.planetId;
-
         if (planetManager != null)
         {
-            planetManager.ToggleFavorite(actualPlanetId, isBookmarked);
+            planetManager.ToggleFavorite(planetData.ownerUsername, isBookmarked);
         }
     }
 

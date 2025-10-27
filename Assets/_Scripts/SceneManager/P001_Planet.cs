@@ -50,7 +50,7 @@ public class P001_Planet : MonoBehaviour
 
     private IEnumerator LoadPlanetListCoroutine()
     {
-        // 1. 전체 행성 목록 가져오기
+        // 전체 행성 목록 가져오기
         yield return APIManager.Instance.Get(
             "/planets",
             onSuccess: (response) =>
@@ -59,7 +59,7 @@ public class P001_Planet : MonoBehaviour
                 allPlanets = new List<PlanetListItem>(planetResponse.result);
                 Debug.Log($"행성 목록 로드 성공: {allPlanets.Count}개");
 
-                // 2. 로그인 상태면 즐겨찾기 목록도 가져오기
+                // 로그인 상태면 즐겨찾기 목록도 가져오기
                 if (UserSession.Instance.IsLoggedIn)
                 {
                     StartCoroutine(LoadFavoriteListCoroutine());
@@ -109,8 +109,8 @@ public class P001_Planet : MonoBehaviour
 
         if (isRecentSort)
         {
-            // 최신순 정렬 (planetId 기준)
-            sortedList.Sort((a, b) => string.Compare(b.planetId, a.planetId));
+            // 최신순 정렬 (ownerUsername 기준, 실제로는 생성일 필요)
+            sortedList.Sort((a, b) => string.Compare(b.ownerUsername, a.ownerUsername));
         }
         else
         {
@@ -124,7 +124,7 @@ public class P001_Planet : MonoBehaviour
 
         foreach (var planet in sortedList)
         {
-            if (IsFavorite(planet.planetId))
+            if (IsFavorite(planet.ownerUsername))
                 favoriteFirst.Add(planet);
             else
                 others.Add(planet);
@@ -137,14 +137,14 @@ public class P001_Planet : MonoBehaviour
         {
             var card = Instantiate(planetCardPrefab, planetListContainer);
             var planetCard = card.GetComponent<PlanetCard>();
-            bool isFav = IsFavorite(planet.planetId);
+            bool isFav = IsFavorite(planet.ownerUsername);
             planetCard.Init(planet, isFav, this);
         }
     }
 
-    private bool IsFavorite(string planetId)
+    private bool IsFavorite(string ownerUsername)
     {
-        return favoritePlanets.Exists(p => p.planetId == planetId);
+        return favoritePlanets.Exists(p => p.ownerUsername == ownerUsername);
     }
     #endregion
 
@@ -188,14 +188,14 @@ public class P001_Planet : MonoBehaviour
         {
             var card = Instantiate(planetCardPrefab, planetListContainer);
             var planetCard = card.GetComponent<PlanetCard>();
-            bool isFav = IsFavorite(planet.planetId);
+            bool isFav = IsFavorite(planet.ownerUsername);
             planetCard.Init(planet, isFav, this);
         }
     }
     #endregion
 
     #region 즐겨찾기 토글 (PlanetCard에서 호출)
-    public void ToggleFavorite(string planetId, bool currentState)
+    public void ToggleFavorite(string ownerUsername, bool currentState)
     {
         if (!UserSession.Instance.IsLoggedIn)
         {
@@ -203,20 +203,20 @@ public class P001_Planet : MonoBehaviour
             return;
         }
 
-        StartCoroutine(ToggleFavoriteCoroutine(planetId, currentState));
+        StartCoroutine(ToggleFavoriteCoroutine(ownerUsername, currentState));
     }
 
-    private IEnumerator ToggleFavoriteCoroutine(string planetId, bool currentState)
+    private IEnumerator ToggleFavoriteCoroutine(string ownerUsername, bool currentState)
     {
         if (currentState)
         {
             // 즐겨찾기 해제
             yield return APIManager.Instance.Delete(
-                $"/planets/{planetId}/favorite",
+                $"/planets/{ownerUsername}/favorite",
                 onSuccess: (response) =>
                 {
                     Debug.Log("즐겨찾기 해제 성공");
-                    favoritePlanets.RemoveAll(p => p.planetId == planetId);
+                    favoritePlanets.RemoveAll(p => p.ownerUsername == ownerUsername);
                     RefreshPlanetList();
                 },
                 onError: (error) =>
@@ -229,7 +229,7 @@ public class P001_Planet : MonoBehaviour
         {
             // 즐겨찾기 추가
             yield return APIManager.Instance.Post(
-                $"/planets/{planetId}/favorite",
+                $"/planets/{ownerUsername}/favorite",
                 new { },
                 onSuccess: (response) =>
                 {

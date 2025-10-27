@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -441,19 +442,24 @@ public class MainMenuUIController : MonoBehaviour
 
     public void OnClick_CreateParty()
     {
+        Debug.Log("===== CreateParty 버튼 클릭됨 =====");
+
+        if (APIManager.Instance == null)
+        {
+            Debug.LogError("APIManager가 null입니다!");
+            return;
+        }
+
+        if (MultiplaySession.Instance == null)
+        {
+            Debug.LogError("MultiplaySession이 null입니다!");
+            return;
+        }
+
+        Debug.Log("방 생성 API 호출 시작");
         SetLoadingState(true);
 
-        if (SocketIOManager.Instance != null)
-        {
-            SocketIOManager.Instance.OnConnected += OnSocketConnectedForCreate;
-            SocketIOManager.Instance.OnConnectionError += OnSocketConnectionError;
-            SocketIOManager.Instance.Connect();
-        }
-        else
-        {
-            Debug.LogError("SocketIOManager가 없습니다.");
-            SetLoadingState(false);
-        }
+        StartCoroutine(CreateRoomCoroutine());
     }
 
     private void OnSocketConnectedForCreate()
@@ -481,34 +487,101 @@ public class MainMenuUIController : MonoBehaviour
 
     private IEnumerator CreateRoomCoroutine()
     {
-        CreateRoomRequest request = new CreateRoomRequest();
+        List<string> randomTags = GenerateRandomTags();
+
+        if (UserSession.Instance != null)
+        {
+            UserSession.Instance.Tags = randomTags;
+        }
+
+        CreateRoomRequest request = new CreateRoomRequest
+        {
+            tags = randomTags.ToArray()
+        };
 
         yield return APIManager.Instance.Post(
             "/games/multiplay/rooms/create",
             request,
             onSuccess: (response) =>
             {
-                CreateRoomResponse roomResponse = JsonUtility.FromJson<CreateRoomResponse>(response);
+                Debug.Log($"[API 응답 원본] {response}");
 
-                // MultiplaySession에 방 정보 저장 (호스트)
-                MultiplaySession.Instance.SetRoomInfo(
-                    roomResponse.roomId,
-                    roomResponse.sessionCode,
-                    true // 호스트
-                );
+                // ★ Wrapper로 파싱
+                CreateRoomResponseWrapper wrapper = JsonUtility.FromJson<CreateRoomResponseWrapper>(response);
 
-                Debug.Log($"방 생성 성공! RoomId: {roomResponse.roomId}, Code: {roomResponse.sessionCode}");
+                if (wrapper.result != null)
+                {
+                    Debug.Log($"[파싱 결과] RoomId: {wrapper.result.roomId}, Code: {wrapper.result.gameCode}");
 
-                SetLoadingState(false);
-                fadeController.FadeToScene("B001_CreateParty");
+                    // gameCode를 sessionCode로 사용
+                    MultiplaySession.Instance.SetRoomInfo(
+                        wrapper.result.roomId,
+                        wrapper.result.gameCode, // ← 이게 세션 코드
+                        true
+                    );
+
+                    Debug.Log($"방 생성 성공! RoomId: {wrapper.result.roomId}, Code: {wrapper.result.gameCode}");
+
+                    SetLoadingState(false);
+                    fadeController.FadeToScene("B001_CreateParty");
+                }
+                else
+                {
+                    ShowError("방 생성 응답 파싱 실패");
+                    SetLoadingState(false);
+                }
             },
             onError: (error) =>
             {
                 ShowError("방 생성 실패: " + error);
                 SetLoadingState(false);
-                SocketIOManager.Instance.Disconnect();
             }
         );
+    }
+
+    private List<string> GenerateRandomTags()
+    {
+        List<string> tags = new List<string>();
+        string[] categories = { "Style", "Subject", "Mood", "Background" };
+
+        foreach (var category in categories)
+        {
+            var options = LoadTagOptions($"TagRandom/{category}");
+            if (options.Count > 0)
+            {
+                string randomTag = options[Random.Range(0, options.Count)];
+                tags.Add(randomTag);
+            }
+            else
+            {
+                tags.Add($"Default{category}");
+            }
+        }
+
+        Debug.Log("[Multiplay] 자동 태그 생성: " + string.Join(", ", tags));
+        return tags;
+    }
+
+    private List<string> LoadTagOptions(string path)
+    {
+        var textAsset = Resources.Load<TextAsset>(path);
+        if (textAsset != null)
+        {
+            var lines = textAsset.text.Split(new[] { '\r', '\n' }, System.StringSplitOptions.RemoveEmptyEntries);
+            var result = new List<string>();
+
+            foreach (var line in lines)
+            {
+                var trimmed = line.Trim();
+                if (!string.IsNullOrEmpty(trimmed))
+                    result.Add(trimmed);
+            }
+
+            return result;
+        }
+
+        Debug.LogWarning("태그 파일을 찾을 수 없음: " + path);
+        return new List<string>();
     }
 
     public void OnClick_JoinParty()
@@ -518,6 +591,16 @@ public class MainMenuUIController : MonoBehaviour
 
     public void OnClick_MyPlanet()
     {
+        // PlanetSession 초기화 - 내 행성 보기
+        if (PlanetSession.Instance != null && UserSession.Instance != null)
+        {
+            string myUsername = UserSession.Instance.UserID;
+            PlanetSession.Instance.CurrentPlanetOwnerID = myUsername;
+            PlanetSession.Instance.CurrentPlanetId = myUsername;
+
+            Debug.Log($"[MyPlanet] 내 행성으로 이동: {myUsername}");
+        }
+
         fadeController.FadeToScene("P002_MyPlanet");
     }
 
