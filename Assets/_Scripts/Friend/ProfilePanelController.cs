@@ -7,20 +7,22 @@ public class ProfilePanelController : MonoBehaviour
 {
     public TMP_Text idText;
     public TMP_InputField nicknameField;
-    public TMP_InputField passwordField;         // 새 비밀번호
-    public TMP_InputField passwordConfirmField;  // 새 비밀번호 확인
+
+    [Header("Password Fields")]
+    public TMP_InputField currentPasswordField;  // Current password
+    public TMP_InputField newPasswordField;      // New password
 
     public Button changeNicknameButton;
     public Button changePasswordButton;
     public Button closeButtonX;
     public Button closeButtonConfirm;
 
-    [Header("닉네임 상태 표시")]
+    [Header("Nickname Status")]
     public GameObject nicknameState_Default;
     public GameObject nicknameState_Checked;
     public GameObject nicknameState_Error;
 
-    [Header("비밀번호 상태 표시")]
+    [Header("Password Status")]
     public GameObject passwordState_Default;
     public GameObject passwordState_Checked;
     public GameObject passwordState_Error;
@@ -39,34 +41,33 @@ public class ProfilePanelController : MonoBehaviour
         closeButtonConfirm.onClick.AddListener(ClosePanel);
     }
 
-    #region 프로필 로드
+    #region Load Profile
     private void LoadUserProfile()
     {
-        // UserSession에서 기본 정보 표시
         idText.text = $"ID : {UserSession.Instance?.UserID ?? "N/A"}";
         nicknameField.text = UserSession.Instance?.Nickname ?? "";
 
-        // 비밀번호 필드 초기화
-        passwordField.text = "";
-        passwordConfirmField.text = "";
+        // Clear password fields
+        if (currentPasswordField != null) currentPasswordField.text = "";
+        if (newPasswordField != null) newPasswordField.text = "";
     }
     #endregion
 
-    #region 닉네임 변경
+    #region Change Nickname
     public void ChangeNickname()
     {
         string newNickname = nicknameField.text.Trim();
 
         if (string.IsNullOrEmpty(newNickname))
         {
-            Debug.LogWarning("닉네임을 입력해주세요.");
+            Debug.LogWarning("[Profile] Nickname is empty");
             ShowNicknameError();
             return;
         }
 
         if (newNickname == UserSession.Instance.Nickname)
         {
-            Debug.LogWarning("현재 닉네임과 동일합니다.");
+            Debug.LogWarning("[Profile] Same as current nickname");
             ShowNicknameError();
             return;
         }
@@ -86,15 +87,13 @@ public class ProfilePanelController : MonoBehaviour
             requestData,
             onSuccess: (response) =>
             {
-                // 세션 업데이트
                 UserSession.Instance.UpdateNickname(newNickname);
-
-                Debug.Log($"닉네임 변경 성공: {newNickname}");
+                Debug.Log($"[Profile] Nickname changed successfully: {newNickname}");
                 ShowNicknameSuccess();
             },
             onError: (error) =>
             {
-                Debug.LogError("닉네임 변경 실패: " + error);
+                Debug.LogError("[Profile] Nickname change failed: " + error);
                 ShowNicknameError();
             }
         );
@@ -105,8 +104,6 @@ public class ProfilePanelController : MonoBehaviour
         nicknameState_Default.SetActive(false);
         nicknameState_Checked.SetActive(true);
         nicknameState_Error.SetActive(false);
-
-        // 3초 후 상태 초기화
         StartCoroutine(ResetNicknameStateAfterDelay(3f));
     }
 
@@ -115,8 +112,6 @@ public class ProfilePanelController : MonoBehaviour
         nicknameState_Default.SetActive(false);
         nicknameState_Checked.SetActive(false);
         nicknameState_Error.SetActive(true);
-
-        // 3초 후 상태 초기화
         StartCoroutine(ResetNicknameStateAfterDelay(3f));
     }
 
@@ -127,53 +122,63 @@ public class ProfilePanelController : MonoBehaviour
     }
     #endregion
 
-    #region 비밀번호 변경
+    #region Change Password
     public void ChangePassword()
     {
-        string newPassword = passwordField.text;
-        string confirmPassword = passwordConfirmField.text;
+        string currentPassword = currentPasswordField != null ? currentPasswordField.text : "";
+        string newPassword = newPasswordField != null ? newPasswordField.text : "";
 
-        // 유효성 검사
+        // Validation
+        if (string.IsNullOrEmpty(currentPassword))
+        {
+            Debug.LogWarning("[Profile] Current password is empty");
+            ShowPasswordError();
+            return;
+        }
+
         if (string.IsNullOrEmpty(newPassword))
         {
-            Debug.LogWarning("새 비밀번호를 입력해주세요.");
+            Debug.LogWarning("[Profile] New password is empty");
             ShowPasswordError();
             return;
         }
 
-        if (newPassword != confirmPassword)
+        if (currentPassword == newPassword)
         {
-            Debug.LogWarning("새 비밀번호가 일치하지 않습니다.");
+            Debug.LogWarning("[Profile] New password is same as current password");
             ShowPasswordError();
             return;
         }
 
-        StartCoroutine(ChangePasswordCoroutine(newPassword));
+        StartCoroutine(ChangePasswordCoroutine(currentPassword, newPassword));
     }
 
-    private IEnumerator ChangePasswordCoroutine(string newPassword)
+    private IEnumerator ChangePasswordCoroutine(string oldPassword, string newPassword)
     {
+        // ✅ Backend expects "oldPassword" and "newPassword"
         PasswordUpdateRequest requestData = new PasswordUpdateRequest
         {
-            currentPassword = "",  // 백엔드에서 사용 안 함
+            oldPassword = oldPassword,     // ✅ "oldPassword" key in JSON
             newPassword = newPassword
         };
+
+        Debug.Log("[Profile] Sending password change request");
 
         yield return APIManager.Instance.Put(
             "/users/password",
             requestData,
             onSuccess: (response) =>
             {
-                Debug.Log("비밀번호 변경 성공");
+                Debug.Log("[Profile] Password changed successfully");
                 ShowPasswordSuccess();
 
-                // 입력 필드 초기화
-                passwordField.text = "";
-                passwordConfirmField.text = "";
+                // Clear input fields
+                if (currentPasswordField != null) currentPasswordField.text = "";
+                if (newPasswordField != null) newPasswordField.text = "";
             },
             onError: (error) =>
             {
-                Debug.LogError("비밀번호 변경 실패: " + error);
+                Debug.LogError("[Profile] Password change failed: " + error);
                 ShowPasswordError();
             }
         );
@@ -184,8 +189,6 @@ public class ProfilePanelController : MonoBehaviour
         passwordState_Default.SetActive(false);
         passwordState_Checked.SetActive(true);
         passwordState_Error.SetActive(false);
-
-        // 3초 후 상태 초기화
         StartCoroutine(ResetPasswordStateAfterDelay(3f));
     }
 
@@ -194,8 +197,6 @@ public class ProfilePanelController : MonoBehaviour
         passwordState_Default.SetActive(false);
         passwordState_Checked.SetActive(false);
         passwordState_Error.SetActive(true);
-
-        // 3초 후 상태 초기화
         StartCoroutine(ResetPasswordStateAfterDelay(3f));
     }
 
@@ -206,7 +207,7 @@ public class ProfilePanelController : MonoBehaviour
     }
     #endregion
 
-    #region UI 상태 관리
+    #region UI State Management
     private void ResetAllStates()
     {
         ResetNicknameState();

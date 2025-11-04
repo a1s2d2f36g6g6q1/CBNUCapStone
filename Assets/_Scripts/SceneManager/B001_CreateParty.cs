@@ -205,22 +205,83 @@ public class B001_CreateParty : MonoBehaviour
     #region 멀티플레이 게임 시작
     private void StartMultiplayGame()
     {
-        // 태그 자동 생성
         List<string> randomTags = GenerateRandomTags();
-
-        // UserSession에 태그 저장
         UserSession.Instance.Tags = randomTags;
 
-        // GameData에도 저장 (기존 시스템 호환)
         for (int i = 0; i < randomTags.Count && i < 4; i++)
         {
             GameData.tags[i] = randomTags[i];
         }
-        GameData.difficulty = 3; // 기본 3x3
+        GameData.difficulty = 3;
 
-        Debug.Log("[Multiplay] 자동 태그 생성: " + string.Join(", ", randomTags));
+        Debug.Log("[Multiplay] Tags: " + string.Join(", ", randomTags));
 
-        // G002_Game으로 이동
+        if (MultiplaySession.Instance.IsHost)
+        {
+            StartCoroutine(GenerateAndShareImageUrl(randomTags));
+        }
+        else
+        {
+            Debug.Log("[Multiplay] Client waiting for image URL...");
+
+            if (fadeController != null)
+                fadeController.FadeToScene("G002_Game");
+            else
+                UnityEngine.SceneManagement.SceneManager.LoadScene("G002_Game");
+        }
+    }
+
+    private IEnumerator GenerateAndShareImageUrl(List<string> tags)
+    {
+        Debug.Log("[Multiplay] Host generating image...");
+
+        bool imageReady = false;
+
+        if (AIImageService.Instance != null)
+        {
+            AIImageService.Instance.GenerateImage(
+                tags,
+                onSuccess: (texture) =>
+                {
+                    imageReady = true;
+                },
+                onError: (error) =>
+                {
+                    Debug.LogError($"[Multiplay] Image gen failed: {error}");
+                    imageReady = true;
+                }
+            );
+
+            float elapsed = 0f;
+            while (!imageReady && elapsed < 10f)
+            {
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+        }
+
+        string imageUrl = MultiplaySession.Instance?.SharedImageUrl;
+
+        if (!string.IsNullOrEmpty(imageUrl))
+        {
+            Debug.Log($"[Multiplay] Sharing URL: {imageUrl}");
+
+            if (SocketIOManager.Instance != null && SocketIOManager.Instance.IsConnected)
+            {
+                SocketIOManager.Instance.Emit("share-image-url", new
+                {
+                    roomId = MultiplaySession.Instance.CurrentRoom.roomId,
+                    imageUrl = imageUrl
+                });
+            }
+        }
+        else
+        {
+            Debug.LogWarning("[Multiplay] No URL to share. Using fallback.");
+        }
+
+        yield return new WaitForSeconds(0.5f);
+
         if (fadeController != null)
             fadeController.FadeToScene("G002_Game");
         else

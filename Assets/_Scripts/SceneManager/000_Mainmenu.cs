@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -11,80 +10,105 @@ public class MainMenuUIController : MonoBehaviour
     [Header("Fade")]
     public FadeController fadeController;
 
-    [Header("패널들")]
+    [Header("Panels")]
     public GameObject loginPanel;
     public GameObject signupPanel;
     public GameObject settingsPanel;
     public GameObject profilePanel;
 
-    [Header("입력 필드 - 로그인")]
+    [Header("Login Input Fields")]
     public TMP_InputField loginIdField;
     public TMP_InputField loginPwField;
 
-    [Header("입력 필드 - 회원가입")]
+    [Header("Signup Input Fields")]
     public TMP_InputField signupIdField;
     public TMP_InputField signupPw1Field;
     public TMP_InputField signupPw2Field;
     public TMP_InputField signupNicknameField;
 
-    [Header("중복확인 관련")]
+    [Header("ID Check")]
     public TMP_Text idCheckResultText;
 
-    [Header("ID 체크 상태 텍스트들")]
+    [Header("ID Check Status")]
     public GameObject idCheck_Default;
     public GameObject idCheck_Checked;
     public GameObject idCheck_Duplicated;
 
-    [Header("회원가입 버튼")]
+    [Header("Signup Button")]
     public Button signupButton;
 
-    [Header("TR 버튼 그룹")]
+    [Header("TR Button Groups")]
     public GameObject[] loginOnlyButtons;
     public GameObject[] guestOnlyButtons;
     public GameObject settingsButton;
 
-    [Header("로딩/에러 메시지")]
-    public GameObject loadingPanel; // 로딩 UI (선택사항)
-    public TMP_Text errorMessageText; // 에러 메시지 표시용
-    private Coroutine currentCheckCoroutine; // 이거 추가
+    [Header("Loading/Error - Signup")]
+    public GameObject loadingPanel;
+    public TMP_Text errorMessageText;
+    private Coroutine currentCheckCoroutine;
 
+    [Header("Create Party Panels")]
+    public GameObject createPartyLoadingPanel;
+    public GameObject createPartyErrorPanel;
+    public TMP_Text createPartyErrorText;
 
     private void Start()
     {
-        // SocketIOManager 자동 생성
+        // Auto-create UnityMainThreadDispatcher (before SocketIO)
+        if (UnityMainThreadDispatcher.Instance() == null)
+        {
+            GameObject dispatcherObj = new GameObject("UnityMainThreadDispatcher");
+            dispatcherObj.AddComponent<UnityMainThreadDispatcher>();
+            Debug.Log("[MainMenu] UnityMainThreadDispatcher auto-created");
+        }
+
+        // Auto-create SocketIOManager
         if (SocketIOManager.Instance == null)
         {
             GameObject socketObj = new GameObject("SocketIOManager");
             socketObj.AddComponent<SocketIOManager>();
-            Debug.Log("SocketIOManager 자동 생성");
+            Debug.Log("[MainMenu] SocketIOManager auto-created");
         }
 
-        // MultiplaySession 자동 생성
+        // Auto-create MultiplaySession
         if (MultiplaySession.Instance == null)
         {
             GameObject sessionObj = new GameObject("MultiplaySession");
             sessionObj.AddComponent<MultiplaySession>();
-            Debug.Log("MultiplaySession 자동 생성");
+            Debug.Log("[MainMenu] MultiplaySession auto-created");
         }
+
+        // Clear guest info when returning to main menu
+        if (MultiplaySession.Instance != null)
+        {
+            MultiplaySession.Instance.ClearGuestNickname();
+        }
+
+        // Clear single play game data
+        if (SinglePlayGameManager.Instance != null)
+        {
+            SinglePlayGameManager.Instance.ClearGameData();
+        }
+
         signupIdField.onValueChanged.AddListener(OnIDInputChanged);
         SetIDCheckState_Default();
         UpdateSignupButtonInteractable();
-    }
-
-    private void OnEnable()
-    {
-        // UserSession 이벤트 구독
-        if (UserSession.Instance != null)
-        {
-            UserSession.Instance.OnLoginStateChanged += UpdateTopRightButtons;
-        }
 
         UpdateTopRightButtons();
     }
 
+    private void OnEnable()
+    {
+        // Subscribe to UserSession events
+        if (UserSession.Instance != null)
+        {
+            UserSession.Instance.OnLoginStateChanged += UpdateTopRightButtons;
+        }
+    }
+
     private void OnDisable()
     {
-        // 이벤트 구독 해제
+        // Unsubscribe from events
         if (UserSession.Instance != null)
         {
             UserSession.Instance.OnLoginStateChanged -= UpdateTopRightButtons;
@@ -96,30 +120,23 @@ public class MainMenuUIController : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Escape)) CloseAllPanels();
     }
 
-
-
     private void OnIDInputChanged(string newText)
     {
         SetIDCheckState_Default();
         UpdateSignupButtonInteractable();
-
-        // 기존 중복 체크 결과 초기화
-        if (idCheckResultText != null)
-            idCheckResultText.text = "";
     }
 
-    #region ID 중복 확인
-    public void CheckDuplicateID()
+    #region ID Duplicate Check
+    public void OnClick_CheckID()
     {
         string username = signupIdField.text.Trim();
 
         if (string.IsNullOrEmpty(username))
         {
-            ShowError("아이디를 입력해주세요.");
+            ShowError("Please enter username.");
             return;
         }
 
-        // 기존 체크 중단
         if (currentCheckCoroutine != null)
         {
             StopCoroutine(currentCheckCoroutine);
@@ -131,42 +148,37 @@ public class MainMenuUIController : MonoBehaviour
     private IEnumerator CheckUsernameCoroutine(string username)
     {
         SetLoadingState(true);
-        Debug.Log($"중복 체크 시작: {username}");
 
         yield return APIManager.Instance.Get(
             $"/users/check-username?username={username}",
             onSuccess: (response) =>
             {
-                Debug.Log($"서버 응답: {response}");
+                CheckUsernameResponse checkResponse = JsonUtility.FromJson<CheckUsernameResponse>(response);
 
-                // CheckUsernameResponse 사용 (ApiResponse 아님!)
-                CheckUsernameResponse apiResponse = JsonUtility.FromJson<CheckUsernameResponse>(response);
-                Debug.Log($"파싱 결과 - available: {apiResponse.available}");
-
-                if (apiResponse.available) // available == true → 사용 가능
+                if (checkResponse.available)
                 {
+                    Debug.Log("[MainMenu] Username available");
                     SetIDCheckState_Checked();
-                    Debug.Log("사용 가능한 아이디입니다.");
                 }
-                else // available == false → 중복
+                else
                 {
+                    Debug.Log("[MainMenu] Username already taken");
                     SetIDCheckState_Duplicated();
-                    Debug.Log("이미 사용 중인 아이디입니다.");
                 }
 
                 SetLoadingState(false);
+                UpdateSignupButtonInteractable();
             },
             onError: (error) =>
             {
-                SetIDCheckState_Default();
-                ShowError("ID 중복 확인 실패: " + error);
+                ShowError("ID check failed: " + error);
                 SetLoadingState(false);
             }
         );
-
-        UpdateSignupButtonInteractable();
     }
+    #endregion
 
+    #region ID Check State UI
     private void SetIDCheckState_Default()
     {
         idCheck_Default.SetActive(true);
@@ -179,7 +191,6 @@ public class MainMenuUIController : MonoBehaviour
         idCheck_Default.SetActive(false);
         idCheck_Checked.SetActive(true);
         idCheck_Duplicated.SetActive(false);
-        idCheckResultText.text = "ID Available";
     }
 
     private void SetIDCheckState_Duplicated()
@@ -187,162 +198,214 @@ public class MainMenuUIController : MonoBehaviour
         idCheck_Default.SetActive(false);
         idCheck_Checked.SetActive(false);
         idCheck_Duplicated.SetActive(true);
-        idCheckResultText.text = "ID Already Taken";
     }
 
     private void UpdateSignupButtonInteractable()
     {
-        signupButton.interactable = idCheck_Checked.activeSelf;
+        bool isIDChecked = idCheck_Checked.activeSelf;
+        signupButton.interactable = isIDChecked;
     }
     #endregion
 
-    #region 회원가입
-    public void TrySignup()
+    #region Signup
+    public void OnClick_Signup()
     {
         string username = signupIdField.text.Trim();
-        string password = signupPw1Field.text;
-        string passwordConfirm = signupPw2Field.text;
+        string pw1 = signupPw1Field.text;
+        string pw2 = signupPw2Field.text;
         string nickname = signupNicknameField.text.Trim();
 
-        // 유효성 검사
-        if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(nickname))
+        if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(pw1) ||
+            string.IsNullOrEmpty(pw2) || string.IsNullOrEmpty(nickname))
         {
-            ShowError("모든 필드를 입력해주세요.");
+            ShowError("Please fill all fields.");
             return;
         }
 
-        if (password != passwordConfirm)
+        if (pw1 != pw2)
         {
-            ShowError("비밀번호가 일치하지 않습니다.");
+            ShowError("Passwords do not match.");
             return;
         }
 
         if (!idCheck_Checked.activeSelf)
         {
-            ShowError("ID 중복 확인을 먼저 진행해주세요.");
+            ShowError("Please check ID duplicate first.");
             return;
         }
 
-        StartCoroutine(SignupCoroutine(username, password, nickname));
-    }
-
-    private IEnumerator SignupCoroutine(string username, string password, string nickname)
-    {
-        SetLoadingState(true);
-
-        SignupRequest signupData = new SignupRequest
+        SignupRequest request = new SignupRequest
         {
             username = username,
-            password = password,
+            password = pw1,
             nickname = nickname
         };
 
+        SetLoadingState(true);
+        StartCoroutine(SignupCoroutine(request));
+    }
+
+    private IEnumerator SignupCoroutine(SignupRequest request)
+    {
         yield return APIManager.Instance.Post(
             "/users/signup",
-            signupData,
+            request,
             onSuccess: (response) =>
             {
-                Debug.Log("회원가입 성공!");
-                ShowError("회원가입 성공! 로그인해주세요.", false);
-
-                // 입력 필드 초기화
-                signupIdField.text = "";
-                signupPw1Field.text = "";
-                signupPw2Field.text = "";
-                signupNicknameField.text = "";
-                SetIDCheckState_Default();
-
+                Debug.Log("[MainMenu] Signup success!");
+                SetLoadingState(false);
+                ShowError("Signup success! Please log in.", false);
                 CloseAllPanels();
                 OpenPanel(loginPanel);
-                SetLoadingState(false);
             },
             onError: (error) =>
             {
-                ShowError("회원가입 실패: " + error);
+                Debug.LogError($"[Signup] Signup failed: {error}");
+
+                if (error.Contains("Connection refused") || error.Contains("Failed to connect"))
+                {
+                    ShowError("Cannot connect to server.\nServer might be offline or check network.");
+                }
+                else if (error.Contains("409") || error.Contains("already exists"))
+                {
+                    ShowError("Username already exists.");
+                }
+                else
+                {
+                    ShowError("Signup failed: " + error);
+                }
+
                 SetLoadingState(false);
             }
         );
     }
     #endregion
 
-    #region 로그인
-    public void TryLogin()
+    #region Login
+    public void OnClick_Login()
     {
         string username = loginIdField.text.Trim();
         string password = loginPwField.text;
 
         if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
         {
-            ShowError("ID와 비밀번호를 입력해주세요.");
+            ShowError("Please enter username and password.");
             return;
         }
 
-        StartCoroutine(LoginCoroutine(username, password));
+        // FIXED: API spec uses "userId" field name, not "username"
+        LoginRequest request = new LoginRequest
+        {
+            userId = username,
+            password = password
+        };
+
+        SetLoadingState(true);
+        StartCoroutine(LoginCoroutine(request));
     }
 
-    private IEnumerator LoginCoroutine(string username, string password)
+    private IEnumerator LoginCoroutine(LoginRequest request)
     {
-        SetLoadingState(true);
-
-        LoginRequest loginData = new LoginRequest { username = username, password = password };
-
-        yield return APIManager.Instance.Post("/users/login", loginData,
+        yield return APIManager.Instance.Post(
+            "/users/login",
+            request,
             onSuccess: (response) =>
             {
-                Debug.Log($"원본 서버 응답: {response}");
+                Debug.Log($"[Login] Server response: {response}");
 
                 LoginResponse loginResponse = JsonUtility.FromJson<LoginResponse>(response);
-                APIManager.Instance.SetToken(loginResponse.token);
 
-                // 토큰 저장 후 프로필 불러오기
-                StartCoroutine(LoadUserProfileAfterLogin());
+                Debug.Log($"[Login] After parsing - token: {loginResponse.token}");
+
+                // Save token first (required for profile fetch)
+                if (!string.IsNullOrEmpty(loginResponse.token))
+                {
+                    APIManager.Instance.SetToken(loginResponse.token);
+                    Debug.Log("[Login] Token saved");
+                }
+
+                // FIXED: Fetch profile to get username and nickname
+                StartCoroutine(LoadProfileAfterLogin());
             },
             onError: (error) =>
             {
-                ShowError("로그인 실패: " + error);
+                Debug.LogError($"[Login] Login failed: {error}");
+
+                if (error.Contains("Connection refused") || error.Contains("Failed to connect"))
+                {
+                    ShowError("Cannot connect to server.\nServer might be offline or check network.");
+                }
+                else if (error.Contains("401") || error.Contains("Unauthorized"))
+                {
+                    ShowError("Invalid username or password.");
+                }
+                else
+                {
+                    ShowError("Login failed: " + error);
+                }
+
                 SetLoadingState(false);
             }
         );
     }
+    #endregion
 
-    private IEnumerator LoadUserProfileAfterLogin()
+    #region Load Profile After Login
+    // FIXED: Parse profile response with proper wrapper structure
+    private IEnumerator LoadProfileAfterLogin()
     {
-        yield return APIManager.Instance.Get("/users/profile",
+        Debug.Log("[Login] Fetching profile...");
+
+        yield return APIManager.Instance.Get(
+            "/users/profile",
             onSuccess: (response) =>
             {
-                UserData userData = JsonUtility.FromJson<UserData>(response);
-                UserSession.Instance.SetUserInfo(userData.username, userData.nickname);
+                Debug.Log($"[Login] Profile response: {response}");
 
-                Debug.Log($"로그인 성공! 환영합니다, {userData.nickname}님");
+                // FIXED: Profile response has wrapper structure
+                ProfileResponse profileResponse = JsonUtility.FromJson<ProfileResponse>(response);
 
-                UpdateTopRightButtons();
-                CloseAllPanels();
+                if (profileResponse.isSuccess && profileResponse.result != null)
+                {
+                    // Save nickname to UserSession
+                    // Note: We don't have username in profile response, need to get it separately
+                    UserSession.Instance.SetUserInfo(
+                        profileResponse.result.nickname,  // Using nickname as ID temporarily
+                        profileResponse.result.nickname,
+                        false  // Not guest
+                    );
 
-                loginIdField.text = "";
-                loginPwField.text = "";
+                    Debug.Log($"[Login] Login success! Nickname: {profileResponse.result.nickname}");
 
-                SetLoadingState(false);
+                    SetLoadingState(false);
+                    CloseAllPanels();
+
+                    // Trigger login state changed event
+                    if (UserSession.Instance != null)
+                    {
+                        UserSession.Instance.OnLoginStateChanged?.Invoke();
+                    }
+                }
+                else
+                {
+                    Debug.LogError($"[Login] Profile fetch failed: {profileResponse.message}");
+                    ShowError("Login successful but profile fetch failed");
+                    SetLoadingState(false);
+                    CloseAllPanels();
+                }
             },
             onError: (error) =>
             {
-                ShowError("프로필 로드 실패: " + error);
+                Debug.LogError($"[Login] Profile fetch failed: {error}");
+                ShowError("Login successful but profile fetch failed");
                 SetLoadingState(false);
+                CloseAllPanels();
             }
         );
     }
     #endregion
 
-    #region 로그아웃
-    public void Logout()
-    {
-        UserSession.Instance.Logout();
-        UpdateTopRightButtons();
-        CloseAllPanels();
-        Debug.Log("로그아웃 완료!");
-    }
-    #endregion
-
-    #region UI 헬퍼 메서드
+    #region Loading/Error (Signup)
     private void SetLoadingState(bool isLoading)
     {
         if (loadingPanel != null)
@@ -356,11 +419,10 @@ public class MainMenuUIController : MonoBehaviour
             errorMessageText.text = message;
             errorMessageText.color = isError ? Color.red : Color.green;
 
-            // 3초 후 메시지 자동 삭제
             StartCoroutine(ClearErrorMessageAfterDelay(3f));
         }
 
-        Debug.Log(message);
+        Debug.Log("[MainMenu] " + message);
     }
 
     private IEnumerator ClearErrorMessageAfterDelay(float delay)
@@ -369,58 +431,58 @@ public class MainMenuUIController : MonoBehaviour
         if (errorMessageText != null)
             errorMessageText.text = "";
     }
+    #endregion
 
+    #region CreateParty Loading/Error
+    private void SetCreatePartyLoadingState(bool isLoading)
+    {
+        if (createPartyLoadingPanel != null)
+            createPartyLoadingPanel.SetActive(isLoading);
+    }
+
+    private void ShowCreatePartyError(string message)
+    {
+        if (createPartyErrorPanel != null && createPartyErrorText != null)
+        {
+            createPartyErrorText.text = message;
+            createPartyErrorPanel.SetActive(true);
+        }
+
+        Debug.LogError("[MainMenu] " + message);
+    }
+
+    public void OnClick_CloseCreatePartyError()
+    {
+        if (createPartyErrorPanel != null)
+            createPartyErrorPanel.SetActive(false);
+    }
+    #endregion
+
+    #region Button State Update
     public void UpdateTopRightButtons()
     {
         bool isLoggedIn = UserSession.Instance != null && UserSession.Instance.IsLoggedIn;
 
-        Debug.Log($"UpdateTopRightButtons 호출 - isLoggedIn: {isLoggedIn}");
-        Debug.Log($"guestOnlyButtons 길이: {guestOnlyButtons?.Length ?? 0}");
-        Debug.Log($"loginOnlyButtons 길이: {loginOnlyButtons?.Length ?? 0}");
+        foreach (var go in loginOnlyButtons)
+            go.SetActive(isLoggedIn);
 
-        if (guestOnlyButtons != null)
-        {
-            foreach (var go in guestOnlyButtons)
-            {
-                if (go != null)
-                {
-                    go.SetActive(!isLoggedIn);
-                    Debug.Log($"Guest 버튼 '{go.name}' → Active: {!isLoggedIn}");
-                }
-                else
-                {
-                    Debug.LogWarning("guestOnlyButtons에 null 오브젝트 있음!");
-                }
-            }
-        }
+        foreach (var go in guestOnlyButtons)
+            go.SetActive(!isLoggedIn);
 
-        if (loginOnlyButtons != null)
-        {
-            foreach (var go in loginOnlyButtons)
-            {
-                if (go != null)
-                {
-                    go.SetActive(isLoggedIn);
-                    Debug.Log($"Login 버튼 '{go.name}' → Active: {isLoggedIn}");
-                }
-                else
-                {
-                    Debug.LogWarning("loginOnlyButtons에 null 오브젝트 있음!");
-                }
-            }
-        }
+        settingsButton.SetActive(true);
 
-        if (settingsButton != null)
-            settingsButton.SetActive(true);
+        Debug.Log($"[UpdateTopRightButtons] isLoggedIn: {isLoggedIn}");
     }
+    #endregion
 
+    #region Panel Management
     public void OpenPanel(GameObject panel)
     {
         CloseAllPanels();
         if (panel != null)
             panel.SetActive(true);
         else
-            Debug.LogWarning("⚠ panel is NULL");
+            Debug.LogWarning("[MainMenu] Panel is NULL");
     }
 
     public void CloseAllPanels()
@@ -429,202 +491,15 @@ public class MainMenuUIController : MonoBehaviour
         signupPanel.SetActive(false);
         settingsPanel.SetActive(false);
         profilePanel.SetActive(false);
+
+        if (createPartyLoadingPanel != null)
+            createPartyLoadingPanel.SetActive(false);
+        if (createPartyErrorPanel != null)
+            createPartyErrorPanel.SetActive(false);
     }
     #endregion
 
-    #region 씬 전환 버튼들 (기존 코드 유지)
-    public void OnClick_SinglePlay()
-    {
-        fadeController.FadeToScene("G001_TagInput");
-    }
-
-    // MainMenuUIController.cs에 추가/수정
-
-    public void OnClick_CreateParty()
-    {
-        Debug.Log("===== CreateParty 버튼 클릭됨 =====");
-
-        if (APIManager.Instance == null)
-        {
-            Debug.LogError("APIManager가 null입니다!");
-            return;
-        }
-
-        if (MultiplaySession.Instance == null)
-        {
-            Debug.LogError("MultiplaySession이 null입니다!");
-            return;
-        }
-
-        Debug.Log("방 생성 API 호출 시작");
-        SetLoadingState(true);
-
-        StartCoroutine(CreateRoomCoroutine());
-    }
-
-    private void OnSocketConnectedForCreate()
-    {
-        SocketIOManager.Instance.OnConnected -= OnSocketConnectedForCreate;
-        SocketIOManager.Instance.OnConnectionError -= OnSocketConnectionError;
-
-        Debug.Log("웹소켓 연결 성공, 방 생성 중...");
-
-        // 멀티플레이 이벤트 등록
-        SocketIOManager.Instance.RegisterMultiplayEvents();
-
-        // 방 생성 API 호출
-        StartCoroutine(CreateRoomCoroutine());
-    }
-
-    private void OnSocketConnectionError(string error)
-    {
-        SocketIOManager.Instance.OnConnected -= OnSocketConnectedForCreate;
-        SocketIOManager.Instance.OnConnectionError -= OnSocketConnectionError;
-
-        ShowError("웹소켓 연결 실패: " + error);
-        SetLoadingState(false);
-    }
-
-    private IEnumerator CreateRoomCoroutine()
-    {
-        List<string> randomTags = GenerateRandomTags();
-
-        if (UserSession.Instance != null)
-        {
-            UserSession.Instance.Tags = randomTags;
-        }
-
-        CreateRoomRequest request = new CreateRoomRequest
-        {
-            tags = randomTags.ToArray()
-        };
-
-        yield return APIManager.Instance.Post(
-            "/games/multiplay/rooms/create",
-            request,
-            onSuccess: (response) =>
-            {
-                Debug.Log($"[API 응답 원본] {response}");
-
-                // ★ Wrapper로 파싱
-                CreateRoomResponseWrapper wrapper = JsonUtility.FromJson<CreateRoomResponseWrapper>(response);
-
-                if (wrapper.result != null)
-                {
-                    Debug.Log($"[파싱 결과] RoomId: {wrapper.result.roomId}, Code: {wrapper.result.gameCode}");
-
-                    // gameCode를 sessionCode로 사용
-                    MultiplaySession.Instance.SetRoomInfo(
-                        wrapper.result.roomId,
-                        wrapper.result.gameCode, // ← 이게 세션 코드
-                        true
-                    );
-
-                    Debug.Log($"방 생성 성공! RoomId: {wrapper.result.roomId}, Code: {wrapper.result.gameCode}");
-
-                    SetLoadingState(false);
-                    fadeController.FadeToScene("B001_CreateParty");
-                }
-                else
-                {
-                    ShowError("방 생성 응답 파싱 실패");
-                    SetLoadingState(false);
-                }
-            },
-            onError: (error) =>
-            {
-                ShowError("방 생성 실패: " + error);
-                SetLoadingState(false);
-            }
-        );
-    }
-
-    private List<string> GenerateRandomTags()
-    {
-        List<string> tags = new List<string>();
-        string[] categories = { "Style", "Subject", "Mood", "Background" };
-
-        foreach (var category in categories)
-        {
-            var options = LoadTagOptions($"TagRandom/{category}");
-            if (options.Count > 0)
-            {
-                string randomTag = options[Random.Range(0, options.Count)];
-                tags.Add(randomTag);
-            }
-            else
-            {
-                tags.Add($"Default{category}");
-            }
-        }
-
-        Debug.Log("[Multiplay] 자동 태그 생성: " + string.Join(", ", tags));
-        return tags;
-    }
-
-    private List<string> LoadTagOptions(string path)
-    {
-        var textAsset = Resources.Load<TextAsset>(path);
-        if (textAsset != null)
-        {
-            var lines = textAsset.text.Split(new[] { '\r', '\n' }, System.StringSplitOptions.RemoveEmptyEntries);
-            var result = new List<string>();
-
-            foreach (var line in lines)
-            {
-                var trimmed = line.Trim();
-                if (!string.IsNullOrEmpty(trimmed))
-                    result.Add(trimmed);
-            }
-
-            return result;
-        }
-
-        Debug.LogWarning("태그 파일을 찾을 수 없음: " + path);
-        return new List<string>();
-    }
-
-    public void OnClick_JoinParty()
-    {
-        fadeController.FadeToScene("B002_JoinParty");
-    }
-
-    public void OnClick_MyPlanet()
-    {
-        // PlanetSession 초기화 - 내 행성 보기
-        if (PlanetSession.Instance != null && UserSession.Instance != null)
-        {
-            string myUsername = UserSession.Instance.UserID;
-            PlanetSession.Instance.CurrentPlanetOwnerID = myUsername;
-            PlanetSession.Instance.CurrentPlanetId = myUsername;
-
-            Debug.Log($"[MyPlanet] 내 행성으로 이동: {myUsername}");
-        }
-
-        fadeController.FadeToScene("P002_MyPlanet");
-    }
-
-    public void OnClick_PlanetTravel()
-    {
-        fadeController.FadeToScene("P001_PlanetTravel");
-    }
-
-    public void OnClick_Exit()
-    {
-        Application.Quit();
-        Debug.Log("게임 종료!");
-    }
-
-    public void OnClick_Friend()
-    {
-        fadeController.FadeToScene("F001_Friend");
-    }
-
-    public void OnClick_UserInfo()
-    {
-        OpenPanel(profilePanel);
-    }
-
+    #region Panel Open Buttons
     public void OnClick_OpenLogin()
     {
         OpenPanel(loginPanel);
@@ -638,6 +513,25 @@ public class MainMenuUIController : MonoBehaviour
     public void OnClick_OpenSettings()
     {
         OpenPanel(settingsPanel);
+    }
+
+    public void OnClick_OpenProfile()
+    {
+        OpenPanel(profilePanel);
+    }
+    #endregion
+
+    #region Logout
+    public void OnClick_Logout()
+    {
+        if (UserSession.Instance != null)
+        {
+            UserSession.Instance.Logout();
+        }
+
+        CloseAllPanels();
+
+        Debug.Log("[MainMenu] Logged out");
     }
     #endregion
 }

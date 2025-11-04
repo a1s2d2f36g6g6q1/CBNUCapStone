@@ -9,33 +9,33 @@ public class MyPlanetUIController : MonoBehaviour
 {
     public bool isMine = true;
 
-    [Header("그리드 크기 조절")]
+    [Header("Grid Size Adjust")]
     public GridContentResizer gridResizer;
 
-    [Header("Gallery 설정")]
+    [Header("Gallery Settings")]
     public GameObject photoCardPrefab;
     public Transform galleryContainer;
 
-    [Header("버튼 색상 설정")]
+    [Header("Button Colors")]
     public Color activeColor = Color.gray;
     public Color normalColor = Color.white;
 
-    [Header("본문 패널 (Content Panels)")]
+    [Header("Content Panels")]
     public GameObject panelGallery;
     public GameObject panelPhoto;
     public GameObject panelGuestbook;
 
-    [Header("모달 패널 (Modal Panels)")]
+    [Header("Modal Panels")]
     public GameObject panelProfile;
     public GameObject panelSettings;
 
-    [Header("사이드바")]
+    [Header("Sidebar")]
     public Button buttonProfileImage;
     public TMP_Text visitorCountText;
     public Button buttonGallery;
     public Button buttonGuestbook;
 
-    [Header("TopRight 버튼")]
+    [Header("TopRight Buttons")]
     public GameObject[] loginOnlyButtons;
     public Button buttonUserInfo;
     public Button buttonFriend;
@@ -46,7 +46,7 @@ public class MyPlanetUIController : MonoBehaviour
     public FadeController fadeController;
 
     private List<GalleryItem> galleryItems = new();
-    private string currentPlanetUsername; // username 저장
+    private string currentPlanetUsername; // Store username
 
     void Start()
     {
@@ -54,30 +54,30 @@ public class MyPlanetUIController : MonoBehaviour
         CloseModalPanels();
         UpdateTopRightButtons();
 
-        // 행성 정보 로드
+        // Load planet data
         StartCoroutine(LoadPlanetData());
     }
 
-    #region 행성 데이터 로드
+    #region Load Planet Data
     private IEnumerator LoadPlanetData()
     {
-        // 현재 보고 있는 행성 username 확인
+        // Check current planet username
         string targetUsername = GetTargetUsername();
 
-        Debug.Log($"[LoadPlanetData] targetUsername: {targetUsername}");
+        Debug.Log($"[MyPlanet] targetUsername: {targetUsername}");
 
         if (string.IsNullOrEmpty(targetUsername))
         {
-            Debug.LogError("username을 찾을 수 없습니다.");
+            Debug.LogError("[MyPlanet] Cannot find username");
             yield break;
         }
 
-        // 행성 상세 정보 조회
+        // Fetch planet details
         yield return APIManager.Instance.Get(
             $"/planets/{targetUsername}",
             onSuccess: (response) =>
             {
-                Debug.Log($"[API 응답 원본] {response}");
+                Debug.Log($"[MyPlanet] API response: {response}");
 
                 PlanetDetailResponse wrapper = JsonUtility.FromJson<PlanetDetailResponse>(response);
 
@@ -85,61 +85,61 @@ public class MyPlanetUIController : MonoBehaviour
                 {
                     PlanetDetail planet = wrapper.result;
 
-                    // username 저장
-                    currentPlanetUsername = planet.ownerUsername;
+                    // FIXED: Store username (not ownerUsername)
+                    currentPlanetUsername = planet.username;
 
-                    Debug.Log($"[파싱 결과] ownerUsername: {planet.ownerUsername}, title: {planet.title}");
+                    Debug.Log($"[MyPlanet] Parsed - username: {planet.username}, title: {planet.title}");
 
-                    // 내 행성인지 확인
-                    isMine = (UserSession.Instance.UserID == planet.ownerUsername);
+                    // FIXED: Check if this is my planet using username
+                    isMine = (UserSession.Instance.UserID == planet.username);
 
-                    Debug.Log($"행성 로드 완료: {planet.title}, 내 행성: {isMine}");
+                    Debug.Log($"[MyPlanet] Planet loaded: {planet.title}, isMine: {isMine}");
 
-                    // UI 업데이트
+                    // Update UI
                     UpdateVisitorCount(planet.visitCount);
 
-                    // 갤러리 로드
-                    StartCoroutine(LoadGallery(planet.ownerUsername));
+                    // FIXED: Load gallery using username
+                    StartCoroutine(LoadGallery(planet.username));
 
-                    // 기본 패널 열기
+                    // Open default panel
                     OpenGallery();
                 }
                 else
                 {
-                    Debug.LogError("행성 데이터 파싱 실패");
+                    Debug.LogError("[MyPlanet] Failed to parse planet data");
                 }
             },
             onError: (error) =>
             {
-                Debug.LogError("행성 정보 로드 실패: " + error);
+                Debug.LogError("[MyPlanet] Failed to load planet info: " + error);
             }
         );
     }
 
     private string GetTargetUsername()
     {
-        // PlanetSession에서 username 가져오기
+        // Get username from PlanetSession
         string username = PlanetSession.Instance?.CurrentPlanetOwnerID;
 
-        Debug.Log($"[GetTargetUsername] PlanetSession username: {username}");
+        Debug.Log($"[MyPlanet] PlanetSession username: {username}");
 
-        // PlanetSession에 정보가 없으면 내 username 사용
+        // Use my username if PlanetSession has no info
         if (string.IsNullOrEmpty(username))
         {
             username = UserSession.Instance.UserID;
-            Debug.Log($"[GetTargetUsername] UserSession username: {username}");
+            Debug.Log($"[MyPlanet] UserSession username: {username}");
         }
 
         return username;
     }
     #endregion
 
-    #region 갤러리 로드
+    #region Load Gallery
     private IEnumerator LoadGallery(string username)
     {
         if (string.IsNullOrEmpty(username))
         {
-            Debug.LogWarning("갤러리를 로드할 username이 없습니다.");
+            Debug.LogWarning("[MyPlanet] No username to load gallery");
             yield break;
         }
 
@@ -147,18 +147,18 @@ public class MyPlanetUIController : MonoBehaviour
             $"/planets/{username}/gallery",
             onSuccess: (response) =>
             {
-                Debug.Log($"[갤러리 API 응답] {response}");
+                Debug.Log($"[MyPlanet] Gallery API response: {response}");
 
                 GalleryListResponse galleryResponse = JsonUtility.FromJson<GalleryListResponse>(response);
 
                 if (galleryResponse != null && galleryResponse.result != null && galleryResponse.result.galleries != null)
                 {
                     galleryItems = new List<GalleryItem>(galleryResponse.result.galleries);
-                    Debug.Log($"갤러리 로드 성공: {galleryItems.Count}개");
+                    Debug.Log($"[MyPlanet] Gallery loaded: {galleryItems.Count} items");
                 }
                 else
                 {
-                    Debug.LogWarning("갤러리 result가 null");
+                    Debug.LogWarning("[MyPlanet] Gallery result is null");
                     galleryItems.Clear();
                 }
 
@@ -166,7 +166,7 @@ public class MyPlanetUIController : MonoBehaviour
             },
             onError: (error) =>
             {
-                Debug.LogWarning("갤러리 로드 실패: " + error);
+                Debug.LogWarning("[MyPlanet] Failed to load gallery: " + error);
                 galleryItems.Clear();
                 RefreshGalleryUI();
             }
@@ -175,13 +175,13 @@ public class MyPlanetUIController : MonoBehaviour
 
     private void RefreshGalleryUI()
     {
-        // 기존 카드 삭제
+        // Clear existing cards
         foreach (Transform child in galleryContainer)
         {
             Destroy(child.gameObject);
         }
 
-        // 새 카드 생성
+        // Create new cards
         foreach (var item in galleryItems)
         {
             var card = Instantiate(photoCardPrefab, galleryContainer);
@@ -189,13 +189,13 @@ public class MyPlanetUIController : MonoBehaviour
             photoCard.Init(this, item);
         }
 
-        // Content 사이즈 조정
+        // Adjust content size
         if (gridResizer != null)
             gridResizer.AdjustContentSize();
     }
     #endregion
 
-    #region 패널 전환
+    #region Panel Switching
     private void UpdateSidebarButtonStates(GameObject activePanel)
     {
         buttonGallery.image.color = normalColor;
@@ -266,7 +266,7 @@ public class MyPlanetUIController : MonoBehaviour
     }
     #endregion
 
-    #region UI 버튼 핸들러
+    #region UI Button Handlers
     public void OnClick_Back()
     {
         fadeController.FadeToScene("000_MainMenu");
@@ -286,7 +286,7 @@ public class MyPlanetUIController : MonoBehaviour
     {
         UserSession.Instance.Logout();
         fadeController.FadeToScene("000_MainMenu");
-        Debug.Log("로그아웃 완료");
+        Debug.Log("[MyPlanet] Logout complete");
     }
 
     private void UpdateTopRightButtons()

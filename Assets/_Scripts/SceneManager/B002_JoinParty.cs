@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -35,17 +36,17 @@ public class B002_JoinParty : MonoBehaviour
 
         if (string.IsNullOrEmpty(sessionCode))
         {
-            ShowError("세션 코드를 입력해주세요.");
+            ShowError("Please enter session code");
             return;
         }
 
         if (isConnecting)
         {
-            Debug.Log("이미 연결 시도 중입니다.");
+            Debug.Log("Already connecting");
             return;
         }
 
-        // 웹소켓 연결 시작
+        // Start websocket connection
         StartCoroutine(ConnectAndJoinRoom(sessionCode));
     }
 
@@ -54,7 +55,7 @@ public class B002_JoinParty : MonoBehaviour
         isConnecting = true;
         SetLoadingState(true);
 
-        // 웹소켓 연결
+        // Connect websocket
         bool socketConnected = false;
         string connectionError = null;
 
@@ -63,7 +64,7 @@ public class B002_JoinParty : MonoBehaviour
 
         SocketIOManager.Instance.Connect();
 
-        // 연결 대기 (최대 5초)
+        // Wait for connection (max 5 seconds)
         float elapsed = 0f;
         while (!socketConnected && connectionError == null && elapsed < 5f)
         {
@@ -71,13 +72,13 @@ public class B002_JoinParty : MonoBehaviour
             yield return null;
         }
 
-        // 이벤트 구독 해제
+        // Unsubscribe events
         SocketIOManager.Instance.OnConnected -= () => socketConnected = true;
         SocketIOManager.Instance.OnConnectionError -= (error) => connectionError = error;
 
         if (connectionError != null)
         {
-            ShowError("웹소켓 연결 실패: " + connectionError);
+            ShowError("Websocket connection failed: " + connectionError);
             SetLoadingState(false);
             isConnecting = false;
             yield break;
@@ -85,18 +86,18 @@ public class B002_JoinParty : MonoBehaviour
 
         if (!socketConnected)
         {
-            ShowError("웹소켓 연결 시간 초과");
+            ShowError("Websocket connection timeout");
             SetLoadingState(false);
             isConnecting = false;
             yield break;
         }
 
-        Debug.Log("웹소켓 연결 성공, 방 입장 시도 중...");
+        Debug.Log("Websocket connected, attempting to join room...");
 
-        // 멀티플레이 이벤트 등록
+        // Register multiplayer events
         SocketIOManager.Instance.RegisterMultiplayEvents();
 
-        // 방 입장 API 호출
+        // Call join room API
         yield return JoinRoomCoroutine(sessionCode);
 
         isConnecting = false;
@@ -104,52 +105,109 @@ public class B002_JoinParty : MonoBehaviour
 
     private IEnumerator JoinRoomCoroutine(string sessionCode)
     {
-        JoinRoomRequest request = new JoinRoomRequest { sessionCode = sessionCode };
+        // FIXED: Use gameCode field instead of sessionCode
+        JoinRoomRequest request = new JoinRoomRequest { gameCode = sessionCode };
 
         yield return APIManager.Instance.Post(
             "/games/multiplay/rooms/join",
             request,
             onSuccess: (response) =>
             {
+                Debug.Log($"[JoinParty] API response: {response}");
+
+                // FIXED: Parse response with wrapper structure
                 JoinRoomResponse joinResponse = JsonUtility.FromJson<JoinRoomResponse>(response);
 
-                // MultiplaySession에 방 정보 저장 (클라이언트)
-                MultiplaySession.Instance.SetRoomInfo(
-                    joinResponse.roomId,
-                    sessionCode,
-                    false // 클라이언트
-                );
-
-                // 방 데이터 업데이트
-                if (joinResponse.roomData != null)
+                if (joinResponse.isSuccess && joinResponse.result != null)
                 {
-                    MultiplaySession.Instance.UpdateRoomData(joinResponse.roomData);
+                    // FIXED: Convert JoinRoomResult to RoomData format
+                    RoomData roomData = ConvertJoinResultToRoomData(joinResponse.result);
+
+                    // Save room info to MultiplaySession (client)
+                    MultiplaySession.Instance.SetRoomInfo(
+                        roomData.roomId,
+                        roomData.sessionCode,
+                        false // Client
+                    );
+
+                    // Update room data
+                    MultiplaySession.Instance.UpdateRoomData(roomData);
+
+                    Debug.Log($"Room joined successfully! RoomId: {roomData.roomId}");
+
+                    SetLoadingState(false);
+
+                    // Navigate to lobby
+                    if (fadeController != null)
+                        fadeController.FadeToScene("B001_CreateParty");
+                    else
+                        UnityEngine.SceneManagement.SceneManager.LoadScene("B001_CreateParty");
                 }
-
-                Debug.Log($"방 입장 성공! RoomId: {joinResponse.roomId}");
-
-                SetLoadingState(false);
-
-                // 로비로 이동
-                if (fadeController != null)
-                    fadeController.FadeToScene("B001_CreateParty");
                 else
-                    UnityEngine.SceneManagement.SceneManager.LoadScene("B001_CreateParty");
+                {
+                    ShowError("Room join failed: " + joinResponse.message);
+                    SetLoadingState(false);
+
+                    // Disconnect websocket
+                    SocketIOManager.Instance.Disconnect();
+                }
             },
             onError: (error) =>
             {
-                ShowError("방 입장 실패: " + error);
+                ShowError("Room join failed: " + error);
                 SetLoadingState(false);
 
-                // 웹소켓 연결 해제
+                // Disconnect websocket
                 SocketIOManager.Instance.Disconnect();
             }
         );
     }
 
+    /// <summary>
+    /// FIXED: Convert JoinRoomResult to RoomData format
+    /// </summary>
+    private RoomData ConvertJoinResultToRoomData(JoinRoomResult result)
+    {
+        RoomData roomData = new RoomData
+        {
+            roomId = result.roomId.ToString(),  // Convert int to string
+            sessionCode = result.gameCode,
+            hostId = result.hostUsername,  // Use hostUsername as hostId
+            players = ConvertParticipantsToPlayers(result.participants),
+            isGameStarted = false,
+            maxPlayers = 4
+        };
+
+        return roomData;
+    }
+
+    /// <summary>
+    /// FIXED: Convert ParticipantData[] to List<PlayerData>
+    /// </summary>
+    private List<PlayerData> ConvertParticipantsToPlayers(ParticipantData[] participants)
+    {
+        List<PlayerData> players = new List<PlayerData>();
+
+        if (participants != null)
+        {
+            foreach (var p in participants)
+            {
+                players.Add(new PlayerData
+                {
+                    userId = p.userId.ToString(),
+                    nickname = p.nickname,
+                    isReady = p.isReady == 1,  // Convert int to bool (0 or 1)
+                    isHost = false  // Will be determined by comparing with hostUsername
+                });
+            }
+        }
+
+        return players;
+    }
+
     public void OnBackButtonClick()
     {
-        // 웹소켓 연결되어 있으면 해제
+        // Disconnect websocket if connected
         if (SocketIOManager.Instance != null && SocketIOManager.Instance.IsConnected)
         {
             SocketIOManager.Instance.Disconnect();

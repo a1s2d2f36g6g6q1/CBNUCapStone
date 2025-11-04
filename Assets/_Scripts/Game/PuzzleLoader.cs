@@ -12,8 +12,7 @@ public class PuzzleLoader : MonoBehaviour
     public GameObject backButtonObj;
 
     [Header("Fallback Settings")]
-    public float serverTimeout = 10f;
-    public float pollinationsTimeout = 15f;
+    public float aiImageTimeout = 60f;
     public string fallbackImagePath = "test";
 
     private void Start()
@@ -34,39 +33,71 @@ public class PuzzleLoader : MonoBehaviour
 
     IEnumerator LoadAndInitPuzzleCoroutine()
     {
-        // 태그 정보 가져오기
         var tags = GetTags();
         Texture2D puzzleTexture = null;
 
-        // 1단계: 서버에서 이미지 받기 시도
-        yield return StartCoroutine(TryGetServerImage(tags, (result) => puzzleTexture = result));
+        bool isMultiplay = MultiplaySession.Instance != null &&
+                           MultiplaySession.Instance.CurrentRoom != null;
 
-        // 2단계: 서버 실패 시 Pollinations API 시도
-        if (puzzleTexture == null)
+        if (isMultiplay)
         {
-            Debug.Log("[PuzzleLoader] 서버에서 이미지 로딩 실패. Pollinations API 시도 중...");
-            yield return StartCoroutine(TryGetPollinationsImage(tags, (result) => puzzleTexture = result));
+            Debug.Log("[PuzzleLoader] Multiplay mode");
+
+            string sharedUrl = MultiplaySession.Instance.SharedImageUrl;
+
+            if (!string.IsNullOrEmpty(sharedUrl))
+            {
+                Debug.Log($"[PuzzleLoader] Using shared URL: {sharedUrl}");
+                yield return StartCoroutine(DownloadImageFromUrl(sharedUrl, (result) => puzzleTexture = result));
+            }
+            else
+            {
+                Debug.LogWarning("[PuzzleLoader] No shared URL. Generating...");
+                yield return StartCoroutine(TryGenerateAIImage(tags, (result) => puzzleTexture = result));
+            }
+        }
+        else
+        {
+            Debug.Log("[PuzzleLoader] Single play mode");
+            yield return StartCoroutine(TryGenerateAIImage(tags, (result) => puzzleTexture = result));
         }
 
-        // 3단계: 모든 것 실패 시 더미 이미지 사용
         if (puzzleTexture == null)
         {
-            Debug.LogWarning("[PuzzleLoader] 모든 이미지 소스 실패. 더미 이미지 사용.");
+            Debug.LogWarning("[PuzzleLoader] Using fallback image");
             puzzleTexture = LoadFallbackImage();
         }
 
-        // 최종 검증 및 퍼즐 초기화
         if (puzzleTexture != null)
         {
             InitializePuzzle(puzzleTexture);
         }
         else
         {
-            Debug.LogError("[PuzzleLoader] 모든 이미지 로딩 실패!");
+            Debug.LogError("[PuzzleLoader] All image loading failed!");
             HandleLoadingFailure();
         }
 
         FinalizePuzzleLoading();
+    }
+
+    private IEnumerator DownloadImageFromUrl(string url, System.Action<Texture2D> callback)
+    {
+        Debug.Log($"[PuzzleLoader] Downloading: {url}");
+
+        yield return APIManager.Instance.DownloadImage(
+            url,
+            onSuccess: (texture) =>
+            {
+                Debug.Log($"[PuzzleLoader] Downloaded: {texture.width}x{texture.height}");
+                callback?.Invoke(texture);
+            },
+            onError: (error) =>
+            {
+                Debug.LogError($"[PuzzleLoader] Download failed: {error}");
+                callback?.Invoke(null);
+            }
+        );
     }
 
     private List<string> GetTags()
@@ -75,79 +106,85 @@ public class PuzzleLoader : MonoBehaviour
             ? UserSession.Instance.Tags
             : null;
 
-        if (tags == null || tags.Count < 1)
+        if (tags == null || tags.Count < 4)
         {
-            Debug.LogWarning("[PuzzleLoader] 태그 정보가 없습니다. 기본 태그 사용.");
+            Debug.LogWarning("[PuzzleLoader] Invalid tags. Using default tags.");
             tags = new List<string> { "default", "test", "puzzle", "image" };
         }
 
         return tags;
     }
 
-    private IEnumerator TryGetServerImage(List<string> tags, System.Action<Texture2D> callback)
+    private IEnumerator TryGenerateAIImage(List<string> tags, System.Action<Texture2D> callback)
     {
-        // TODO: 서버 이미지 요청 로직 구현 예정
-        // 현재는 서버 연결이 없으므로 바로 실패 처리
-        Debug.Log("[PuzzleLoader] 서버 이미지 요청 시도...");
+        if (SinglePlayGameManager.Instance == null)
+        {
+            Debug.LogWarning("[PuzzleLoader] SinglePlayGameManager not found!");
+            callback?.Invoke(null);
+            yield break;
+        }
 
-        yield return new WaitForSeconds(0.1f); // 서버 요청 시뮬레이션
-
-        // 서버 구현 전까지는 null 반환
-        callback?.Invoke(null);
-    }
-
-    private IEnumerator TryGetPollinationsImage(List<string> tags, System.Action<Texture2D> callback)
-    {
         bool isDone = false;
-        Texture2D result = null;
+        string imageUrl = null;
 
-        if (PollinationsImageService.Instance != null)
-        {
-            PollinationsImageService.Instance.DownloadImage(tags, (texture) =>
+        SinglePlayGameManager.Instance.StartSingleGame(
+            tags.ToArray(),
+            onSuccess: (url) =>
             {
-                result = texture;
+                imageUrl = url;
                 isDone = true;
-            });
-
-            // 타임아웃 대기
-            float elapsed = 0f;
-            while (!isDone && elapsed < pollinationsTimeout)
+            },
+            onError: (error) =>
             {
-                elapsed += Time.deltaTime;
-                yield return null;
+                Debug.LogError($"[PuzzleLoader] Single game start error: {error}");
+                isDone = true;
             }
+        );
 
-            if (!isDone)
-            {
-                Debug.LogWarning("[PuzzleLoader] Pollinations API 타임아웃");
-            }
-        }
-        else
+        // Wait with timeout
+        float elapsed = 0f;
+        while (!isDone && elapsed < aiImageTimeout)
         {
-            Debug.LogWarning("[PuzzleLoader] PollinationsImageService Instance 없음");
+            elapsed += Time.deltaTime;
+            yield return null;
         }
 
-        callback?.Invoke(result);
+        if (!isDone)
+        {
+            Debug.LogWarning("[PuzzleLoader] Single game start timeout");
+            callback?.Invoke(null);
+            yield break;
+        }
+
+        if (string.IsNullOrEmpty(imageUrl))
+        {
+            Debug.LogWarning("[PuzzleLoader] No image URL returned");
+            callback?.Invoke(null);
+            yield break;
+        }
+
+        // Download image
+        Texture2D texture = null;
+        yield return DownloadImageFromUrl(imageUrl, (result) => texture = result);
+        callback?.Invoke(texture);
     }
 
     private Texture2D LoadFallbackImage()
     {
-        // 먼저 PuzzleManager에 설정된 기본 이미지 확인
         if (puzzleManager != null && puzzleManager.puzzleImage != null)
         {
-            Debug.Log("[PuzzleLoader] PuzzleManager 기본 이미지 사용");
+            Debug.Log("[PuzzleLoader] Using PuzzleManager default image");
             return puzzleManager.puzzleImage;
         }
 
-        // PuzzleManager에 기본 이미지가 없으면 Resources에서 로드
         var fallbackTexture = Resources.Load<Texture2D>(fallbackImagePath);
         if (fallbackTexture == null)
         {
-            Debug.LogError($"[PuzzleLoader] 더미 이미지 로드 실패: Resources/{fallbackImagePath}");
+            Debug.LogError($"[PuzzleLoader] Failed to load fallback image: Resources/{fallbackImagePath}");
         }
         else
         {
-            Debug.Log("[PuzzleLoader] Resources 더미 이미지 로드 성공");
+            Debug.Log("[PuzzleLoader] Fallback image loaded from Resources");
         }
         return fallbackTexture;
     }
@@ -156,27 +193,26 @@ public class PuzzleLoader : MonoBehaviour
     {
         if (puzzleManager == null)
         {
-            Debug.LogError("[PuzzleLoader] puzzleManager가 할당되지 않았습니다.");
+            Debug.LogError("[PuzzleLoader] PuzzleManager not assigned!");
             return;
         }
 
         int puzzleSize = GetPuzzleSize();
         puzzleManager.InitializePuzzle(texture, puzzleSize, puzzleSize);
-        Debug.Log($"[PuzzleLoader] 퍼즐 초기화 완료: {puzzleSize}x{puzzleSize}");
+        Debug.Log($"[PuzzleLoader] Puzzle initialized: {puzzleSize}x{puzzleSize}");
     }
 
     private int GetPuzzleSize()
     {
         int size = (GameData.difficulty < 2 || GameData.difficulty > 5) ? 3 : GameData.difficulty;
-        Debug.Log($"[PuzzleLoader] 퍼즐 크기: {size}x{size}");
+        Debug.Log($"[PuzzleLoader] Puzzle size: {size}x{size}");
         return size;
     }
 
     private void HandleLoadingFailure()
     {
-        // 로딩 실패 시 처리 (예: 에러 팝업, 메인 메뉴로 돌아가기 등)
-        Debug.LogError("[PuzzleLoader] 퍼즐 로딩에 완전히 실패했습니다.");
-        // TODO: 에러 처리 UI 표시
+        Debug.LogError("[PuzzleLoader] Puzzle loading completely failed!");
+        // TODO: Show error popup
     }
 
     private void FinalizePuzzleLoading()
@@ -191,6 +227,6 @@ public class PuzzleLoader : MonoBehaviour
         else if (loadingPanel != null)
             loadingPanel.SetActive(false);
 
-        Debug.Log("[PuzzleLoader] 퍼즐 로딩 완료");
+        Debug.Log("[PuzzleLoader] Puzzle loading complete");
     }
 }

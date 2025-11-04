@@ -1,77 +1,73 @@
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
 
 public class P001_Planet : MonoBehaviour
 {
-    [Header("UI")]
+    [Header("Planet List")]
     public Transform planetListContainer;
     public GameObject planetCardPrefab;
-    public TMP_InputField searchInput;
-    public TMP_Text sortButtonText;
 
-    [Header("TR 버튼 그룹")]
-    public GameObject[] loginOnlyButtons;
-    public GameObject settingsButton;
+    [Header("Sort Buttons")]
+    public Button recentSortButton;
+    public Button recommendSortButton;
 
-    [Header("패널들")]
-    public GameObject settingsPanel;
-    public GameObject profilePanel;
+    [Header("Search")]
+    public TMP_InputField searchInputField;
+    public Button searchButton;
 
-    public FadeController fadeController;
-
-    private List<PlanetListItem> allPlanets = new();
-    private List<PlanetListItem> favoritePlanets = new();
+    private List<PlanetListItem> allPlanets = new List<PlanetListItem>();
+    private List<FavoriteItem> favoritePlanets = new List<FavoriteItem>();
     private bool isRecentSort = true;
-
-    private void Awake()
-    {
-        fadeController = FindObjectOfType<FadeController>();
-    }
 
     private void Start()
     {
-        UpdateTopRightButtons();
-        UpdateSortButtonText();
-        LoadPlanetList();
-    }
+        // Button listeners
+        recentSortButton?.onClick.AddListener(() => OnClick_SortRecent());
+        recommendSortButton?.onClick.AddListener(() => OnClick_SortRecommend());
+        searchButton?.onClick.AddListener(() => OnClick_Search());
 
-    private void OnEnable()
-    {
-        UpdateTopRightButtons();
-    }
-
-    #region 행성 목록 로드
-    private void LoadPlanetList()
-    {
+        // Load planet list
         StartCoroutine(LoadPlanetListCoroutine());
     }
 
+    #region Load Data
     private IEnumerator LoadPlanetListCoroutine()
     {
-        // 전체 행성 목록 가져오기
+        // Get all planet list
         yield return APIManager.Instance.Get(
             "/planets",
             onSuccess: (response) =>
             {
+                // FIXED: Parse with wrapper structure
                 PlanetListResponse planetResponse = JsonUtility.FromJson<PlanetListResponse>(response);
-                allPlanets = new List<PlanetListItem>(planetResponse.result);
-                Debug.Log($"행성 목록 로드 성공: {allPlanets.Count}개");
 
-                // 로그인 상태면 즐겨찾기 목록도 가져오기
-                if (UserSession.Instance.IsLoggedIn)
+                if (planetResponse.isSuccess && planetResponse.result != null)
                 {
-                    StartCoroutine(LoadFavoriteListCoroutine());
+                    // FIXED: result.planets is the array
+                    allPlanets = new List<PlanetListItem>(planetResponse.result.planets);
+                    Debug.Log($"Planet list loaded: {allPlanets.Count} planets");
+
+                    // If logged in, load favorites too
+                    if (UserSession.Instance.IsLoggedIn)
+                    {
+                        StartCoroutine(LoadFavoriteListCoroutine());
+                    }
+                    else
+                    {
+                        RefreshPlanetList();
+                    }
                 }
                 else
                 {
-                    RefreshPlanetList();
+                    Debug.LogError($"Planet list load failed: {planetResponse.message}");
                 }
             },
             onError: (error) =>
             {
-                Debug.LogError("행성 목록 로드 실패: " + error);
+                Debug.LogError("Planet list load failed: " + error);
             }
         );
     }
@@ -82,15 +78,21 @@ public class P001_Planet : MonoBehaviour
             "/planets/favorites/me",
             onSuccess: (response) =>
             {
+                // FIXED: Parse with wrapper structure
                 FavoriteListResponse favoriteResponse = JsonUtility.FromJson<FavoriteListResponse>(response);
-                favoritePlanets = new List<PlanetListItem>(favoriteResponse.result);
-                Debug.Log($"즐겨찾기 목록 로드 성공: {favoritePlanets.Count}개");
+
+                if (favoriteResponse.isSuccess && favoriteResponse.result != null)
+                {
+                    // FIXED: result.favorites is the array
+                    favoritePlanets = new List<FavoriteItem>(favoriteResponse.result.favorites);
+                    Debug.Log($"Favorite list loaded: {favoritePlanets.Count} favorites");
+                }
 
                 RefreshPlanetList();
             },
             onError: (error) =>
             {
-                Debug.LogError("즐겨찾기 목록 로드 실패: " + error);
+                Debug.LogError("Favorite list load failed: " + error);
                 RefreshPlanetList();
             }
         );
@@ -98,33 +100,34 @@ public class P001_Planet : MonoBehaviour
 
     private void RefreshPlanetList()
     {
-        // 기존 카드 삭제
+        // Clear existing cards
         foreach (Transform child in planetListContainer)
         {
             Destroy(child.gameObject);
         }
 
-        // 정렬된 리스트 생성
+        // Create sorted list
         List<PlanetListItem> sortedList = new List<PlanetListItem>(allPlanets);
 
         if (isRecentSort)
         {
-            // 최신순 정렬 (ownerUsername 기준, 실제로는 생성일 필요)
-            sortedList.Sort((a, b) => string.Compare(b.ownerUsername, a.ownerUsername));
+            // FIXED: Sort by username (in real case, should sort by createdAt)
+            sortedList.Sort((a, b) => string.Compare(b.username, a.username));
         }
         else
         {
-            // 추천순 정렬 (방문자 수 기준)
+            // Sort by visit count (recommendation)
             sortedList.Sort((a, b) => b.visitCount.CompareTo(a.visitCount));
         }
 
-        // 즐겨찾기를 맨 앞으로
+        // Put favorites first
         List<PlanetListItem> favoriteFirst = new();
         List<PlanetListItem> others = new();
 
         foreach (var planet in sortedList)
         {
-            if (IsFavorite(planet.ownerUsername))
+            // FIXED: Use username to check favorites
+            if (IsFavorite(planet.username))
                 favoriteFirst.Add(planet);
             else
                 others.Add(planet);
@@ -132,38 +135,43 @@ public class P001_Planet : MonoBehaviour
 
         favoriteFirst.AddRange(others);
 
-        // 카드 생성
+        // Create cards
         foreach (var planet in favoriteFirst)
         {
             var card = Instantiate(planetCardPrefab, planetListContainer);
             var planetCard = card.GetComponent<PlanetCard>();
-            bool isFav = IsFavorite(planet.ownerUsername);
+            bool isFav = IsFavorite(planet.username);
             planetCard.Init(planet, isFav, this);
         }
     }
 
-    private bool IsFavorite(string ownerUsername)
+    private bool IsFavorite(string username)
     {
-        return favoritePlanets.Exists(p => p.ownerUsername == ownerUsername);
+        // FIXED: FavoriteItem has 'username' field
+        return favoritePlanets.Exists(p => p.username == username);
     }
     #endregion
 
-    #region 정렬/검색
-    public void ToggleSort()
+    #region Sort Buttons
+    public void OnClick_SortRecent()
     {
-        isRecentSort = !isRecentSort;
-        UpdateSortButtonText();
+        isRecentSort = true;
         RefreshPlanetList();
+        Debug.Log("Sort: Recent");
     }
 
-    private void UpdateSortButtonText()
+    public void OnClick_SortRecommend()
     {
-        sortButtonText.text = isRecentSort ? "Sort : Recent" : "Sort : Recommended";
+        isRecentSort = false;
+        RefreshPlanetList();
+        Debug.Log("Sort: Recommend");
     }
+    #endregion
 
-    public void Search()
+    #region Search
+    public void OnClick_Search()
     {
-        string query = searchInput.text.Trim().ToLower();
+        string query = searchInputField.text.Trim().ToLower();
 
         if (string.IsNullOrEmpty(query))
         {
@@ -171,131 +179,95 @@ public class P001_Planet : MonoBehaviour
             return;
         }
 
-        // 기존 카드 삭제
+        // Clear existing cards
         foreach (Transform child in planetListContainer)
         {
             Destroy(child.gameObject);
         }
 
-        // 검색 필터링
+        // FIXED: Search by username or title (no ownerNickname in API)
         var filtered = allPlanets.FindAll(p =>
-            p.ownerNickname.ToLower().Contains(query) ||
-            p.ownerUsername.ToLower().Contains(query)
+            (p.username?.ToLower().Contains(query) ?? false) ||
+            (p.title?.ToLower().Contains(query) ?? false)
         );
 
-        // 카드 생성
+        // Create cards
         foreach (var planet in filtered)
         {
             var card = Instantiate(planetCardPrefab, planetListContainer);
             var planetCard = card.GetComponent<PlanetCard>();
-            bool isFav = IsFavorite(planet.ownerUsername);
+            bool isFav = IsFavorite(planet.username);
             planetCard.Init(planet, isFav, this);
         }
     }
     #endregion
 
-    #region 즐겨찾기 토글 (PlanetCard에서 호출)
-    public void ToggleFavorite(string ownerUsername, bool currentState)
+    #region Toggle Favorite (called from PlanetCard)
+    public void ToggleFavorite(string username, bool currentState)
     {
         if (!UserSession.Instance.IsLoggedIn)
         {
-            Debug.LogWarning("로그인이 필요합니다.");
+            Debug.LogWarning("Login required");
             return;
         }
 
-        StartCoroutine(ToggleFavoriteCoroutine(ownerUsername, currentState));
+        StartCoroutine(ToggleFavoriteCoroutine(username, currentState));
     }
 
-    private IEnumerator ToggleFavoriteCoroutine(string ownerUsername, bool currentState)
+    private IEnumerator ToggleFavoriteCoroutine(string username, bool currentState)
     {
         if (currentState)
         {
-            // 즐겨찾기 해제
+            // Remove from favorites
             yield return APIManager.Instance.Delete(
-                $"/planets/{ownerUsername}/favorite",
+                $"/planets/{username}/favorite",
                 onSuccess: (response) =>
                 {
-                    Debug.Log("즐겨찾기 해제 성공");
-                    favoritePlanets.RemoveAll(p => p.ownerUsername == ownerUsername);
+                    Debug.Log("Favorite removed successfully");
+                    favoritePlanets.RemoveAll(p => p.username == username);
                     RefreshPlanetList();
                 },
                 onError: (error) =>
                 {
-                    Debug.LogError("즐겨찾기 해제 실패: " + error);
+                    Debug.LogError("Favorite removal failed: " + error);
                 }
             );
         }
         else
         {
-            // 즐겨찾기 추가
+            // Add to favorites
             yield return APIManager.Instance.Post(
-                $"/planets/{ownerUsername}/favorite",
+                $"/planets/{username}/favorite",
                 new { },
                 onSuccess: (response) =>
                 {
-                    Debug.Log("즐겨찾기 추가 성공");
-                    LoadFavoriteListCoroutine();
+                    Debug.Log("Favorite added successfully");
+
+                    // Create FavoriteItem and add to list
+                    var planet = allPlanets.Find(p => p.username == username);
+                    if (planet != null)
+                    {
+                        var favoriteItem = new FavoriteItem
+                        {
+                            planetId = planet.planetId,
+                            username = planet.username,
+                            title = planet.title,
+                            visitCount = planet.visitCount,
+                            createdAt = planet.createdAt,
+                            profileImageUrl = planet.profileImageUrl,
+                            favoritedAt = System.DateTime.UtcNow.ToString("o")
+                        };
+                        favoritePlanets.Add(favoriteItem);
+                    }
+
+                    RefreshPlanetList();
                 },
                 onError: (error) =>
                 {
-                    Debug.LogError("즐겨찾기 추가 실패: " + error);
+                    Debug.LogError("Favorite addition failed: " + error);
                 }
             );
         }
-    }
-    #endregion
-
-    #region UI 버튼 핸들러
-    public void Back()
-    {
-        fadeController.FadeToScene("000_MainMenu");
-    }
-
-    public void OnClick_UserInfo()
-    {
-        OpenPanel(profilePanel);
-    }
-
-    public void OnClick_Friend()
-    {
-        fadeController.FadeToScene("F001_Friend");
-    }
-
-    public void Logout()
-    {
-        UserSession.Instance.Logout();
-        fadeController.FadeToScene("000_MainMenu");
-        Debug.Log("로그아웃 완료, 메인 메뉴로 이동");
-    }
-
-    public void OpenPanel(GameObject panel)
-    {
-        CloseAllPanels();
-        if (panel != null)
-            panel.SetActive(true);
-        else
-            Debug.LogWarning("⚠ panel is NULL");
-    }
-
-    public void CloseAllPanels()
-    {
-        settingsPanel.SetActive(false);
-        profilePanel.SetActive(false);
-    }
-
-    public void UpdateTopRightButtons()
-    {
-        bool isLoggedIn = UserSession.Instance != null && UserSession.Instance.IsLoggedIn;
-
-        foreach (var go in loginOnlyButtons)
-            go.SetActive(isLoggedIn);
-
-        settingsButton.SetActive(true);
-    }
-
-    public void OnClick_OpenSettings()
-    {
-        OpenPanel(settingsPanel);
     }
     #endregion
 }

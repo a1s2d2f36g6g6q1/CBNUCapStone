@@ -20,7 +20,7 @@ public class TimerManager : MonoBehaviour
     {
         if (timerText == null)
         {
-            Debug.LogWarning("TimerText가 할당되지 않았습니다.");
+            Debug.LogWarning("[Timer] TimerText not assigned");
             return;
         }
 
@@ -35,13 +35,13 @@ public class TimerManager : MonoBehaviour
     {
         elapsedTime = 0f;
         isRunning = true;
-        Debug.Log("타이머 시작");
+        Debug.Log("[Timer] Timer started");
     }
 
     public void StopTimer()
     {
         isRunning = false;
-        Debug.Log($"타이머 정지 - 최종 시간: {GetFormattedTime()}");
+        Debug.Log($"[Timer] Timer stopped - Final time: {GetFormattedTime()}");
     }
 
     public void PauseTimer()
