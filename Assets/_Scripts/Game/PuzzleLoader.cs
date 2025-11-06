@@ -12,7 +12,7 @@ public class PuzzleLoader : MonoBehaviour
     public GameObject backButtonObj;
 
     [Header("Fallback Settings")]
-    public float aiImageTimeout = 60f;
+    public float serverTimeout = 10f;
     public string fallbackImagePath = "test";
 
     private void Start()
@@ -33,71 +33,178 @@ public class PuzzleLoader : MonoBehaviour
 
     IEnumerator LoadAndInitPuzzleCoroutine()
     {
-        var tags = GetTags();
         Texture2D puzzleTexture = null;
 
+        // Check if multiplay
         bool isMultiplay = MultiplaySession.Instance != null &&
-                           MultiplaySession.Instance.CurrentRoom != null;
+                          MultiplaySession.Instance.CurrentRoom != null;
+
+        GameData.isMultiplay = isMultiplay;
 
         if (isMultiplay)
         {
-            Debug.Log("[PuzzleLoader] Multiplay mode");
-
-            string sharedUrl = MultiplaySession.Instance.SharedImageUrl;
-
-            if (!string.IsNullOrEmpty(sharedUrl))
-            {
-                Debug.Log($"[PuzzleLoader] Using shared URL: {sharedUrl}");
-                yield return StartCoroutine(DownloadImageFromUrl(sharedUrl, (result) => puzzleTexture = result));
-            }
-            else
-            {
-                Debug.LogWarning("[PuzzleLoader] No shared URL. Generating...");
-                yield return StartCoroutine(TryGenerateAIImage(tags, (result) => puzzleTexture = result));
-            }
+            // Multiplay: Use image from MultiplaySession
+            yield return StartCoroutine(LoadMultiplayImage((result) => puzzleTexture = result));
         }
         else
         {
-            Debug.Log("[PuzzleLoader] Single play mode");
-            yield return StartCoroutine(TryGenerateAIImage(tags, (result) => puzzleTexture = result));
+            // Singleplay: Request image from server
+            yield return StartCoroutine(LoadSingleplayImage((result) => puzzleTexture = result));
         }
 
+        // Fallback to dummy image if failed
         if (puzzleTexture == null)
         {
-            Debug.LogWarning("[PuzzleLoader] Using fallback image");
+            Debug.LogWarning("[PuzzleLoader] All image sources failed. Using fallback image.");
             puzzleTexture = LoadFallbackImage();
         }
 
+        // Initialize puzzle
         if (puzzleTexture != null)
         {
             InitializePuzzle(puzzleTexture);
         }
         else
         {
-            Debug.LogError("[PuzzleLoader] All image loading failed!");
+            Debug.LogError("[PuzzleLoader] Complete failure loading image!");
             HandleLoadingFailure();
         }
 
         FinalizePuzzleLoading();
     }
 
-    private IEnumerator DownloadImageFromUrl(string url, System.Action<Texture2D> callback)
+    private IEnumerator LoadSingleplayImage(System.Action<Texture2D> callback)
     {
-        Debug.Log($"[PuzzleLoader] Downloading: {url}");
+        Debug.Log("[PuzzleLoader] Requesting image from server for singleplay...");
 
-        yield return APIManager.Instance.DownloadImage(
-            url,
-            onSuccess: (texture) =>
+        // Get tags from UserSession
+        var tags = GetTags();
+
+        SingleGameStartRequest request = new SingleGameStartRequest
+        {
+            tags = tags.ToArray()
+        };
+
+        bool requestCompleted = false;
+        Texture2D resultTexture = null;
+
+        yield return APIManager.Instance.Post(
+            "/games/single/start",
+            request,
+            onSuccess: (response) =>
             {
-                Debug.Log($"[PuzzleLoader] Downloaded: {texture.width}x{texture.height}");
-                callback?.Invoke(texture);
+                Debug.Log($"[PuzzleLoader] Server response: {response}");
+
+                SingleGameStartResponse apiResponse = JsonUtility.FromJson<SingleGameStartResponse>(response);
+
+                if (apiResponse != null && apiResponse.result != null)
+                {
+                    // Save game data
+                    GameData.gameCode = apiResponse.result.gameCode;
+                    GameData.imageUrl = apiResponse.result.imageUrl;
+
+                    Debug.Log($"[PuzzleLoader] GameCode: {GameData.gameCode}");
+                    Debug.Log($"[PuzzleLoader] ImageURL: {GameData.imageUrl}");
+
+                    // Download image from URL
+                    StartCoroutine(DownloadImageFromURL(GameData.imageUrl, (texture) =>
+                    {
+                        resultTexture = texture;
+                        requestCompleted = true;
+                    }));
+                }
+                else
+                {
+                    Debug.LogError("[PuzzleLoader] Failed to parse server response");
+                    requestCompleted = true;
+                }
             },
             onError: (error) =>
             {
-                Debug.LogError($"[PuzzleLoader] Download failed: {error}");
-                callback?.Invoke(null);
+                Debug.LogError("[PuzzleLoader] Server request failed: " + error);
+                requestCompleted = true;
             }
         );
+
+        // Wait for completion
+        float elapsed = 0f;
+        while (!requestCompleted && elapsed < serverTimeout)
+        {
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        if (!requestCompleted)
+        {
+            Debug.LogWarning("[PuzzleLoader] Server request timeout");
+        }
+
+        callback?.Invoke(resultTexture);
+    }
+
+    private IEnumerator LoadMultiplayImage(System.Action<Texture2D> callback)
+    {
+        Debug.Log("[PuzzleLoader] Loading image for multiplay...");
+
+        if (MultiplaySession.Instance == null || MultiplaySession.Instance.CurrentRoom == null)
+        {
+            Debug.LogError("[PuzzleLoader] MultiplaySession or CurrentRoom is null!");
+            callback?.Invoke(null);
+            yield break;
+        }
+
+        // Get image URL from room data
+        string imageUrl = MultiplaySession.Instance.CurrentRoom.imageUrl;
+        string gameCode = MultiplaySession.Instance.CurrentRoom.sessionCode;
+
+        if (string.IsNullOrEmpty(imageUrl))
+        {
+            Debug.LogError("[PuzzleLoader] No image URL in multiplay room data!");
+            callback?.Invoke(null);
+            yield break;
+        }
+
+        // Save game data
+        GameData.gameCode = gameCode;
+        GameData.imageUrl = imageUrl;
+
+        Debug.Log($"[PuzzleLoader] Multiplay GameCode: {GameData.gameCode}");
+        Debug.Log($"[PuzzleLoader] Multiplay ImageURL: {GameData.imageUrl}");
+
+        // Download image
+        Texture2D resultTexture = null;
+        yield return StartCoroutine(DownloadImageFromURL(imageUrl, (texture) => resultTexture = texture));
+
+        callback?.Invoke(resultTexture);
+    }
+
+    private IEnumerator DownloadImageFromURL(string url, System.Action<Texture2D> callback)
+    {
+        if (string.IsNullOrEmpty(url))
+        {
+            Debug.LogError("[PuzzleLoader] Image URL is empty!");
+            callback?.Invoke(null);
+            yield break;
+        }
+
+        Debug.Log($"[PuzzleLoader] Downloading image from: {url}");
+
+        using (UnityEngine.Networking.UnityWebRequest request = UnityEngine.Networking.UnityWebRequestTexture.GetTexture(url))
+        {
+            yield return request.SendWebRequest();
+
+            if (request.result == UnityEngine.Networking.UnityWebRequest.Result.Success)
+            {
+                Texture2D texture = UnityEngine.Networking.DownloadHandlerTexture.GetContent(request);
+                Debug.Log("[PuzzleLoader] Image download successful");
+                callback?.Invoke(texture);
+            }
+            else
+            {
+                Debug.LogError($"[PuzzleLoader] Image download failed: {request.error}");
+                callback?.Invoke(null);
+            }
+        }
     }
 
     private List<string> GetTags()
@@ -106,85 +213,33 @@ public class PuzzleLoader : MonoBehaviour
             ? UserSession.Instance.Tags
             : null;
 
-        if (tags == null || tags.Count < 4)
+        if (tags == null || tags.Count < 1)
         {
-            Debug.LogWarning("[PuzzleLoader] Invalid tags. Using default tags.");
-            tags = new List<string> { "default", "test", "puzzle", "image" };
+            Debug.LogWarning("[PuzzleLoader] No tags found. Using default tags.");
+            tags = new List<string> { "default", "puzzle", "game", "art" };
         }
 
         return tags;
     }
 
-    private IEnumerator TryGenerateAIImage(List<string> tags, System.Action<Texture2D> callback)
-    {
-        if (SinglePlayGameManager.Instance == null)
-        {
-            Debug.LogWarning("[PuzzleLoader] SinglePlayGameManager not found!");
-            callback?.Invoke(null);
-            yield break;
-        }
-
-        bool isDone = false;
-        string imageUrl = null;
-
-        SinglePlayGameManager.Instance.StartSingleGame(
-            tags.ToArray(),
-            onSuccess: (url) =>
-            {
-                imageUrl = url;
-                isDone = true;
-            },
-            onError: (error) =>
-            {
-                Debug.LogError($"[PuzzleLoader] Single game start error: {error}");
-                isDone = true;
-            }
-        );
-
-        // Wait with timeout
-        float elapsed = 0f;
-        while (!isDone && elapsed < aiImageTimeout)
-        {
-            elapsed += Time.deltaTime;
-            yield return null;
-        }
-
-        if (!isDone)
-        {
-            Debug.LogWarning("[PuzzleLoader] Single game start timeout");
-            callback?.Invoke(null);
-            yield break;
-        }
-
-        if (string.IsNullOrEmpty(imageUrl))
-        {
-            Debug.LogWarning("[PuzzleLoader] No image URL returned");
-            callback?.Invoke(null);
-            yield break;
-        }
-
-        // Download image
-        Texture2D texture = null;
-        yield return DownloadImageFromUrl(imageUrl, (result) => texture = result);
-        callback?.Invoke(texture);
-    }
-
     private Texture2D LoadFallbackImage()
     {
+        // Check PuzzleManager's default image first
         if (puzzleManager != null && puzzleManager.puzzleImage != null)
         {
             Debug.Log("[PuzzleLoader] Using PuzzleManager default image");
             return puzzleManager.puzzleImage;
         }
 
+        // Load from Resources
         var fallbackTexture = Resources.Load<Texture2D>(fallbackImagePath);
         if (fallbackTexture == null)
         {
-            Debug.LogError($"[PuzzleLoader] Failed to load fallback image: Resources/{fallbackImagePath}");
+            Debug.LogError($"[PuzzleLoader] Fallback image load failed: Resources/{fallbackImagePath}");
         }
         else
         {
-            Debug.Log("[PuzzleLoader] Fallback image loaded from Resources");
+            Debug.Log("[PuzzleLoader] Resources fallback image loaded");
         }
         return fallbackTexture;
     }
@@ -211,8 +266,8 @@ public class PuzzleLoader : MonoBehaviour
 
     private void HandleLoadingFailure()
     {
-        Debug.LogError("[PuzzleLoader] Puzzle loading completely failed!");
-        // TODO: Show error popup
+        Debug.LogError("[PuzzleLoader] Complete loading failure!");
+        // TODO: Show error popup or return to main menu
     }
 
     private void FinalizePuzzleLoading()

@@ -3,9 +3,9 @@ using TMPro;
 
 public class PhotoPanelController : MonoBehaviour
 {
-    [Header("UI Elements")]
-    public TMP_InputField descriptionField;   // For my planet (editable)
-    public TMP_Text descriptionText;          // For other's planet (read-only)
+    [Header("UI 요소")]
+    public TMP_InputField descriptionField;   // 내 행성용 (편집)
+    public TMP_Text descriptionText;          // 남의 행성용 (읽기 전용)
     public TMP_Text tagText;
 
     private GalleryItem currentGalleryItem;
@@ -19,28 +19,24 @@ public class PhotoPanelController : MonoBehaviour
         descriptionField.gameObject.SetActive(isMine);
         descriptionText.gameObject.SetActive(!isMine);
 
-        // FIXED: GalleryItem has 'title' not 'description'
         if (isMine)
         {
-            descriptionField.text = item.title ?? "";
+            descriptionField.text = item.description;
         }
         else
         {
-            descriptionText.text = item.title ?? "";
+            descriptionText.text = item.description;
         }
 
-        // FIXED: GalleryItem doesn't have 'tags' in list response
-        // Tags are only in detail response. For now, hide or show empty
-        tagText.text = "";
+        tagText.text = string.Join(" ", item.tags);
     }
 
     public void OnDescriptionChanged()
     {
         if (currentGalleryItem != null && isMine)
         {
-            // FIXED: Update title field
-            currentGalleryItem.title = descriptionField.text;
-            // TODO: Call description update API
+            currentGalleryItem.description = descriptionField.text;
+            // TODO: 설명 수정 API 호출
         }
     }
 }

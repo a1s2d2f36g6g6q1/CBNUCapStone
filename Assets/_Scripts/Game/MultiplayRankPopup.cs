@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-public class ClearPopup : MonoBehaviour
+public class MultiplayRankPopup : MonoBehaviour
 {
     [Header("UI References")]
     public Button exitButton;
@@ -17,19 +17,21 @@ public class ClearPopup : MonoBehaviour
     public GameObject uploadStatusError;
     public FadeController fadeController;
 
-    [Header("Upload Settings")]
-    public float uploadSimulationTime = 2f;
+    [Header("Player Rank Display")]
+    public TMP_Text[] playerNames; // 4개 (Player1~4)
+    public TMP_Text[] playerTimes; // 4개 (Player1~4)
+
+    [Header("Rank Result Display")]
+    public TMP_Text rankResultText; // "You finished 1st!" / "You finished 2nd!" etc.
 
     [Header("Animation Settings")]
     public float animationDuration = 0.5f;
 
-    [Header("Login Check UI")]
-    public TMP_Text loginRequiredText; // "Login required to upload"
-
     private string currentClearTime;
     private bool isUploading = false;
     private Vector3 originalScale;
-    private bool canUpload = false;
+    private bool isWinner = false;
+    private int myRank = 0;
 
     private void Start()
     {
@@ -38,16 +40,16 @@ public class ClearPopup : MonoBehaviour
         SetUploadStatus("_");
     }
 
-    public void ShowClearPopup(Texture2D completedPuzzleImage, string clearTime)
+    public void ShowRankPopup(Texture2D completedPuzzleImage, string myClearTime)
     {
-        currentClearTime = clearTime;
+        currentClearTime = myClearTime;
 
         gameObject.SetActive(true);
 
-        StartCoroutine(ShowPopupWithDelay(completedPuzzleImage, clearTime));
+        StartCoroutine(ShowPopupWithDelay(completedPuzzleImage, myClearTime));
     }
 
-    private IEnumerator ShowPopupWithDelay(Texture2D completedPuzzleImage, string clearTime)
+    private IEnumerator ShowPopupWithDelay(Texture2D completedPuzzleImage, string myClearTime)
     {
         var canvasGroup = gameObject.GetComponent<CanvasGroup>();
         if (canvasGroup == null)
@@ -56,12 +58,18 @@ public class ClearPopup : MonoBehaviour
 
         yield return new WaitForSeconds(0.1f);
 
-        PreparePopupContent(completedPuzzleImage, clearTime);
+        PreparePopupContent(completedPuzzleImage, myClearTime);
 
         yield return StartCoroutine(ShowPopupFromBackAnimation());
+
+        // Subscribe to multiplay events
+        SubscribeMultiplayEvents();
+
+        // Initial rank update
+        UpdateRankDisplay();
     }
 
-    private void PreparePopupContent(Texture2D completedPuzzleImage, string clearTime)
+    private void PreparePopupContent(Texture2D completedPuzzleImage, string myClearTime)
     {
         // Set clear image
         if (clearImage != null && completedPuzzleImage != null)
@@ -79,27 +87,6 @@ public class ClearPopup : MonoBehaviour
         if (descriptionInputField != null)
             descriptionInputField.text = "";
 
-        // Check login status
-        bool isLoggedIn = UserSession.Instance != null && UserSession.Instance.IsLoggedIn;
-        canUpload = isLoggedIn;
-
-        // Update upload button state
-        if (uploadButton != null)
-        {
-            uploadButton.interactable = canUpload;
-            var buttonText = uploadButton.GetComponentInChildren<TMP_Text>();
-            if (buttonText != null)
-                buttonText.text = canUpload ? "Upload" : "Login Required";
-        }
-
-        // Show/hide login required message
-        if (loginRequiredText != null)
-        {
-            loginRequiredText.gameObject.SetActive(!canUpload);
-            if (!canUpload)
-                loginRequiredText.text = "Can't upload - Login required";
-        }
-
         SetUploadStatus("_");
 
         // Button events
@@ -113,6 +100,15 @@ public class ClearPopup : MonoBehaviour
         {
             uploadButton.onClick.RemoveAllListeners();
             uploadButton.onClick.AddListener(OnUploadClick);
+        }
+
+        // Initially disable upload button
+        if (uploadButton != null)
+        {
+            uploadButton.interactable = false;
+            var buttonText = uploadButton.GetComponentInChildren<TMP_Text>();
+            if (buttonText != null)
+                buttonText.text = "Waiting...";
         }
     }
 
@@ -146,19 +142,187 @@ public class ClearPopup : MonoBehaviour
         transform.localPosition = endPos;
     }
 
+    #region Rank Display Update
+    private void SubscribeMultiplayEvents()
+    {
+        if (MultiplaySession.Instance != null)
+        {
+            MultiplaySession.Instance.OnRoomDataUpdated += OnRoomDataUpdated;
+        }
+    }
+
+    private void UnsubscribeMultiplayEvents()
+    {
+        if (MultiplaySession.Instance != null)
+        {
+            MultiplaySession.Instance.OnRoomDataUpdated -= OnRoomDataUpdated;
+        }
+    }
+
+    private void OnRoomDataUpdated(RoomData roomData)
+    {
+        UpdateRankDisplay();
+    }
+
+    private void UpdateRankDisplay()
+    {
+        if (MultiplaySession.Instance == null || MultiplaySession.Instance.CurrentRoom == null)
+        {
+            Debug.LogWarning("[MultiplayRankPopup] No room data");
+            return;
+        }
+
+        var players = MultiplaySession.Instance.CurrentRoom.players;
+        if (players == null || players.Count == 0)
+        {
+            Debug.LogWarning("[MultiplayRankPopup] No players in room");
+            return;
+        }
+
+        // Sort players by clear time (cleared players first, then by time)
+        var sortedPlayers = new List<PlayerData>(players);
+        sortedPlayers.Sort((a, b) =>
+        {
+            // Not cleared players go to end
+            if (a.clearTime <= 0 && b.clearTime <= 0) return 0;
+            if (a.clearTime <= 0) return 1;
+            if (b.clearTime <= 0) return -1;
+
+            // Both cleared: sort by time
+            return a.clearTime.CompareTo(b.clearTime);
+        });
+
+        // Update UI
+        for (int i = 0; i < 4; i++)
+        {
+            if (i < sortedPlayers.Count)
+            {
+                var player = sortedPlayers[i];
+
+                // Update name
+                if (playerNames != null && playerNames.Length > i && playerNames[i] != null)
+                {
+                    playerNames[i].text = player.nickname;
+                }
+
+                // Update time
+                if (playerTimes != null && playerTimes.Length > i && playerTimes[i] != null)
+                {
+                    if (player.clearTime > 0)
+                    {
+                        playerTimes[i].text = FormatTime(player.clearTime);
+                    }
+                    else
+                    {
+                        playerTimes[i].text = "Playing...";
+                    }
+                }
+
+                // Check if this is me
+                if (player.userId == MultiplaySession.Instance.MyUserId)
+                {
+                    myRank = i + 1;
+                    isWinner = (i == 0);
+                }
+            }
+            else
+            {
+                // Empty slot
+                if (playerNames != null && playerNames.Length > i && playerNames[i] != null)
+                {
+                    playerNames[i].text = "Empty";
+                }
+
+                if (playerTimes != null && playerTimes.Length > i && playerTimes[i] != null)
+                {
+                    playerTimes[i].text = "-";
+                }
+            }
+        }
+
+        // Update rank result text
+        UpdateRankResultText();
+
+        // Check if all players finished
+        CheckAllPlayersFinished(sortedPlayers);
+    }
+
+    private void UpdateRankResultText()
+    {
+        if (rankResultText == null) return;
+
+        if (myRank == 0)
+        {
+            rankResultText.text = "Waiting for results...";
+            return;
+        }
+
+        string suffix = "th";
+        if (myRank == 1) suffix = "st";
+        else if (myRank == 2) suffix = "nd";
+        else if (myRank == 3) suffix = "rd";
+
+        rankResultText.text = $"You finished {myRank}{suffix}!";
+    }
+
+    private void CheckAllPlayersFinished(List<PlayerData> players)
+    {
+        bool allFinished = true;
+        foreach (var player in players)
+        {
+            if (player.clearTime <= 0)
+            {
+                allFinished = false;
+                break;
+            }
+        }
+
+        if (allFinished)
+        {
+            // All players finished - enable upload for winner
+            if (isWinner)
+            {
+                if (uploadButton != null)
+                {
+                    uploadButton.interactable = true;
+                    var buttonText = uploadButton.GetComponentInChildren<TMP_Text>();
+                    if (buttonText != null)
+                        buttonText.text = "Upload to Planet";
+                }
+            }
+            else
+            {
+                if (uploadButton != null)
+                {
+                    uploadButton.interactable = false;
+                    var buttonText = uploadButton.GetComponentInChildren<TMP_Text>();
+                    if (buttonText != null)
+                        buttonText.text = "Only Winner Can Upload";
+                }
+            }
+
+            Debug.Log("[MultiplayRankPopup] All players finished!");
+        }
+    }
+
+    private string FormatTime(float timeInSeconds)
+    {
+        int minutes = (int)(timeInSeconds / 60f);
+        int seconds = (int)(timeInSeconds % 60f);
+        int milliseconds = (int)(timeInSeconds * 1000f % 1000);
+
+        return string.Format("{0:00}:{1:00}:{2:000}", minutes, seconds, milliseconds);
+    }
+    #endregion
+
+    #region Upload
     public void OnUploadClick()
     {
         if (isUploading) return;
 
-        if (!canUpload)
+        if (!isWinner)
         {
-            Debug.LogWarning("[ClearPopup] Cannot upload - not logged in");
-            SetUploadStatus("Error");
-            if (loginRequiredText != null)
-            {
-                loginRequiredText.text = "Can't upload - Login required";
-                loginRequiredText.gameObject.SetActive(true);
-            }
+            Debug.LogWarning("[MultiplayRankPopup] Only winner can upload!");
             return;
         }
 
@@ -201,7 +365,7 @@ public class ClearPopup : MonoBehaviour
             return UserSession.Instance.Tags;
         }
 
-        return new List<string> { "puzzle", "game", "clear", "achievement" };
+        return new List<string> { "multiplay", "puzzle", "victory", "winner" };
     }
 
     private IEnumerator UploadCoroutine()
@@ -218,7 +382,7 @@ public class ClearPopup : MonoBehaviour
                 buttonText.text = "Uploading...";
         }
 
-        Debug.Log("[ClearPopup] Starting upload to planet...");
+        Debug.Log("[MultiplayRankPopup] Starting upload to planet...");
 
         SaveToPlanetRequest request = new SaveToPlanetRequest
         {
@@ -230,22 +394,22 @@ public class ClearPopup : MonoBehaviour
         bool uploadSuccess = false;
 
         yield return APIManager.Instance.Post(
-            "/games/single/save-to-planet",
+            "/games/multiplay/save-to-planet",
             request,
             onSuccess: (response) =>
             {
-                Debug.Log($"[ClearPopup] Upload response: {response}");
+                Debug.Log($"[MultiplayRankPopup] Upload response: {response}");
 
                 SaveToPlanetResponse apiResponse = JsonUtility.FromJson<SaveToPlanetResponse>(response);
 
                 if (apiResponse != null && apiResponse.result != null)
                 {
-                    Debug.Log($"[ClearPopup] Upload successful! PlanetId: {apiResponse.result.planetId}");
+                    Debug.Log($"[MultiplayRankPopup] Upload successful! PlanetId: {apiResponse.result.planetId}");
                     uploadSuccess = true;
                 }
                 else
                 {
-                    Debug.LogError("[ClearPopup] Failed to parse upload response");
+                    Debug.LogError("[MultiplayRankPopup] Failed to parse upload response");
                     uploadSuccess = false;
                 }
 
@@ -253,7 +417,7 @@ public class ClearPopup : MonoBehaviour
             },
             onError: (error) =>
             {
-                Debug.LogError($"[ClearPopup] Upload failed: {error}");
+                Debug.LogError($"[MultiplayRankPopup] Upload failed: {error}");
                 uploadSuccess = false;
                 uploadCompleted = true;
             }
@@ -276,7 +440,7 @@ public class ClearPopup : MonoBehaviour
                     buttonText.text = "Upload Complete";
             }
 
-            Debug.Log($"[ClearPopup] Upload completed - Title: {titleInputField.text}");
+            Debug.Log($"[MultiplayRankPopup] Upload completed - Title: {titleInputField.text}");
         }
         else
         {
@@ -290,7 +454,7 @@ public class ClearPopup : MonoBehaviour
                     buttonText.text = "Retry Upload";
             }
 
-            Debug.LogWarning("[ClearPopup] Upload failed");
+            Debug.LogWarning("[MultiplayRankPopup] Upload failed");
         }
 
         isUploading = false;
@@ -321,9 +485,27 @@ public class ClearPopup : MonoBehaviour
                 break;
         }
     }
+    #endregion
 
     public void OnExitClick()
     {
+        // Unsubscribe events
+        UnsubscribeMultiplayEvents();
+
+        // Clear multiplay session
+        if (MultiplaySession.Instance != null)
+        {
+            MultiplaySession.Instance.ClearRoomData();
+        }
+
+        // Disconnect websocket
+        if (SocketIOManager.Instance != null && SocketIOManager.Instance.IsConnected)
+        {
+            SocketIOManager.Instance.UnregisterMultiplayEvents();
+            SocketIOManager.Instance.Disconnect();
+        }
+
+        // Return to main menu
         if (fadeController != null)
         {
             fadeController.FadeToScene("000_MainMenu");
@@ -337,6 +519,8 @@ public class ClearPopup : MonoBehaviour
 
     private void OnDestroy()
     {
+        UnsubscribeMultiplayEvents();
+
         if (uploadButton != null)
             uploadButton.onClick.RemoveAllListeners();
 

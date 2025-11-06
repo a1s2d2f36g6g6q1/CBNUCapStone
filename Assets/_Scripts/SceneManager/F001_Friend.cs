@@ -1,29 +1,49 @@
 using System.Collections;
 using System.Collections.Generic;
-using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class F001_Friend : MonoBehaviour
 {
-    [Header("Friend List")]
-    public Transform friendListContent;
+    public FadeController fadeController;
+
+    [Header("UI 연결")]
+    public Transform friendListContainer;
     public GameObject friendCardPrefab;
 
-    [Header("UI")]
-    public TMP_Text friendCountText;
+    [Header("패널들")]
+    public GameObject settingsPanel;
+    public GameObject profilePanel;
 
-    private List<FriendItem> friendList = new List<FriendItem>();
-    private bool useAPI = true; // Set to false for dummy data
+    [Header("TR 버튼 그룹")]
+    public GameObject[] loginOnlyButtons;
+    public GameObject settingsButton;
+
+    [Header("더미 데이터 사용 여부")]
+    public bool useDummyData = true;  // Inspector에서 설정 가능
+
+    private List<FriendItem> friendList = new();
 
     private void Start()
     {
+        UpdateTopRightButtons();
         LoadFriendList();
     }
 
+    private void OnEnable()
+    {
+        UpdateTopRightButtons();
+    }
+
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Escape)) CloseAllPanels();
+    }
+
+    #region 친구 목록 로드
     private void LoadFriendList()
     {
-        if (!useAPI)
+        if (useDummyData)
         {
             LoadDummyFriendList();
         }
@@ -35,88 +55,41 @@ public class F001_Friend : MonoBehaviour
 
     private void LoadDummyFriendList()
     {
-        // FIXED: Use correct field names from API
+        // 더미 친구 데이터 생성
         friendList = new List<FriendItem>
         {
-            new FriendItem {
-                id = "friend-001",
-                friend_id = "user-001",
-                friend_username = "user001",
-                friend_nickname = "Alice",
-                friend_profile_image_url = ""
-            },
-            new FriendItem {
-                id = "friend-002",
-                friend_id = "user-002",
-                friend_username = "user002",
-                friend_nickname = "Bob",
-                friend_profile_image_url = ""
-            },
-            new FriendItem {
-                id = "friend-003",
-                friend_id = "user-003",
-                friend_username = "user003",
-                friend_nickname = "Charlie",
-                friend_profile_image_url = ""
-            },
-            new FriendItem {
-                id = "friend-004",
-                friend_id = "user-004",
-                friend_username = "user004",
-                friend_nickname = "David",
-                friend_profile_image_url = ""
-            },
-            new FriendItem {
-                id = "friend-005",
-                friend_id = "user-005",
-                friend_username = "user005",
-                friend_nickname = "Eve",
-                friend_profile_image_url = ""
-            },
-            new FriendItem {
-                id = "friend-006",
-                friend_id = "user-006",
-                friend_username = "user006",
-                friend_nickname = "Frank",
-                friend_profile_image_url = ""
-            },
-            new FriendItem {
-                id = "friend-007",
-                friend_id = "user-007",
-                friend_username = "user007",
-                friend_nickname = "Grace",
-                friend_profile_image_url = ""
-            },
-            new FriendItem {
-                id = "friend-008",
-                friend_id = "user-008",
-                friend_username = "user008",
-                friend_nickname = "Henry",
-                friend_profile_image_url = ""
-            }
+            new FriendItem { username = "user001", nickname = "Alice", planetId = "planet-uuid-001" },
+            new FriendItem { username = "user002", nickname = "Bob", planetId = "planet-uuid-002" },
+            new FriendItem { username = "user003", nickname = "Charlie", planetId = "planet-uuid-003" },
+            new FriendItem { username = "user004", nickname = "David", planetId = "planet-uuid-004" },
+            new FriendItem { username = "user005", nickname = "Eve", planetId = "planet-uuid-005" },
+            new FriendItem { username = "user006", nickname = "Frank", planetId = "planet-uuid-006" },
+            new FriendItem { username = "user007", nickname = "Grace", planetId = "planet-uuid-007" },
+            new FriendItem { username = "user008", nickname = "Henry", planetId = "planet-uuid-008" }
         };
 
-        Debug.Log($"Loaded dummy friend list: {friendList.Count} friends");
+        Debug.Log($"더미 친구 목록 로드: {friendList.Count}명");
         RefreshFriendListUI();
     }
 
     private IEnumerator LoadFriendListFromAPI()
     {
+        // TODO: 백엔드 API 준비되면 활성화
         yield return APIManager.Instance.Get(
-            "/friends",
+            "/friends",  // 또는 실제 엔드포인트
             onSuccess: (response) =>
             {
-                // FIXED: FriendListResponse has 'friends' array, not 'result'
                 FriendListResponse friendResponse = JsonUtility.FromJson<FriendListResponse>(response);
-                friendList = new List<FriendItem>(friendResponse.friends);
+                friendList = new List<FriendItem>(friendResponse.result);
 
-                Debug.Log($"Friend list loaded: {friendList.Count} friends");
+                Debug.Log($"친구 목록 로드 성공: {friendList.Count}명");
                 RefreshFriendListUI();
             },
             onError: (error) =>
             {
-                Debug.LogError("Friend list load failed: " + error);
-                // Load dummy data on error
+                Debug.LogError("친구 목록 로드 실패: " + error);
+
+                // API 실패 시 더미 데이터 사용
                 LoadDummyFriendList();
             }
         );
@@ -124,32 +97,68 @@ public class F001_Friend : MonoBehaviour
 
     private void RefreshFriendListUI()
     {
-        // Clear existing cards
-        foreach (Transform child in friendListContent)
+        // 기존 카드 삭제
+        foreach (Transform child in friendListContainer)
         {
             Destroy(child.gameObject);
         }
 
-        // Create friend cards
+        // 새 카드 생성
         foreach (var friend in friendList)
         {
-            GameObject card = Instantiate(friendCardPrefab, friendListContent);
-            FriendCard friendCard = card.GetComponent<FriendCard>();
-            if (friendCard != null)
-            {
-                friendCard.Init(friend);
-            }
-        }
-
-        // Update count
-        if (friendCountText != null)
-        {
-            friendCountText.text = $"Friends: {friendList.Count}";
+            var card = Instantiate(friendCardPrefab, friendListContainer);
+            var friendCard = card.GetComponent<FriendCard>();
+            friendCard.Init(friend);
         }
     }
+    #endregion
 
-    public void OnClick_Refresh()
+    #region UI 관리
+    public void UpdateTopRightButtons()
     {
-        LoadFriendList();
+        bool isLoggedIn = UserSession.Instance != null && UserSession.Instance.IsLoggedIn;
+
+        foreach (var go in loginOnlyButtons)
+            go.SetActive(isLoggedIn);
+
+        settingsButton.SetActive(true);
     }
+
+    public void OpenPanel(GameObject panel)
+    {
+        CloseAllPanels();
+        if (panel != null)
+            panel.SetActive(true);
+        else
+            Debug.LogWarning("⚠ panel is NULL");
+    }
+
+    public void CloseAllPanels()
+    {
+        settingsPanel.SetActive(false);
+        profilePanel.SetActive(false);
+    }
+
+    public void Back()
+    {
+        fadeController.FadeToScene("000_MainMenu");
+    }
+
+    public void OnClick_UserInfo()
+    {
+        OpenPanel(profilePanel);
+    }
+
+    public void OnClick_OpenSettings()
+    {
+        OpenPanel(settingsPanel);
+    }
+
+    public void Logout()
+    {
+        UserSession.Instance.Logout();
+        fadeController.FadeToScene("000_MainMenu");
+        Debug.Log("로그아웃 완료, 메인 메뉴로 이동");
+    }
+    #endregion
 }

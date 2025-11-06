@@ -20,8 +20,7 @@ public class FriendCard : MonoBehaviour
     public void Init(FriendItem friend)
     {
         friendData = friend;
-        // FIXED: Use friend_nickname from API
-        nicknameText.text = friend.friend_nickname;
+        nicknameText.text = friend.nickname;
 
         visitButton.onClick.RemoveAllListeners();
         visitButton.onClick.AddListener(OnClick_Visit);
@@ -32,26 +31,25 @@ public class FriendCard : MonoBehaviour
 
     public void OnClick_Visit()
     {
-        // FIXED: Use friend_nickname and friend_username
-        Debug.Log($"Visiting {friendData.friend_nickname}'s planet (username: {friendData.friend_username})");
+        Debug.Log($"{friendData.nickname}의 행성 방문 (username: {friendData.username})");
 
-        // Save friend planet info to PlanetSession
+        // PlanetSession에 친구 행성 정보 저장
         if (PlanetSession.Instance != null)
         {
-            PlanetSession.Instance.CurrentPlanetOwnerID = friendData.friend_username;
-            PlanetSession.Instance.CurrentPlanetId = friendData.friend_username; // username = planetId
+            PlanetSession.Instance.CurrentPlanetOwnerID = friendData.username;
+            PlanetSession.Instance.CurrentPlanetId = friendData.username; // username = planetId
         }
 
-        // Navigate to P002_MyPlanet (automatically recognized as other's planet)
+        // P002_MyPlanet으로 이동 (자동으로 타인 행성으로 인식됨)
         fadeController.FadeToScene("P002_MyPlanet");
     }
 
     public void OnClick_Delete()
     {
-        Debug.Log($"Delete friend request: {friendData.friend_nickname}");
+        Debug.Log($"{friendData.nickname} 삭제 요청");
 
-        // TODO: Call friend delete API
-        // For now, just remove from UI
+        // TODO: 친구 삭제 API 호출
+        // 지금은 UI에서만 제거
         Destroy(gameObject);
     }
 }

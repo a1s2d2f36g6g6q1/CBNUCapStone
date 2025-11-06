@@ -9,6 +9,7 @@ public class PuzzleManager : MonoBehaviour
     public TMP_Text clickToStartText;
     public FlashEffect flashEffect;
     public ClearPopup clearPopup;
+    public MultiplayRankPopup multiplayRankPopup; // Inspector에서 할당
     public Camera mainCamera;
 
     public GameObject emptyTilePrefab;
@@ -49,8 +50,13 @@ public class PuzzleManager : MonoBehaviour
 
                 tilesRevealed = true;
                 waitingForReveal = false;
+
                 if (timerManager != null)
                     timerManager.StartTimer();
+
+                // Save start time
+                GameData.startTime = System.DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
+
                 if (clickToStartText != null)
                     clickToStartText.gameObject.SetActive(false);
             }
@@ -334,6 +340,9 @@ public class PuzzleManager : MonoBehaviour
         if (timerManager != null)
             timerManager.StopTimer();
 
+        // Save end time
+        GameData.endTime = System.DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
+
         if (flashEffect != null)
             flashEffect.PlayFlash();
 
@@ -345,13 +354,115 @@ public class PuzzleManager : MonoBehaviour
         ShowCompletedImage();
         yield return StartCoroutine(CameraRotationAnimation());
 
+        if (GameData.isMultiplay)
+        {
+            yield return StartCoroutine(HandleMultiplayCompletion());
+        }
+        else
+        {
+            yield return StartCoroutine(HandleSingleplayCompletion());
+        }
+
+        Debug.Log("Game Clear!");
+    }
+
+    private IEnumerator HandleSingleplayCompletion()
+    {
+        // Submit to server
+        yield return StartCoroutine(SubmitSingleplayCompletion());
+
+        // Show clear popup
         if (clearPopup != null)
         {
             string clearTime = timerManager != null ? timerManager.GetFormattedTime() : "00:00:000";
             clearPopup.ShowClearPopup(puzzleImage, clearTime);
         }
+        else
+        {
+            Debug.LogError("[PuzzleManager] ClearPopup not assigned!");
+        }
+    }
 
-        Debug.Log("Game Clear!");
+    private IEnumerator HandleMultiplayCompletion()
+    {
+        // Send completion via WebSocket
+        SubmitMultiplayCompletion();
+
+        // Show rank popup immediately
+        if (multiplayRankPopup != null)
+        {
+            string clearTime = timerManager != null ? timerManager.GetFormattedTime() : "00:00:000";
+            multiplayRankPopup.ShowRankPopup(puzzleImage, clearTime);
+        }
+        else
+        {
+            Debug.LogError("[PuzzleManager] MultiplayRankPopup not assigned!");
+        }
+
+        yield return null;
+    }
+    private IEnumerator SubmitSingleplayCompletion()
+    {
+        Debug.Log("[PuzzleManager] Submitting singleplay completion...");
+
+        SingleGameCompleteRequest request = new SingleGameCompleteRequest
+        {
+            gameCode = GameData.gameCode,
+            startTime = GameData.startTime,
+            endTime = GameData.endTime
+        };
+
+        bool completed = false;
+
+        yield return APIManager.Instance.Post(
+            "/games/single/complete",
+            request,
+            onSuccess: (response) =>
+            {
+                Debug.Log($"[PuzzleManager] Completion response: {response}");
+
+                SingleGameCompleteResponse apiResponse = JsonUtility.FromJson<SingleGameCompleteResponse>(response);
+
+                if (apiResponse != null && apiResponse.result != null)
+                {
+                    Debug.Log($"[PuzzleManager] Game completed! ClearTime: {apiResponse.result.clearTimeMs}ms");
+                }
+
+                completed = true;
+            },
+            onError: (error) =>
+            {
+                Debug.LogError($"[PuzzleManager] Failed to submit completion: {error}");
+                completed = true; // Continue anyway
+            }
+        );
+
+        // Wait for completion
+        while (!completed)
+        {
+            yield return null;
+        }
+    }
+
+    private void SubmitMultiplayCompletion()
+    {
+        Debug.Log("[PuzzleManager] Submitting multiplay completion...");
+
+        if (SocketIOManager.Instance == null || !SocketIOManager.Instance.IsConnected)
+        {
+            Debug.LogError("[PuzzleManager] WebSocket not connected!");
+            return;
+        }
+
+        float clearTime = timerManager != null ? timerManager.GetElapsedTime() : 0f;
+
+        SocketIOManager.Instance.Emit("player-completed", new
+        {
+            roomId = MultiplaySession.Instance.CurrentRoom.roomId,
+            clearTime = clearTime
+        });
+
+        Debug.Log($"[PuzzleManager] Sent completion - ClearTime: {clearTime}s");
     }
 
     private IEnumerator CameraRotationAnimation()

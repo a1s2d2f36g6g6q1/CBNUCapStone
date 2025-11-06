@@ -28,9 +28,7 @@ public class PlanetCard : MonoBehaviour
         isBookmarked = isFavorite;
         planetManager = manager;
 
-        // FIXED: API doesn't return ownerNickname, only username and title
-        // Use title or username as display name
-        nicknameText.text = string.IsNullOrEmpty(data.title) ? data.username : data.title;
+        nicknameText.text = data.ownerNickname;
 
         visitButton.onClick.RemoveAllListeners();
         visitButton.onClick.AddListener(OnClick_Visit);
@@ -43,20 +41,19 @@ public class PlanetCard : MonoBehaviour
 
     private void OnClick_Visit()
     {
-        // FIXED: Use username field from API
-        Debug.Log($"Visiting planet (username: {planetData.username})");
+        Debug.Log($"{planetData.ownerNickname}의 행성 방문 (username: {planetData.ownerUsername})");
 
-        // Save to PlanetSession
+        // PlanetSession에 저장
         if (PlanetSession.Instance != null)
         {
-            PlanetSession.Instance.CurrentPlanetOwnerID = planetData.username;
-            PlanetSession.Instance.CurrentPlanetId = planetData.username; // username = planetId
+            PlanetSession.Instance.CurrentPlanetOwnerID = planetData.ownerUsername;
+            PlanetSession.Instance.CurrentPlanetId = planetData.ownerUsername; // username = planetId
         }
 
-        // Record visit
-        StartCoroutine(RecordVisit(planetData.username));
+        // 행성 방문 기록
+        StartCoroutine(RecordVisit(planetData.ownerUsername));
 
-        // Navigate to P002_MyPlanet
+        // P002_MyPlanet으로 이동
         fadeController.FadeToScene("P002_MyPlanet");
     }
 
@@ -67,11 +64,11 @@ public class PlanetCard : MonoBehaviour
             new { },
             onSuccess: (response) =>
             {
-                Debug.Log($"Planet visit recorded for {planetData.username}");
+                Debug.Log($"{planetData.ownerNickname} 행성 방문 기록 완료");
             },
             onError: (error) =>
             {
-                Debug.LogWarning("Planet visit record failed: " + error);
+                Debug.LogWarning("행성 방문 기록 실패: " + error);
             }
         );
     }
@@ -80,8 +77,7 @@ public class PlanetCard : MonoBehaviour
     {
         if (planetManager != null)
         {
-            // FIXED: Use username
-            planetManager.ToggleFavorite(planetData.username, isBookmarked);
+            planetManager.ToggleFavorite(planetData.ownerUsername, isBookmarked);
         }
     }
 
@@ -92,6 +88,5 @@ public class PlanetCard : MonoBehaviour
     }
 
     public bool IsBookmarked => isBookmarked;
-    // FIXED: Use username or title
-    public string PlanetOwner => planetData?.username ?? "";
+    public string PlanetOwner => planetData?.ownerNickname ?? "";
 }

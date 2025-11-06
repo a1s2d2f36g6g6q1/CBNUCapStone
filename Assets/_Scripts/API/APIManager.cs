@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -22,6 +21,7 @@ public class APIManager : MonoBehaviour
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
+        // 저장된 토큰 로드
         LoadToken();
     }
 
@@ -176,116 +176,6 @@ public class APIManager : MonoBehaviour
             }
         }
     }
-
-    // ADDED: Delete with request body for friend deletion
-    public IEnumerator DeleteWithBody(string endpoint, object data, Action<string> onSuccess, Action<string> onError)
-    {
-        string url = BASE_URL + endpoint;
-        string json = JsonUtility.ToJson(data);
-        byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
-
-        using (UnityWebRequest request = new UnityWebRequest(url, "DELETE"))
-        {
-            request.certificateHandler = new BypassCertificate();
-            request.disposeCertificateHandlerOnDispose = true;
-
-            request.uploadHandler = new UploadHandlerRaw(bodyRaw);
-            request.downloadHandler = new DownloadHandlerBuffer();
-            request.SetRequestHeader("Content-Type", "application/json");
-
-            if (HasToken())
-            {
-                request.SetRequestHeader("Authorization", "Bearer " + jwtToken);
-            }
-
-            yield return request.SendWebRequest();
-
-            if (request.result == UnityWebRequest.Result.Success)
-            {
-                onSuccess?.Invoke(request.downloadHandler.text);
-            }
-            else
-            {
-                HandleError(request, onError);
-            }
-        }
-    }
-    #endregion
-
-    #region File Upload/Download
-    /// <summary>
-    /// Upload file with multipart/form-data
-    /// </summary>
-    public IEnumerator PostWithFile(
-        string endpoint,
-        byte[] fileData,
-        string fileName,
-        Dictionary<string, string> formFields,
-        Action<string> onSuccess,
-        Action<string> onError)
-    {
-        string url = BASE_URL + endpoint;
-
-        List<IMultipartFormSection> formData = new List<IMultipartFormSection>();
-
-        // Add file
-        formData.Add(new MultipartFormFileSection("image", fileData, fileName, "image/png"));
-
-        // Add additional fields
-        if (formFields != null)
-        {
-            foreach (var field in formFields)
-            {
-                formData.Add(new MultipartFormDataSection(field.Key, field.Value));
-            }
-        }
-
-        using (UnityWebRequest request = UnityWebRequest.Post(url, formData))
-        {
-            request.certificateHandler = new BypassCertificate();
-            request.disposeCertificateHandlerOnDispose = true;
-
-            if (HasToken())
-            {
-                request.SetRequestHeader("Authorization", "Bearer " + jwtToken);
-            }
-
-            yield return request.SendWebRequest();
-
-            if (request.result == UnityWebRequest.Result.Success)
-            {
-                onSuccess?.Invoke(request.downloadHandler.text);
-            }
-            else
-            {
-                HandleError(request, onError);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Download image from URL
-    /// </summary>
-    public IEnumerator DownloadImage(string imageUrl, Action<Texture2D> onSuccess, Action<string> onError)
-    {
-        using (UnityWebRequest request = UnityWebRequestTexture.GetTexture(imageUrl))
-        {
-            request.certificateHandler = new BypassCertificate();
-            request.disposeCertificateHandlerOnDispose = true;
-
-            yield return request.SendWebRequest();
-
-            if (request.result == UnityWebRequest.Result.Success)
-            {
-                Texture2D texture = DownloadHandlerTexture.GetContent(request);
-                onSuccess?.Invoke(texture);
-            }
-            else
-            {
-                HandleError(request, onError);
-            }
-        }
-    }
     #endregion
 
     #region Error Handling
@@ -300,7 +190,7 @@ public class APIManager : MonoBehaviour
 
         Debug.LogError($"[API Error] {errorMsg}");
 
-        // 401 Unauthorized
+        // 401 Unauthorized - 토큰 만료
         if (request.responseCode == 401)
         {
             Debug.LogWarning("Token expired. Logging out...");
@@ -313,7 +203,7 @@ public class APIManager : MonoBehaviour
     #endregion
 }
 
-// Certificate bypass for development (remove in production)
+// HTTP 인증서 우회 클래스
 public class BypassCertificate : CertificateHandler
 {
     protected override bool ValidateCertificate(byte[] certificateData)

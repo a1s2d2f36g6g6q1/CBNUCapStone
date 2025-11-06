@@ -8,32 +8,32 @@ using Random = UnityEngine.Random;
 
 public class TagInputManager : MonoBehaviour
 {
-    [Header("Fade Controller")]
+    [Header("페이드 전환용")]
     public FadeController fadeController;
 
-    [Header("Tag Input Fields")]
+    [Header("태그 입력 필드")]
     public TMP_InputField[] inputFields; // 0: Style, 1: Subject, 2: Mood, 3: Background
 
-    [Header("Dice Buttons")]
+    [Header("주사위 버튼들")]
     public Button[] diceButtons;
 
-    [Header("Difficulty Buttons")]
+    [Header("난이도 버튼들")]
     public Button[] difficultyButtons;
 
-    [Header("Tag Options")]
+    [Header("태그 데이터 옵션들")]
     public List<string> styleOptions;
     public List<string> subjectOptions;
     public List<string> moodOptions;
     public List<string> backgroundOptions;
 
-    // Dice animation constants
+    // 주사위 애니메이션 상수
     private const int FAST_ROLL_COUNT = 30;
     private const int SLOW_ROLL_COUNT = 7;
     private const float FAST_ROLL_DELAY = 0.03f;
     private const float SLOW_ROLL_START_DELAY = 0.05f;
     private const float SLOW_ROLL_DELAY_INCREMENT = 0.02f;
 
-    // Difficulty colors (selected/default)
+    // 난이도별 색상 (선택됨/기본)
     private readonly Color32[] selectedColors = {
         new Color32(0x85, 0xC8, 0x8C, 255), // EZ
         new Color32(0x6B, 0xC1, 0xD7, 255), // NM
@@ -48,117 +48,13 @@ public class TagInputManager : MonoBehaviour
         new Color32(0xFF, 0xE0, 0xE0, 255)  // HL
     };
 
-    private readonly bool[] isRolling = new bool[4];
-    private int selectedDifficulty = 3; // Default 3x3
+    private readonly bool[] isRolling = new bool[4]; // 0: Style, 1: Subject, 2: Mood, 3: Background
+    private int selectedDifficulty = 3; // 기본 3*3 선택
 
     private void Start()
     {
         SelectDifficulty(3);
         LoadAllTagOptions();
-
-        // If not logged in, create guest session
-        EnsureGuestSession();
-    }
-
-    /// <summary>
-    /// Ensure guest session exists if user is not logged in
-    /// </summary>
-    private void EnsureGuestSession()
-    {
-        if (UserSession.Instance != null)
-        {
-            if (!UserSession.Instance.IsLoggedIn && !UserSession.Instance.IsGuest)
-            {
-                StartCoroutine(CreateGuestSession());
-            }
-        }
-    }
-
-    /// <summary>
-    /// Create guest account and get temporary token
-    /// </summary>
-    private IEnumerator CreateGuestSession()
-    {
-        // Generate guest credentials
-        string guestUsername = $"guest_{System.Guid.NewGuid().ToString("N").Substring(0, 8)}";
-        string guestPassword = System.Guid.NewGuid().ToString("N");
-        string guestNickname = $"Guest_{UnityEngine.Random.Range(1000, 9999)}";
-
-        Debug.Log($"[TagInput] Creating guest account: {guestNickname}");
-
-        // Sign up guest account
-        SignupRequest signupRequest = new SignupRequest
-        {
-            username = guestUsername,
-            password = guestPassword,
-            nickname = guestNickname
-        };
-
-        bool signupComplete = false;
-        bool signupSuccess = false;
-
-        yield return APIManager.Instance.Post(
-            "/users/signup",
-            signupRequest,
-            onSuccess: (response) =>
-            {
-                Debug.Log("[TagInput] Guest account created successfully");
-                signupSuccess = true;
-                signupComplete = true;
-            },
-            onError: (error) =>
-            {
-                Debug.LogError($"[TagInput] Guest account creation failed: {error}");
-                signupSuccess = false;
-                signupComplete = true;
-            }
-        );
-
-        yield return new WaitUntil(() => signupComplete);
-
-        if (!signupSuccess)
-        {
-            Debug.LogError("[TagInput] Failed to create guest account");
-            yield break;
-        }
-
-        // FIXED: Login with guest account using userId field
-        LoginRequest loginRequest = new LoginRequest
-        {
-            userId = guestUsername,  // FIXED: API spec uses "userId" not "username"
-            password = guestPassword
-        };
-
-        bool loginComplete = false;
-
-        yield return APIManager.Instance.Post(
-            "/users/login",
-            loginRequest,
-            onSuccess: (response) =>
-            {
-                LoginResponse loginResponse = JsonUtility.FromJson<LoginResponse>(response);
-
-                // Save token
-                if (!string.IsNullOrEmpty(loginResponse.token))
-                {
-                    APIManager.Instance.SetToken(loginResponse.token);
-                    Debug.Log("[TagInput] Guest token saved");
-                }
-
-                // Set guest session
-                UserSession.Instance.SetUserInfo(guestUsername, guestNickname, true);
-
-                Debug.Log($"[TagInput] Guest login success: {guestNickname}");
-                loginComplete = true;
-            },
-            onError: (error) =>
-            {
-                Debug.LogError($"[TagInput] Guest login failed: {error}");
-                loginComplete = true;
-            }
-        );
-
-        yield return new WaitUntil(() => loginComplete);
     }
 
     private void LoadAllTagOptions()
@@ -168,7 +64,7 @@ public class TagInputManager : MonoBehaviour
         moodOptions = LoadTagOptions("TagRandom/Mood");
         backgroundOptions = LoadTagOptions("TagRandom/Background");
 
-        // Fallback values if loading fails
+        // 로딩 실패 시 기본값 제공
         if (styleOptions.Count == 0) styleOptions.Add("Default Style");
         if (subjectOptions.Count == 0) subjectOptions.Add("Default Subject");
         if (moodOptions.Count == 0) moodOptions.Add("Default Mood");
@@ -193,38 +89,38 @@ public class TagInputManager : MonoBehaviour
             return result;
         }
 
-        Debug.LogWarning($"[TagInput] Tag file not found: {path}");
+        Debug.LogWarning("⚠ Tag 파일을 찾을 수 없음: " + path);
         return new List<string>();
     }
 
     public void OnStartGame()
     {
-        // Validate input fields
+        // 입력 필드 검증
         for (int i = 0; i < inputFields.Length; i++)
         {
             if (string.IsNullOrEmpty(inputFields[i].text))
             {
-                Debug.LogWarning($"[TagInput] Tag {i} is empty");
+                Debug.LogWarning($"태그 {i}가 비어있습니다.");
                 return;
             }
         }
 
-        // Save tags to UserSession
+        // UserSession에 태그 저장
         var selectedTags = new List<string>();
         for (var i = 0; i < inputFields.Length; i++)
             selectedTags.Add(inputFields[i].text);
 
         UserSession.Instance.Tags = selectedTags;
 
-        // Also save to GameData (for compatibility)
+        // GameData에도 저장 (기존 시스템 호환성)
         for (var i = 0; i < inputFields.Length; i++)
             GameData.tags[i] = inputFields[i].text;
         GameData.difficulty = selectedDifficulty;
 
-        Debug.Log("[TagInput] Session tags: " + string.Join(", ", UserSession.Instance.Tags));
-        Debug.Log("[TagInput] Selected difficulty: " + selectedDifficulty);
+        Debug.Log("[TagInputManager] 세션 태그: " + string.Join(", ", UserSession.Instance.Tags));
+        Debug.Log("[TagInputManager] 선택된 난이도: " + selectedDifficulty);
 
-        // Transition to game scene
+        // 씬 전환
         fadeController.FadeToScene("G002_Game");
     }
 
@@ -237,7 +133,7 @@ public class TagInputManager : MonoBehaviour
     {
         if (level < 2 || level > 5)
         {
-            Debug.LogWarning($"[TagInput] Invalid difficulty level: {level}");
+            Debug.LogWarning("잘못된 난이도 레벨: " + level);
             return;
         }
 
@@ -257,7 +153,7 @@ public class TagInputManager : MonoBehaviour
     {
         if (index < 0 || index >= isRolling.Length)
         {
-            Debug.LogWarning($"[TagInput] Invalid dice index: {index}");
+            Debug.LogWarning("잘못된 주사위 인덱스: " + index);
             return;
         }
 
@@ -273,20 +169,20 @@ public class TagInputManager : MonoBehaviour
         var options = GetOptionList(index);
         if (options == null || options.Count == 0)
         {
-            Debug.LogWarning($"[TagInput] No tag options for index: {index}");
+            Debug.LogWarning("태그 옵션이 없습니다. 인덱스: " + index);
             isRolling[index] = false;
             inputFields[index].interactable = true;
             yield break;
         }
 
-        // Fast roll
+        // 1. 빠르게 돌리기
         for (var i = 0; i < FAST_ROLL_COUNT; i++)
         {
             inputFields[index].text = options[Random.Range(0, options.Count)];
             yield return new WaitForSeconds(FAST_ROLL_DELAY);
         }
 
-        // Slow down
+        // 2. 느려지며 마무리
         var delay = SLOW_ROLL_START_DELAY;
         for (var i = 0; i < SLOW_ROLL_COUNT; i++)
         {
@@ -308,7 +204,7 @@ public class TagInputManager : MonoBehaviour
             case 2: return moodOptions;
             case 3: return backgroundOptions;
             default:
-                Debug.LogWarning($"[TagInput] Unknown tag index: {index}");
+                Debug.LogWarning("알 수 없는 태그 인덱스: " + index);
                 return null;
         }
     }
