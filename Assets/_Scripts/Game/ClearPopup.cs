@@ -79,9 +79,10 @@ public class ClearPopup : MonoBehaviour
         if (descriptionInputField != null)
             descriptionInputField.text = "";
 
-        // Check login status
+        // Check login status (guest cannot upload)
         bool isLoggedIn = UserSession.Instance != null && UserSession.Instance.IsLoggedIn;
-        canUpload = isLoggedIn;
+        bool isGuest = UserSession.Instance != null && UserSession.Instance.IsGuest;
+        canUpload = isLoggedIn && !isGuest;
 
         // Update upload button state
         if (uploadButton != null)
@@ -89,7 +90,14 @@ public class ClearPopup : MonoBehaviour
             uploadButton.interactable = canUpload;
             var buttonText = uploadButton.GetComponentInChildren<TMP_Text>();
             if (buttonText != null)
-                buttonText.text = canUpload ? "Upload" : "Login Required";
+            {
+                if (isGuest)
+                    buttonText.text = "Login Required";
+                else if (!isLoggedIn)
+                    buttonText.text = "Login Required";
+                else
+                    buttonText.text = "Upload";
+            }
         }
 
         // Show/hide login required message
@@ -97,7 +105,12 @@ public class ClearPopup : MonoBehaviour
         {
             loginRequiredText.gameObject.SetActive(!canUpload);
             if (!canUpload)
-                loginRequiredText.text = "Can't upload - Login required";
+            {
+                if (isGuest)
+                    loginRequiredText.text = "Can't upload - Please login with real account";
+                else
+                    loginRequiredText.text = "Can't upload - Login required";
+            }
         }
 
         SetUploadStatus("_");
@@ -115,7 +128,6 @@ public class ClearPopup : MonoBehaviour
             uploadButton.onClick.AddListener(OnUploadClick);
         }
     }
-
     private IEnumerator ShowPopupFromBackAnimation()
     {
         transform.localScale = originalScale;
