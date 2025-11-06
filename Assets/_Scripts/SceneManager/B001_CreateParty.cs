@@ -10,10 +10,10 @@ public class B001_CreateParty : MonoBehaviour
     public TMP_Text sessionCodeText;
     public Button backButton;
     public Button startGameButton;
-    public TMP_Text[] playerSlots; // 4개 고정 슬롯
+    public TMP_Text[] playerSlots; // 4 fixed slots
     public FadeController fadeController;
 
-    [Header("알림창")]
+    [Header("Alert Popup")]
     public GameObject hostLeftPopup;
     public TMP_Text hostLeftMessage;
 
@@ -22,31 +22,31 @@ public class B001_CreateParty : MonoBehaviour
 
     private void Start()
     {
-        // 버튼 리스너 등록
+        // Register button listeners
         if (backButton != null)
             backButton.onClick.AddListener(OnBackButtonClick);
 
         if (startGameButton != null)
             startGameButton.onClick.AddListener(OnStartGameClick);
 
-        // 호스트 퇴장 팝업 숨김
+        // Hide host left popup
         if (hostLeftPopup != null)
             hostLeftPopup.SetActive(false);
 
-        // 멀티플레이 이벤트 구독
+        // Subscribe to multiplayer events
         SubscribeMultiplayEvents();
 
-        // SocketIOManager 확인
+        // Check SocketIOManager
         if (SocketIOManager.Instance == null)
         {
-            Debug.LogError("SocketIOManager가 씬에 없습니다!");
+            Debug.LogError("SocketIOManager is not in scene!");
             return;
         }
 
-        // 웹소켓 연결 확인
+        // Check WebSocket connection
         if (!SocketIOManager.Instance.IsConnected)
         {
-            Debug.Log("웹소켓 연결 시도 중...");
+            Debug.Log("WebSocket not connected, attempting to connect...");
             SocketIOManager.Instance.Connect();
             StartCoroutine(WaitForConnectionAndInitialize());
         }
@@ -67,63 +67,63 @@ public class B001_CreateParty : MonoBehaviour
 
         if (SocketIOManager.Instance.IsConnected)
         {
-            Debug.Log("웹소켓 연결 성공");
+            Debug.Log("WebSocket connected successfully");
             InitializeLobby();
         }
         else
         {
-            Debug.LogWarning("웹소켓 연결 실패, 로비는 계속 진행");
-            // 웹소켓 없이도 로비 초기화
+            Debug.LogWarning("WebSocket connection failed, but lobby will continue");
+            // Continue with lobby initialization even without WebSocket
             InitializeLobby();
         }
     }
 
     private void InitializeLobby()
     {
-        // MultiplaySession 확인
+        // Check MultiplaySession
         if (MultiplaySession.Instance == null)
         {
-            Debug.LogError("MultiplaySession이 씬에 없습니다!");
+            Debug.LogError("MultiplaySession is not in scene!");
             return;
         }
 
-        // MultiplaySession에서 정보 가져오기
+        // Get info from MultiplaySession
         isHost = MultiplaySession.Instance.IsHost;
 
-        // UI 설정
+        // Set up UI
         UpdateUI();
 
-        // 플레이어 목록 업데이트 (호스트/클라이언트 모두)
+        // Update player list (for both host and client)
         UpdatePlayerList();
     }
 
     private void UpdateUI()
     {
-        // 세션 코드 표시
+        // Display session code
         if (sessionCodeText != null && MultiplaySession.Instance != null && MultiplaySession.Instance.CurrentRoom != null)
         {
-            string code = MultiplaySession.Instance.CurrentRoom.sessionCode;
+            string code = MultiplaySession.Instance.CurrentRoom.gameCode;
             sessionCodeText.text = string.IsNullOrEmpty(code) ? "0000" : code;
-            Debug.Log($"[UI] 세션 코드 업데이트: {sessionCodeText.text}");
+            Debug.Log($"[UI] Session code updated: {sessionCodeText.text}");
         }
         else
         {
-            Debug.LogWarning("[UI] 세션 코드를 표시할 수 없음");
+            Debug.LogWarning("[UI] Cannot display session code");
         }
 
-        // 게임 시작 버튼 (호스트만 활성화)
+        // Start game button (only active for host)
         if (startGameButton != null)
             startGameButton.gameObject.SetActive(isHost);
     }
 
-    #region 플레이어 목록 UI
+    #region Player List UI
     private void UpdatePlayerList()
     {
         if (MultiplaySession.Instance.CurrentRoom == null) return;
 
         var players = MultiplaySession.Instance.CurrentRoom.players;
 
-        // 4개 슬롯 모두 업데이트
+        // Update all 4 slots
         for (int i = 0; i < MAX_PLAYERS; i++)
         {
             if (playerSlots == null || playerSlots.Length <= i || playerSlots[i] == null)
@@ -131,48 +131,59 @@ public class B001_CreateParty : MonoBehaviour
 
             if (players != null && i < players.Count)
             {
-                // 플레이어가 있으면 닉네임 표시
-                string displayName = string.IsNullOrEmpty(players[i].nickname) ? "Guest" : players[i].nickname;
+                // If player exists, display nickname
+                string displayName = string.IsNullOrEmpty(players[i].username) ? "Guest" : players[i].username;
+
+                // Add ready indicator for non-host players
+                if (!players[i].isHost)
+                {
+                    displayName += players[i].isReady ? " [Ready]" : " [Not Ready]";
+                }
+                else
+                {
+                    displayName += " [Host]";
+                }
+
                 playerSlots[i].text = displayName;
             }
             else
             {
-                // 빈 슬롯은 "Empty" 표시
+                // Empty slot displays "Empty"
                 playerSlots[i].text = "Empty";
             }
         }
     }
     #endregion
 
-    #region 버튼 핸들러
+    #region Button Handlers
     public void OnBackButtonClick()
     {
-        // 방 나가기
+        // Leave room
         if (MultiplaySession.Instance != null && MultiplaySession.Instance.CurrentRoom != null)
         {
-            string roomId = MultiplaySession.Instance.CurrentRoom.roomId;
+            string gameCode = MultiplaySession.Instance.CurrentRoom.gameCode;
 
-            // 웹소켓으로 나가기 이벤트 전송 (연결되어 있을 때만)
+            // Send leave event via WebSocket (only if connected)
             if (SocketIOManager.Instance != null && SocketIOManager.Instance.IsConnected)
             {
-                SocketIOManager.Instance.Emit("leave-room", new { roomId });
+                SocketIOManager.Instance.LeaveRoom(gameCode);
             }
         }
 
-        // 세션 초기화
+        // Clear session
         if (MultiplaySession.Instance != null)
         {
             MultiplaySession.Instance.ClearRoomData();
         }
 
-        // 웹소켓 연결 해제 (연결되어 있을 때만)
+        // Disconnect WebSocket (only if connected)
         if (SocketIOManager.Instance != null && SocketIOManager.Instance.IsConnected)
         {
             SocketIOManager.Instance.UnregisterMultiplayEvents();
             SocketIOManager.Instance.Disconnect();
         }
 
-        // 메인 메뉴로 이동
+        // Navigate to main menu
         if (fadeController != null)
             fadeController.FadeToScene("000_MainMenu");
         else
@@ -183,44 +194,106 @@ public class B001_CreateParty : MonoBehaviour
     {
         if (!isHost) return;
 
-        // 최대 4명 확인
+        // Check max 4 players
         var players = MultiplaySession.Instance.CurrentRoom?.players;
         if (players != null && players.Count > 4)
         {
-            Debug.LogWarning("최대 플레이어 수를 초과했습니다.");
+            Debug.LogWarning("Exceeded maximum player count");
             return;
         }
 
-        // 웹소켓으로 게임 시작 이벤트 전송
-        SocketIOManager.Instance.Emit("start-game", new
+        // Check if all non-host players are ready
+        if (players != null)
         {
-            roomId = MultiplaySession.Instance.CurrentRoom.roomId
-        });
+            bool allReady = true;
+            foreach (var player in players)
+            {
+                if (!player.isHost && !player.isReady)
+                {
+                    allReady = false;
+                    break;
+                }
+            }
 
-        // 게임 씬으로 이동
-        StartMultiplayGame();
+            if (!allReady)
+            {
+                Debug.LogWarning("Not all players are ready");
+                ShowError("All players must be ready before starting");
+                return;
+            }
+        }
+
+        Debug.Log("Starting game via API...");
+        StartCoroutine(StartGameCoroutine());
+    }
+
+    private IEnumerator StartGameCoroutine()
+    {
+        StartGameRequest request = new StartGameRequest
+        {
+            gameCode = MultiplaySession.Instance.CurrentRoom.gameCode
+        };
+
+        yield return APIManager.Instance.Post(
+            "/games/multiplay/rooms/start",
+            request,
+            onSuccess: (response) =>
+            {
+                Debug.Log($"[API] Game start response: {response}");
+
+                StartGameResponseWrapper wrapper = JsonUtility.FromJson<StartGameResponseWrapper>(response);
+
+                if (wrapper.result != null)
+                {
+                    Debug.Log($"[API] Game started successfully");
+
+                    // Navigate to game scene
+                    StartMultiplayGame();
+                }
+                else
+                {
+                    ShowError("Failed to parse game start response");
+                }
+            },
+            onError: (error) =>
+            {
+                ShowError("Failed to start game: " + error);
+            }
+        );
+    }
+
+    private void ShowError(string message)
+    {
+        Debug.LogWarning(message);
+        // TODO: Show error popup to user
     }
     #endregion
 
-    #region 멀티플레이 게임 시작
+    #region Multiplayer Game Start
     private void StartMultiplayGame()
     {
-        // 태그 자동 생성
+        // Auto-generate tags
         List<string> randomTags = GenerateRandomTags();
 
-        // UserSession에 태그 저장
+        // Save tags to UserSession
         UserSession.Instance.Tags = randomTags;
 
-        // GameData에도 저장 (기존 시스템 호환)
+        // Save to GameData (for system compatibility)
         for (int i = 0; i < randomTags.Count && i < 4; i++)
         {
             GameData.tags[i] = randomTags[i];
         }
-        GameData.difficulty = 3; // 기본 3x3
+        GameData.difficulty = 3; // Default 3x3
+        GameData.isMultiplay = true; // Mark as multiplayer
 
-        Debug.Log("[Multiplay] 자동 태그 생성: " + string.Join(", ", randomTags));
+        // Save game code
+        GameData.gameCode = MultiplaySession.Instance.CurrentRoom.gameCode;
+        GameData.imageUrl = MultiplaySession.Instance.CurrentRoom.imageUrl;
 
-        // G002_Game으로 이동
+        Debug.Log("[Multiplay] Auto-generated tags: " + string.Join(", ", randomTags));
+        Debug.Log("[Multiplay] Game code: " + GameData.gameCode);
+
+        // Navigate to G002_Game
         if (fadeController != null)
             fadeController.FadeToScene("G002_Game");
         else
@@ -268,12 +341,12 @@ public class B001_CreateParty : MonoBehaviour
             return result;
         }
 
-        Debug.LogWarning("태그 파일을 찾을 수 없음: " + path);
+        Debug.LogWarning("Tag file not found: " + path);
         return new List<string>();
     }
     #endregion
 
-    #region 웹소켓 이벤트
+    #region WebSocket Events
     private void SubscribeMultiplayEvents()
     {
         if (MultiplaySession.Instance == null) return;
@@ -303,19 +376,19 @@ public class B001_CreateParty : MonoBehaviour
 
     private void OnPlayerJoined(PlayerData player)
     {
-        Debug.Log($"{player.nickname} 입장");
+        Debug.Log($"{player.username} joined");
         UpdatePlayerList();
     }
 
     private void OnPlayerLeft(PlayerData player)
     {
-        Debug.Log($"{player.nickname} 퇴장");
+        Debug.Log($"{player.username} left");
         UpdatePlayerList();
     }
 
     private void OnGameStarted()
     {
-        if (!isHost) // 클라이언트만
+        if (!isHost) // Client only
         {
             StartMultiplayGame();
         }
@@ -323,13 +396,13 @@ public class B001_CreateParty : MonoBehaviour
 
     private void OnHostLeft()
     {
-        // 호스트 퇴장 팝업 표시
+        // Show host left popup
         if (hostLeftPopup != null)
         {
             hostLeftPopup.SetActive(true);
 
             if (hostLeftMessage != null)
-                hostLeftMessage.text = "호스트가 나갔습니다.\n방이 닫혔습니다.";
+                hostLeftMessage.text = "Host has left the room.\nThe room has been closed.";
 
             StartCoroutine(ReturnToMainMenuAfterDelay(3f));
         }
@@ -348,10 +421,10 @@ public class B001_CreateParty : MonoBehaviour
 
     private void OnDestroy()
     {
-        // 이벤트 구독 해제
+        // Unsubscribe from events
         UnsubscribeMultiplayEvents();
 
-        // 버튼 리스너 제거
+        // Remove button listeners
         if (backButton != null)
             backButton.onClick.RemoveAllListeners();
 

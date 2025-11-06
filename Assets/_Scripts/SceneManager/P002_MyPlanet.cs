@@ -1,7 +1,6 @@
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
-using System.IO;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -186,7 +185,7 @@ public class MyPlanetUIController : MonoBehaviour
         {
             var card = Instantiate(photoCardPrefab, galleryContainer);
             var photoCard = card.GetComponent<PhotoCard>();
-            photoCard.Init(this, item);
+            photoCard.Init(this, item, currentPlanetUsername);
         }
 
         // Content 사이즈 조정
@@ -221,7 +220,10 @@ public class MyPlanetUIController : MonoBehaviour
         UpdateSidebarButtonStates(panelGallery);
     }
 
-    public void OpenPhoto(GalleryItem item)
+    /// <summary>
+    /// 갤러리 아이템 클릭 시 상세 정보 표시
+    /// </summary>
+    public void OpenPhoto(string username, string imageId)
     {
         CloseContentPanels();
         panelPhoto.SetActive(true);
@@ -230,7 +232,11 @@ public class MyPlanetUIController : MonoBehaviour
         var photoController = panelPhoto.GetComponent<PhotoPanelController>();
         if (photoController != null)
         {
-            photoController.SetPhotoData(item, isMine);
+            photoController.LoadPhotoDetail(username, imageId, this); // this 전달
+        }
+        else
+        {
+            Debug.LogError("PhotoPanelController를 찾을 수 없습니다.");
         }
     }
 

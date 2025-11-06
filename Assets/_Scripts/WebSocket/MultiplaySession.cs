@@ -6,17 +6,17 @@ public class MultiplaySession : MonoBehaviour
 {
     public static MultiplaySession Instance { get; private set; }
 
-    // 현재 방 정보
+    // Current room info
     public RoomData CurrentRoom { get; private set; }
     public bool IsHost { get; private set; }
     public string MyUserId => UserSession.Instance?.UserID;
 
-    // 이벤트
+    // Events
     public event Action<RoomData> OnRoomDataUpdated;
     public event Action<PlayerData> OnPlayerJoined;
     public event Action<PlayerData> OnPlayerLeft;
     public event Action OnGameStarted;
-    public event Action OnHostLeft; // 호스트 퇴장
+    public event Action OnHostLeft; // Host left
 
     private void Awake()
     {
@@ -30,35 +30,36 @@ public class MultiplaySession : MonoBehaviour
     }
 
     /// <summary>
-    /// 방 생성/입장 시 초기 정보 설정
+    /// Set initial room info when creating/joining room
+    /// Changed parameter name from sessionCode to gameCode for clarity
     /// </summary>
-    public void SetRoomInfo(string roomId, string sessionCode, bool isHost)
+    public void SetRoomInfo(string roomId, string gameCode, bool isHost)
     {
         if (CurrentRoom == null)
             CurrentRoom = new RoomData();
 
         CurrentRoom.roomId = roomId;
-        CurrentRoom.sessionCode = sessionCode;
+        CurrentRoom.gameCode = gameCode; // Changed from sessionCode
         this.IsHost = isHost;
 
         if (isHost)
             CurrentRoom.hostId = MyUserId;
 
-        Debug.Log($"방 정보 설정 완료 - RoomId: {roomId}, Code: {sessionCode}, IsHost: {isHost}");
+        Debug.Log($"Room info set - RoomId: {roomId}, Code: {gameCode}, IsHost: {isHost}");
     }
 
     /// <summary>
-    /// 웹소켓으로 받은 방 데이터 전체 업데이트
+    /// Update entire room data from WebSocket
     /// </summary>
     public void UpdateRoomData(RoomData roomData)
     {
         CurrentRoom = roomData;
-        OnRoomDataUpdated?.Invoke(roomData);
-        Debug.Log($"방 데이터 업데이트 - 플레이어 수: {roomData.players?.Count ?? 0}");
+        TriggerRoomDataUpdated();
+        Debug.Log($"Room data updated - Player count: {roomData.players?.Count ?? 0}");
     }
 
     /// <summary>
-    /// 플레이어 추가
+    /// Add player
     /// </summary>
     public void AddPlayer(PlayerData player)
     {
@@ -67,13 +68,13 @@ public class MultiplaySession : MonoBehaviour
 
         CurrentRoom.players.Add(player);
         OnPlayerJoined?.Invoke(player);
-        OnRoomDataUpdated?.Invoke(CurrentRoom);
+        TriggerRoomDataUpdated();
 
-        Debug.Log($"플레이어 입장: {player.nickname}");
+        Debug.Log($"Player joined: {player.nickname}");
     }
 
     /// <summary>
-    /// 플레이어 제거
+    /// Remove player
     /// </summary>
     public void RemovePlayer(string userId)
     {
@@ -84,25 +85,26 @@ public class MultiplaySession : MonoBehaviour
         {
             CurrentRoom.players.Remove(player);
             OnPlayerLeft?.Invoke(player);
-            OnRoomDataUpdated?.Invoke(CurrentRoom);
+            TriggerRoomDataUpdated();
 
-            Debug.Log($"플레이어 퇴장: {player.nickname}");
+            Debug.Log($"Player left: {player.nickname}");
 
-            // 호스트가 나간 경우
+            // If host left
             if (userId == CurrentRoom.hostId)
             {
-                Debug.Log("호스트가 퇴장했습니다!");
+                Debug.Log("Host has left!");
                 OnHostLeft?.Invoke();
             }
         }
     }
+
     public void TriggerHostLeft()
     {
         OnHostLeft?.Invoke();
     }
 
     /// <summary>
-    /// 특정 플레이어의 준비 상태 업데이트
+    /// Update specific player's ready status
     /// </summary>
     public void UpdatePlayerReady(string userId, bool isReady)
     {
@@ -112,13 +114,13 @@ public class MultiplaySession : MonoBehaviour
         if (player != null)
         {
             player.isReady = isReady;
-            OnRoomDataUpdated?.Invoke(CurrentRoom);
-            Debug.Log($"{player.nickname} 준비 상태: {isReady}");
+            TriggerRoomDataUpdated();
+            Debug.Log($"{player.nickname} ready status: {isReady}");
         }
     }
 
     /// <summary>
-    /// 게임 시작 플래그 설정
+    /// Set game started flag
     /// </summary>
     public void StartGame()
     {
@@ -126,12 +128,12 @@ public class MultiplaySession : MonoBehaviour
         {
             CurrentRoom.isGameStarted = true;
             OnGameStarted?.Invoke();
-            Debug.Log("게임 시작!");
+            Debug.Log("Game started!");
         }
     }
 
     /// <summary>
-    /// 플레이어 클리어 시간 업데이트
+    /// Update player clear time
     /// </summary>
     public void UpdatePlayerClearTime(string userId, float clearTime)
     {
@@ -141,28 +143,28 @@ public class MultiplaySession : MonoBehaviour
         if (player != null)
         {
             player.clearTime = clearTime;
-            Debug.Log($"{player.nickname} 클리어 시간: {clearTime}초");
+            Debug.Log($"{player.nickname} clear time: {clearTime}s");
 
-            // 순위 재계산
+            // Recalculate ranks
             CalculateRanks();
-            OnRoomDataUpdated?.Invoke(CurrentRoom);
+            TriggerRoomDataUpdated();
         }
     }
 
     /// <summary>
-    /// 순위 계산 (클리어 시간 기준)
+    /// Calculate ranks (based on clear time)
     /// </summary>
     private void CalculateRanks()
     {
         if (CurrentRoom.players == null) return;
 
-        // 클리어한 플레이어만 필터링
+        // Filter only cleared players
         var clearedPlayers = CurrentRoom.players.FindAll(p => p.clearTime > 0);
 
-        // 시간 순으로 정렬
+        // Sort by time
         clearedPlayers.Sort((a, b) => a.clearTime.CompareTo(b.clearTime));
 
-        // 순위 부여
+        // Assign ranks
         for (int i = 0; i < clearedPlayers.Count; i++)
         {
             clearedPlayers[i].rank = i + 1;
@@ -170,17 +172,17 @@ public class MultiplaySession : MonoBehaviour
     }
 
     /// <summary>
-    /// 방 정보 초기화 (게임 종료 시)
+    /// Clear room info (when game ends)
     /// </summary>
     public void ClearRoomData()
     {
         CurrentRoom = null;
         IsHost = false;
-        Debug.Log("방 정보 초기화");
+        Debug.Log("Room info cleared");
     }
 
     /// <summary>
-    /// 현재 방에 있는 플레이어 수
+    /// Get player count in current room
     /// </summary>
     public int GetPlayerCount()
     {
@@ -188,10 +190,19 @@ public class MultiplaySession : MonoBehaviour
     }
 
     /// <summary>
-    /// 방이 가득 찼는지 확인
+    /// Check if room is full
     /// </summary>
     public bool IsRoomFull()
     {
         return GetPlayerCount() >= (CurrentRoom?.maxPlayers ?? 4);
+    }
+
+    /// <summary>
+    /// Public method to trigger room data updated event
+    /// This is needed because SocketIOManager can't invoke the event directly
+    /// </summary>
+    public void TriggerRoomDataUpdated()
+    {
+        OnRoomDataUpdated?.Invoke(CurrentRoom);
     }
 }

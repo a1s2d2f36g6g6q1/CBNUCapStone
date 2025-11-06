@@ -155,7 +155,7 @@ public class PuzzleLoader : MonoBehaviour
 
         // Get image URL from room data
         string imageUrl = MultiplaySession.Instance.CurrentRoom.imageUrl;
-        string gameCode = MultiplaySession.Instance.CurrentRoom.sessionCode;
+        string gameCode = MultiplaySession.Instance.CurrentRoom.gameCode;
 
         if (string.IsNullOrEmpty(imageUrl))
         {

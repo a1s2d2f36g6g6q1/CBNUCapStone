@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 
 // ==========================================
-// 유저 관련
+// User Related
 // ==========================================
 
 [Serializable]
@@ -53,7 +53,6 @@ public class UpdateNicknameRequest
     public string nickname;
 }
 
-
 [Serializable]
 public class CheckUsernameResponse
 {
@@ -61,7 +60,7 @@ public class CheckUsernameResponse
 }
 
 // ==========================================
-// 행성 관련
+// Planet Related
 // ==========================================
 
 [Serializable]
@@ -126,23 +125,24 @@ public class VisitResponse
 }
 
 // ==========================================
-// 갤러리 관련
+// Gallery Related - FIXED
 // ==========================================
 
 [Serializable]
 public class GalleryItem
 {
-    public string imageId;
-    public string imageUrl;
-    public string description;
-    public List<string> tags;
+    public string galleryId;        // API 응답: galleryId (string UUID)
+    public string imageId;          // API 응답: imageId (string UUID) - 상세 조회 시 사용
+    public string title;            // API 명세서: title
+    public string image_url;        // API 명세서: image_url
+    public string created_at;       // API 명세서: created_at (생성 날짜)
 }
 
 [Serializable]
 public class GalleryResult
 {
     public string username;
-    public List<GalleryItem> galleries;
+    public GalleryItem[] galleries; // Array로 수정
 }
 
 [Serializable]
@@ -154,24 +154,37 @@ public class GalleryListResponse
     public GalleryResult result;
 }
 
+// 갤러리 상세 조회용 모델 추가
 [Serializable]
-public class GalleryUploadRequest
+public class GalleryMetadata
 {
-    public string imageBase64;
-    public string description;
     public string[] tags;
+    public string generatedAt;
+    public bool pollinateApi;
 }
 
 [Serializable]
-public class GalleryUploadResponse
+public class GalleryDetailItem
 {
-    public bool success;
+    public string username;
     public string imageId;
+    public string galleryId;
+    public string title;
+    public string image_url;
+    public GalleryMetadata metadata;
+}
+
+[Serializable]
+public class GalleryDetailResponse
+{
+    public bool isSuccess;
+    public int code;
     public string message;
+    public GalleryDetailItem result;
 }
 
 // ==========================================
-// 방명록 관련
+// Guestbook Related
 // ==========================================
 
 [Serializable]
@@ -207,7 +220,7 @@ public class GuestbookWriteRequest
 }
 
 // ==========================================
-// 친구 관련
+// Friend Related
 // ==========================================
 
 [Serializable]
@@ -225,13 +238,23 @@ public class FriendListResponse
 }
 
 // ==========================================
-// 멀티플레이 관련
+// Multiplayer Related
 // ==========================================
+
+[Serializable]
+public class ParticipantData
+{
+    public string userId;
+    public string username;
+    public int isReady; // 0 or 1
+    public bool isHost;
+}
 
 [Serializable]
 public class PlayerData
 {
     public string userId;
+    public string username;
     public string nickname;
     public bool isReady;
     public bool isHost;
@@ -243,27 +266,29 @@ public class PlayerData
 public class RoomData
 {
     public string roomId;
-    public string sessionCode;
+    public string gameCode;
     public string hostId;
+    public string hostUsername;
     public List<PlayerData> players;
+    public List<ParticipantData> participants;
     public bool isGameStarted;
     public int maxPlayers = 4;
 
-    // 추가
     public string imageUrl;
     public string[] tags;
 }
+
 [Serializable]
 public class CreateRoomRequest
 {
-    public string[] tags; // 4개 태그 필수
+    public string[] tags;
 }
 
 [Serializable]
 public class CreateRoomResult
 {
     public string roomId;
-    public string gameCode; // sessionCode
+    public string gameCode;
     public string hostUsername;
     public string imageUrl;
     public string[] tags;
@@ -281,18 +306,150 @@ public class CreateRoomResponseWrapper
 [Serializable]
 public class JoinRoomRequest
 {
-    public string sessionCode;
+    public string gameCode;
 }
 
 [Serializable]
-public class JoinRoomResponse
+public class JoinRoomResult
 {
-    public string roomId;
-    public RoomData roomData;
+    public int roomId;
+    public string gameCode;
+    public ParticipantData[] participants;
+    public string hostUsername;
+    public string imageUrl;
+    public string[] tags;
+}
+
+[Serializable]
+public class JoinRoomResponseWrapper
+{
+    public bool isSuccess;
+    public string code;
+    public string message;
+    public JoinRoomResult result;
+}
+
+[Serializable]
+public class ReadyToggleRequest
+{
+    public string gameCode;
+}
+
+[Serializable]
+public class ReadyToggleResult
+{
+    public int isReady;
+    public ParticipantData[] participants;
+}
+
+[Serializable]
+public class ReadyToggleResponseWrapper
+{
+    public bool isSuccess;
+    public string code;
+    public string message;
+    public ReadyToggleResult result;
+}
+
+[Serializable]
+public class StartGameRequest
+{
+    public string gameCode;
+}
+
+[Serializable]
+public class StartGameResult
+{
+    public int roomId;
+    public string gameCode;
+    public string gameStatus;
+    public ParticipantData[] participants;
+}
+
+[Serializable]
+public class StartGameResponseWrapper
+{
+    public bool isSuccess;
+    public string code;
+    public string message;
+    public StartGameResult result;
 }
 
 // ==========================================
-// 공통 응답
+// WebSocket Event Models
+// ==========================================
+
+[Serializable]
+public class WS_AuthenticateRequest
+{
+    public string token;
+}
+
+[Serializable]
+public class WS_JoinRoomRequest
+{
+    public string gameCode;
+}
+
+[Serializable]
+public class WS_LeaveRoomRequest
+{
+    public string gameCode;
+}
+
+[Serializable]
+public class WS_UserJoinedEvent
+{
+    public bool isSuccess;
+    public string code;
+    public string message;
+    public WS_UserJoinedResult result;
+}
+
+[Serializable]
+public class WS_UserJoinedResult
+{
+    public string userId;
+    public string username;
+    public string gameCode;
+    public ParticipantData[] participants;
+}
+
+[Serializable]
+public class WS_RoomUpdatedEvent
+{
+    public bool isSuccess;
+    public string code;
+    public string message;
+    public WS_RoomUpdatedResult result;
+}
+
+[Serializable]
+public class WS_RoomUpdatedResult
+{
+    public string gameCode;
+    public ParticipantData[] participants;
+}
+
+[Serializable]
+public class WS_GameStartedEvent
+{
+    public bool isSuccess;
+    public string code;
+    public string message;
+    public WS_GameStartedResult result;
+}
+
+[Serializable]
+public class WS_GameStartedResult
+{
+    public string gameId;
+    public string gameCode;
+    public ParticipantData[] participants;
+}
+
+// ==========================================
+// Common Response
 // ==========================================
 
 [Serializable]
