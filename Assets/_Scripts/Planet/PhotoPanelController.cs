@@ -23,11 +23,15 @@ public class PhotoPanelController : MonoBehaviour
     private static readonly Color favoriteColor = new Color32(0xFF, 0x69, 0xB4, 0xFF); // 핫핑크
     private static readonly Color normalColor = Color.white;
 
+    [Header("다운로드 버튼")]
+    public TMP_Text downloadButtonText;      // 다운로드 버튼 텍스트
+
     private GalleryDetailItem currentDetailItem;
     private Texture2D currentTexture;        // 다운로드용 텍스처 저장
     private string currentUsername;
     private string currentImageId;
     private bool isFavorited = false;        // 즐겨찾기 상태
+    private bool isDownloaded = false;       // 다운로드 완료 상태
     private MyPlanetUIController planetUIController;
 
     private void Awake()
@@ -55,7 +59,26 @@ public class PhotoPanelController : MonoBehaviour
         this.currentImageId = imageId;
         this.planetUIController = controller;
 
+        // Initialize states
+        InitializeStates();
+
         StartCoroutine(LoadPhotoDetailCoroutine(username, imageId));
+    }
+
+    /// <summary>
+    /// 사진 상세 진입 시 상태 초기화
+    /// </summary>
+    private void InitializeStates()
+    {
+        // 즐겨찾기 상태 초기화
+        isFavorited = false;
+        UpdateFavoriteIcon();
+
+        // 다운로드 상태 초기화
+        isDownloaded = false;
+        UpdateDownloadButtonText();
+
+        Debug.Log("[PhotoPanel] States initialized - Favorite: false, Downloaded: false");
     }
 
     private IEnumerator LoadPhotoDetailCoroutine(string username, string imageId)
@@ -74,6 +97,9 @@ public class PhotoPanelController : MonoBehaviour
                 {
                     currentDetailItem = detailResponse.result;
                     UpdatePhotoUI();
+
+                    // Check if this image is favorited
+                    CheckFavoriteStatus();
                 }
                 else
                 {
@@ -86,6 +112,60 @@ public class PhotoPanelController : MonoBehaviour
             {
                 Debug.LogError("갤러리 상세 정보 로드 실패: " + error);
                 SetLoadingState(false);
+            }
+        );
+    }
+
+    /// <summary>
+    /// Check if this planet/image is in favorites
+    /// </summary>
+    private void CheckFavoriteStatus()
+    {
+        // Currently, API doesn't support checking individual gallery favorites
+        // So we check if the planet owner is favorited instead
+        StartCoroutine(CheckPlanetFavoriteCoroutine());
+    }
+
+    private IEnumerator CheckPlanetFavoriteCoroutine()
+    {
+        if (UserSession.Instance == null || !UserSession.Instance.IsLoggedIn)
+        {
+            // Not logged in - cannot favorite
+            isFavorited = false;
+            UpdateFavoriteIcon();
+            yield break;
+        }
+
+        yield return APIManager.Instance.Get(
+            "/planets/favorites/me",
+            onSuccess: (response) =>
+            {
+                FavoriteListResponse favoriteResponse = JsonUtility.FromJson<FavoriteListResponse>(response);
+
+                if (favoriteResponse != null && favoriteResponse.result != null)
+                {
+                    // Check if current planet owner is in favorites
+                    bool found = false;
+                    foreach (var planet in favoriteResponse.result)
+                    {
+                        if (planet.ownerUsername == currentUsername)
+                        {
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    isFavorited = found;
+                    UpdateFavoriteIcon();
+
+                    Debug.Log($"[PhotoPanel] Favorite status checked - isFavorited: {isFavorited}");
+                }
+            },
+            onError: (error) =>
+            {
+                Debug.LogError("즐겨찾기 상태 확인 실패: " + error);
+                isFavorited = false;
+                UpdateFavoriteIcon();
             }
         );
     }
@@ -115,9 +195,6 @@ public class PhotoPanelController : MonoBehaviour
         {
             StartCoroutine(LoadImageFromURL(currentDetailItem.image_url));
         }
-
-        // TODO: 즐겨찾기 상태 확인 (현재 API에 갤러리 즐겨찾기 기능 없음)
-        UpdateFavoriteIcon();
     }
 
     /// <summary>
@@ -167,6 +244,13 @@ public class PhotoPanelController : MonoBehaviour
             return;
         }
 
+        // Prevent multiple downloads
+        if (isDownloaded)
+        {
+            Debug.Log("[PhotoPanel] Image already downloaded");
+            return;
+        }
+
         StartCoroutine(DownloadImage());
     }
 
@@ -198,8 +282,31 @@ public class PhotoPanelController : MonoBehaviour
         File.WriteAllBytes(path, bytes);
         Debug.Log($"이미지 저장 완료: {path}");
 
-        // TODO: 사용자에게 저장 완료 메시지 표시
+        // Update download state
+        isDownloaded = true;
+        UpdateDownloadButtonText();
+
         yield return null;
+    }
+
+    /// <summary>
+    /// Update download button text based on state
+    /// </summary>
+    private void UpdateDownloadButtonText()
+    {
+        if (downloadButtonText != null)
+        {
+            downloadButtonText.text = isDownloaded ? "Downloaded !" : "Download";
+        }
+        else if (downloadButton != null)
+        {
+            // Fallback: try to get text from button
+            var textComponent = downloadButton.GetComponentInChildren<TMP_Text>();
+            if (textComponent != null)
+            {
+                textComponent.text = isDownloaded ? "Downloaded !" : "Download";
+            }
+        }
     }
 
     /// <summary>
@@ -207,15 +314,55 @@ public class PhotoPanelController : MonoBehaviour
     /// </summary>
     private void OnClick_ToggleFavorite()
     {
-        // TODO: 현재 API 명세서에 갤러리 이미지 즐겨찾기 기능이 없음
-        // 로컬에서만 상태 토글
-        isFavorited = !isFavorited;
-        UpdateFavoriteIcon();
+        // Check login status
+        if (UserSession.Instance == null || !UserSession.Instance.IsLoggedIn)
+        {
+            Debug.LogWarning("[PhotoPanel] Cannot favorite - not logged in");
+            return;
+        }
 
-        Debug.Log($"즐겨찾기 {(isFavorited ? "추가" : "제거")}");
+        StartCoroutine(ToggleFavoriteCoroutine());
+    }
 
-        // TODO: 백엔드에 갤러리 즐겨찾기 API 추가되면 여기서 호출
-        // StartCoroutine(ToggleFavoriteCoroutine());
+    private IEnumerator ToggleFavoriteCoroutine()
+    {
+        bool targetState = !isFavorited;
+
+        if (targetState)
+        {
+            // Add to favorites
+            yield return APIManager.Instance.Post(
+                $"/planets/{currentUsername}/favorite",
+                new { },
+                onSuccess: (response) =>
+                {
+                    Debug.Log("[PhotoPanel] 즐겨찾기 추가 성공");
+                    isFavorited = true;
+                    UpdateFavoriteIcon();
+                },
+                onError: (error) =>
+                {
+                    Debug.LogError("[PhotoPanel] 즐겨찾기 추가 실패: " + error);
+                }
+            );
+        }
+        else
+        {
+            // Remove from favorites
+            yield return APIManager.Instance.Delete(
+                $"/planets/{currentUsername}/favorite",
+                onSuccess: (response) =>
+                {
+                    Debug.Log("[PhotoPanel] 즐겨찾기 제거 성공");
+                    isFavorited = false;
+                    UpdateFavoriteIcon();
+                },
+                onError: (error) =>
+                {
+                    Debug.LogError("[PhotoPanel] 즐겨찾기 제거 실패: " + error);
+                }
+            );
+        }
     }
 
     private void UpdateFavoriteIcon()
@@ -237,6 +384,14 @@ public class PhotoPanelController : MonoBehaviour
             return;
         }
 
+        // PuzzleSession이 없으면 생성
+        if (PuzzleSession.Instance == null)
+        {
+            Debug.Log("[PhotoPanel] Creating PuzzleSession instance...");
+            GameObject sessionObj = new GameObject("PuzzleSession");
+            sessionObj.AddComponent<PuzzleSession>();
+        }
+
         // 퍼즐 세션에 이미지 정보 저장
         if (PuzzleSession.Instance != null)
         {
@@ -246,17 +401,27 @@ public class PhotoPanelController : MonoBehaviour
                 3, // 3x3 고정
                 false // 업로드 불가
             );
+
+            Debug.Log($"[PhotoPanel] Starting replay with image: {currentDetailItem.image_url}");
+            Debug.Log($"[PhotoPanel] ReplayMode: {PuzzleSession.Instance.IsReplayMode()}");
+            Debug.Log($"[PhotoPanel] ReplayImageUrl: {PuzzleSession.Instance.ReplayImageUrl}");
+        }
+        else
+        {
+            Debug.LogError("[PhotoPanel] Failed to create PuzzleSession!");
+            return;
         }
 
         // 퍼즐 게임 씬으로 이동
         var fadeController = FindObjectOfType<FadeController>();
         if (fadeController != null)
         {
-            fadeController.FadeToScene("G002_PuzzleGame"); // 실제 씬 이름으로 변경 필요
+            fadeController.FadeToScene("G002_Game");
         }
         else
         {
             Debug.LogError("FadeController를 찾을 수 없습니다.");
+            UnityEngine.SceneManagement.SceneManager.LoadScene("G002_Game");
         }
     }
 

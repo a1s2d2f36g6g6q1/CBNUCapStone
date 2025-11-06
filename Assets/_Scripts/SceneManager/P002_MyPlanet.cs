@@ -3,6 +3,7 @@ using TMPro;
 using UnityEngine.UI;
 using System.Collections;
 using System.Collections.Generic;
+using System;
 
 public class MyPlanetUIController : MonoBehaviour
 {
@@ -180,8 +181,28 @@ public class MyPlanetUIController : MonoBehaviour
             Destroy(child.gameObject);
         }
 
+        // 최신순 정렬 (created_at 기준 내림차순)
+        var sortedItems = new List<GalleryItem>(galleryItems);
+        sortedItems.Sort((a, b) =>
+        {
+            try
+            {
+                // created_at을 DateTime으로 파싱하여 비교
+                DateTime dateA = DateTime.Parse(a.created_at);
+                DateTime dateB = DateTime.Parse(b.created_at);
+                return dateB.CompareTo(dateA); // 최신이 먼저 (내림차순)
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"날짜 파싱 실패: {e.Message}");
+                return 0;
+            }
+        });
+
+        Debug.Log($"[RefreshGalleryUI] 최신순 정렬 완료 - 총 {sortedItems.Count}개");
+
         // 새 카드 생성
-        foreach (var item in galleryItems)
+        foreach (var item in sortedItems)
         {
             var card = Instantiate(photoCardPrefab, galleryContainer);
             var photoCard = card.GetComponent<PhotoCard>();

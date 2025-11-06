@@ -68,22 +68,24 @@ public class PlanetData
 {
     public string planetId;
     public string ownerUsername;
-    public string ownerNickname;
+    public string title;
     public int visitCount;
 }
-
 [Serializable]
 public class PlanetListItem
 {
-    public string planetId;
+    public string id;
     public string ownerUsername;
-    public string ownerNickname;
-    public int visitCount;
+    public string title;
+    public int visit_count;
 }
 
 [Serializable]
 public class PlanetListResponse
 {
+    public bool isSuccess;
+    public int code;
+    public string message;
     public PlanetListItem[] result;
 }
 

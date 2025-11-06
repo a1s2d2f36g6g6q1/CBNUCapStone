@@ -35,21 +35,40 @@ public class PuzzleLoader : MonoBehaviour
     {
         Texture2D puzzleTexture = null;
 
-        // Check if multiplay
-        bool isMultiplay = MultiplaySession.Instance != null &&
-                          MultiplaySession.Instance.CurrentRoom != null;
+        // Check if replay mode (from gallery)
+        bool isReplayMode = PuzzleSession.Instance != null &&
+                           PuzzleSession.Instance.IsReplayMode() &&
+                           !string.IsNullOrEmpty(PuzzleSession.Instance.ReplayImageUrl);
 
-        GameData.isMultiplay = isMultiplay;
+        Debug.Log($"[PuzzleLoader] Mode check - IsReplayMode: {isReplayMode}");
 
-        if (isMultiplay)
+        if (isReplayMode)
         {
-            // Multiplay: Use image from MultiplaySession
-            yield return StartCoroutine(LoadMultiplayImage((result) => puzzleTexture = result));
+            // Replay mode: Use image from PuzzleSession
+            Debug.Log("[PuzzleLoader] Loading replay mode image...");
+            Debug.Log($"[PuzzleLoader] Replay URL: {PuzzleSession.Instance.ReplayImageUrl}");
+            yield return StartCoroutine(LoadReplayImage((result) => puzzleTexture = result));
         }
         else
         {
-            // Singleplay: Request image from server
-            yield return StartCoroutine(LoadSingleplayImage((result) => puzzleTexture = result));
+            // Check if multiplay
+            bool isMultiplay = MultiplaySession.Instance != null &&
+                              MultiplaySession.Instance.CurrentRoom != null;
+
+            GameData.isMultiplay = isMultiplay;
+
+            if (isMultiplay)
+            {
+                // Multiplay: Use image from MultiplaySession
+                Debug.Log("[PuzzleLoader] Loading multiplay image...");
+                yield return StartCoroutine(LoadMultiplayImage((result) => puzzleTexture = result));
+            }
+            else
+            {
+                // Singleplay: Request image from server
+                Debug.Log("[PuzzleLoader] Loading singleplay image...");
+                yield return StartCoroutine(LoadSingleplayImage((result) => puzzleTexture = result));
+            }
         }
 
         // Fallback to dummy image if failed
@@ -71,6 +90,31 @@ public class PuzzleLoader : MonoBehaviour
         }
 
         FinalizePuzzleLoading();
+    }
+
+    private IEnumerator LoadReplayImage(System.Action<Texture2D> callback)
+    {
+        Debug.Log("[PuzzleLoader] Loading replay mode image...");
+
+        if (PuzzleSession.Instance == null || string.IsNullOrEmpty(PuzzleSession.Instance.ReplayImageUrl))
+        {
+            Debug.LogError("[PuzzleLoader] PuzzleSession or ReplayImageUrl is null!");
+            callback?.Invoke(null);
+            yield break;
+        }
+
+        // Get image URL from PuzzleSession
+        string imageUrl = PuzzleSession.Instance.ReplayImageUrl;
+
+        // GameData is already set by PuzzleSession.SetImageForReplay
+        Debug.Log($"[PuzzleLoader] Replay GameCode: {GameData.gameCode}");
+        Debug.Log($"[PuzzleLoader] Replay ImageURL: {GameData.imageUrl}");
+
+        // Download image
+        Texture2D resultTexture = null;
+        yield return StartCoroutine(DownloadImageFromURL(imageUrl, (texture) => resultTexture = texture));
+
+        callback?.Invoke(resultTexture);
     }
 
     private IEnumerator LoadSingleplayImage(System.Action<Texture2D> callback)
@@ -259,9 +303,18 @@ public class PuzzleLoader : MonoBehaviour
 
     private int GetPuzzleSize()
     {
-        int size = (GameData.difficulty < 2 || GameData.difficulty > 5) ? 3 : GameData.difficulty;
-        Debug.Log($"[PuzzleLoader] Puzzle size: {size}x{size}");
-        return size;
+        // Check if replay mode first
+        if (PuzzleSession.Instance != null && PuzzleSession.Instance.IsReplayMode())
+        {
+            int size = PuzzleSession.Instance.GridSize;
+            Debug.Log($"[PuzzleLoader] Replay mode - Puzzle size: {size}x{size}");
+            return size;
+        }
+
+        // Otherwise use GameData
+        int defaultSize = (GameData.difficulty < 2 || GameData.difficulty > 5) ? 3 : GameData.difficulty;
+        Debug.Log($"[PuzzleLoader] Puzzle size: {defaultSize}x{defaultSize}");
+        return defaultSize;
     }
 
     private void HandleLoadingFailure()

@@ -79,10 +79,15 @@ public class ClearPopup : MonoBehaviour
         if (descriptionInputField != null)
             descriptionInputField.text = "";
 
+        // Check if replay mode (gallery replay cannot upload)
+        bool isReplayMode = PuzzleSession.Instance != null && PuzzleSession.Instance.IsReplayMode();
+
         // Check login status (guest cannot upload)
         bool isLoggedIn = UserSession.Instance != null && UserSession.Instance.IsLoggedIn;
         bool isGuest = UserSession.Instance != null && UserSession.Instance.IsGuest;
-        canUpload = isLoggedIn && !isGuest;
+
+        // Can upload only if: logged in, not guest, and not replay mode
+        canUpload = isLoggedIn && !isGuest && !isReplayMode;
 
         // Update upload button state
         if (uploadButton != null)
@@ -91,7 +96,9 @@ public class ClearPopup : MonoBehaviour
             var buttonText = uploadButton.GetComponentInChildren<TMP_Text>();
             if (buttonText != null)
             {
-                if (isGuest)
+                if (isReplayMode)
+                    buttonText.text = "Replay Mode - Upload Disabled";
+                else if (isGuest)
                     buttonText.text = "Login Required";
                 else if (!isLoggedIn)
                     buttonText.text = "Login Required";
@@ -106,7 +113,9 @@ public class ClearPopup : MonoBehaviour
             loginRequiredText.gameObject.SetActive(!canUpload);
             if (!canUpload)
             {
-                if (isGuest)
+                if (isReplayMode)
+                    loginRequiredText.text = "Replay mode - Upload not available";
+                else if (isGuest)
                     loginRequiredText.text = "Can't upload - Please login with real account";
                 else
                     loginRequiredText.text = "Can't upload - Login required";
@@ -128,6 +137,7 @@ public class ClearPopup : MonoBehaviour
             uploadButton.onClick.AddListener(OnUploadClick);
         }
     }
+
     private IEnumerator ShowPopupFromBackAnimation()
     {
         transform.localScale = originalScale;
@@ -164,11 +174,15 @@ public class ClearPopup : MonoBehaviour
 
         if (!canUpload)
         {
-            Debug.LogWarning("[ClearPopup] Cannot upload - not logged in");
+            Debug.LogWarning("[ClearPopup] Cannot upload - not logged in or replay mode");
             SetUploadStatus("Error");
             if (loginRequiredText != null)
             {
-                loginRequiredText.text = "Can't upload - Login required";
+                bool isReplayMode = PuzzleSession.Instance != null && PuzzleSession.Instance.IsReplayMode();
+                if (isReplayMode)
+                    loginRequiredText.text = "Replay mode - Upload not available";
+                else
+                    loginRequiredText.text = "Can't upload - Login required";
                 loginRequiredText.gameObject.SetActive(true);
             }
             return;
@@ -336,6 +350,12 @@ public class ClearPopup : MonoBehaviour
 
     public void OnExitClick()
     {
+        // Clear replay data if in replay mode
+        if (PuzzleSession.Instance != null && PuzzleSession.Instance.IsReplayMode())
+        {
+            PuzzleSession.Instance.ClearReplayData();
+        }
+
         if (fadeController != null)
         {
             fadeController.FadeToScene("000_MainMenu");
