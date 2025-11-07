@@ -42,18 +42,19 @@ public class B002_JoinParty : MonoBehaviour
 
         if (isConnecting)
         {
-            Debug.Log("Already attempting to connect");
+            Debug.Log("[JoinParty] Already attempting to connect");
             return;
         }
 
-        // Start WebSocket connection
-        StartCoroutine(ConnectAndJoinRoom(gameCode));
+        // Start connection and join
+        StartCoroutine(ConnectAndJoinRoomCoroutine(gameCode));
     }
 
-    private IEnumerator ConnectAndJoinRoom(string gameCode)
+    private IEnumerator ConnectAndJoinRoomCoroutine(string gameCode)
     {
         isConnecting = true;
         SetLoadingState(true);
+        ShowError("Connecting to server...", false);
 
         // Check if SocketIOManager exists
         if (SocketIOManager.Instance == null)
@@ -64,67 +65,35 @@ public class B002_JoinParty : MonoBehaviour
             yield break;
         }
 
-        // Connect to WebSocket
-        bool socketConnected = false;
-        bool socketAuthenticated = false;
-        string connectionError = null;
+        Debug.Log("[JoinParty] Starting WebSocket connection...");
 
-        SocketIOManager.Instance.OnConnected += () => socketConnected = true;
-        SocketIOManager.Instance.OnAuthenticated += () => socketAuthenticated = true;
-        SocketIOManager.Instance.OnConnectionError += (error) => connectionError = error;
+        // Use new async method with proper await
+        var connectionTask = SocketIOManager.Instance.ConnectAndAuthenticateAsync();
 
-        if (!SocketIOManager.Instance.IsConnected)
+        // Wait for connection task to complete
+        while (!connectionTask.IsCompleted)
         {
-            Debug.Log("Connecting to WebSocket...");
-            SocketIOManager.Instance.Connect();
-        }
-        else
-        {
-            socketConnected = true;
-            socketAuthenticated = SocketIOManager.Instance.IsAuthenticated;
-        }
-
-        // Wait for connection and authentication (max 10 seconds)
-        float elapsed = 0f;
-        while ((!socketConnected || !socketAuthenticated) && connectionError == null && elapsed < 10f)
-        {
-            elapsed += Time.deltaTime;
             yield return null;
         }
 
-        // Unsubscribe from events
-        SocketIOManager.Instance.OnConnected -= () => socketConnected = true;
-        SocketIOManager.Instance.OnAuthenticated -= () => socketAuthenticated = true;
-        SocketIOManager.Instance.OnConnectionError -= (error) => connectionError = error;
+        bool connected = connectionTask.Result;
 
-        if (connectionError != null)
+        Debug.Log($"[JoinParty] Connection result: {connected}");
+
+        if (!connected)
         {
-            ShowError("WebSocket connection failed: " + connectionError);
+            ShowError("Failed to connect to server");
             SetLoadingState(false);
             isConnecting = false;
             yield break;
         }
 
-        if (!socketConnected)
-        {
-            ShowError("WebSocket connection timeout");
-            SetLoadingState(false);
-            isConnecting = false;
-            yield break;
-        }
-
-        if (!socketAuthenticated)
-        {
-            ShowError("WebSocket authentication timeout");
-            SetLoadingState(false);
-            isConnecting = false;
-            yield break;
-        }
-
-        Debug.Log("WebSocket connected and authenticated, joining room...");
+        Debug.Log("[JoinParty] WebSocket connected and authenticated, registering events");
 
         // Register multiplayer events
         SocketIOManager.Instance.RegisterMultiplayEvents();
+
+        ShowError("Joining room...", false);
 
         // Call room join API
         yield return JoinRoomCoroutine(gameCode);
@@ -134,7 +103,12 @@ public class B002_JoinParty : MonoBehaviour
 
     private IEnumerator JoinRoomCoroutine(string gameCode)
     {
+        Debug.Log($"[JoinParty] Joining room via API - Code: {gameCode}");
+
         JoinRoomRequest request = new JoinRoomRequest { gameCode = gameCode };
+
+        bool requestCompleted = false;
+        bool requestSuccess = false;
 
         yield return APIManager.Instance.Post(
             "/games/multiplay/rooms/join",
@@ -143,73 +117,103 @@ public class B002_JoinParty : MonoBehaviour
             {
                 Debug.Log($"[API] Join room response: {response}");
 
-                JoinRoomResponseWrapper wrapper = JsonUtility.FromJson<JoinRoomResponseWrapper>(response);
-
-                if (wrapper.result != null)
+                try
                 {
-                    Debug.Log($"[API] Joined room - RoomId: {wrapper.result.roomId}, Code: {wrapper.result.gameCode}");
+                    JoinRoomResponseWrapper wrapper = JsonUtility.FromJson<JoinRoomResponseWrapper>(response);
 
-                    // Set room info in MultiplaySession (client)
-                    MultiplaySession.Instance.SetRoomInfo(
-                        wrapper.result.roomId.ToString(),
-                        wrapper.result.gameCode,
-                        false // Client
-                    );
-
-                    // Store image and tags
-                    if (MultiplaySession.Instance.CurrentRoom != null)
+                    if (wrapper != null && wrapper.result != null)
                     {
-                        MultiplaySession.Instance.CurrentRoom.imageUrl = wrapper.result.imageUrl;
-                        MultiplaySession.Instance.CurrentRoom.tags = wrapper.result.tags;
-                        MultiplaySession.Instance.CurrentRoom.hostUsername = wrapper.result.hostUsername;
-                    }
+                        Debug.Log($"[API] Joined room - RoomId: {wrapper.result.roomId}, Code: {wrapper.result.gameCode}");
 
-                    // Convert participants to players
-                    if (wrapper.result.participants != null)
-                    {
-                        var players = new List<PlayerData>();
-                        foreach (var p in wrapper.result.participants)
+                        // Set room info in MultiplaySession (client)
+                        MultiplaySession.Instance.SetRoomInfo(
+                            wrapper.result.roomId.ToString(),
+                            wrapper.result.gameCode,
+                            false // Client
+                        );
+
+                        // Store image and tags
+                        if (MultiplaySession.Instance.CurrentRoom != null)
                         {
-                            players.Add(new PlayerData
-                            {
-                                userId = p.userId,
-                                username = p.username,
-                                nickname = p.username,
-                                isReady = p.isReady == 1,
-                                isHost = p.isHost
-                            });
+                            MultiplaySession.Instance.CurrentRoom.imageUrl = wrapper.result.imageUrl;
+                            MultiplaySession.Instance.CurrentRoom.tags = wrapper.result.tags;
+                            MultiplaySession.Instance.CurrentRoom.hostUsername = wrapper.result.hostUsername;
                         }
-                        MultiplaySession.Instance.CurrentRoom.players = players;
+
+                        // Convert participants to players
+                        if (wrapper.result.participants != null)
+                        {
+                            var players = new List<PlayerData>();
+                            foreach (var p in wrapper.result.participants)
+                            {
+                                players.Add(new PlayerData
+                                {
+                                    userId = p.userId,
+                                    username = p.username,
+                                    nickname = p.username,
+                                    isReady = p.isReady == 1,
+                                    isHost = p.isHost
+                                });
+                            }
+                            MultiplaySession.Instance.CurrentRoom.players = players;
+                        }
+
+                        // Send join_room event via WebSocket
+                        SocketIOManager.Instance.JoinRoom(gameCode);
+
+                        Debug.Log($"[JoinParty] Room joined successfully! RoomId: {wrapper.result.roomId}");
+
+                        requestSuccess = true;
                     }
-
-                    // Send join_room event via WebSocket
-                    SocketIOManager.Instance.JoinRoom(gameCode);
-
-                    Debug.Log($"Room joined successfully! RoomId: {wrapper.result.roomId}");
-
-                    SetLoadingState(false);
-
-                    // Navigate to lobby
-                    if (fadeController != null)
-                        fadeController.FadeToScene("B001_CreateParty");
                     else
-                        UnityEngine.SceneManagement.SceneManager.LoadScene("B001_CreateParty");
+                    {
+                        Debug.LogError("[JoinParty] Failed to parse room join response");
+                        ShowError("Failed to parse server response");
+                    }
                 }
-                else
+                catch (System.Exception e)
                 {
-                    ShowError("Failed to parse room join response");
-                    SetLoadingState(false);
+                    Debug.LogError($"[JoinParty] Error parsing response: {e.Message}");
+                    ShowError("Error processing server response");
                 }
+
+                requestCompleted = true;
             },
             onError: (error) =>
             {
+                Debug.LogError($"[JoinParty] Room join failed: {error}");
                 ShowError("Failed to join room: " + error);
-                SetLoadingState(false);
-
-                // Disconnect WebSocket
-                SocketIOManager.Instance.Disconnect();
+                requestCompleted = true;
             }
         );
+
+        // Wait for request to complete
+        while (!requestCompleted)
+        {
+            yield return null;
+        }
+
+        if (requestSuccess)
+        {
+            SetLoadingState(false);
+            Debug.Log("[JoinParty] Transitioning to lobby scene");
+
+            // Navigate to lobby
+            if (fadeController != null)
+                fadeController.FadeToScene("B001_CreateParty");
+            else
+                UnityEngine.SceneManagement.SceneManager.LoadScene("B001_CreateParty");
+        }
+        else
+        {
+            SetLoadingState(false);
+
+            // Disconnect WebSocket on error
+            if (SocketIOManager.Instance != null)
+            {
+                SocketIOManager.Instance.Disconnect();
+            }
+        }
     }
 
     public void OnBackButtonClick()
@@ -238,17 +242,20 @@ public class B002_JoinParty : MonoBehaviour
             sessionCodeInput.interactable = !isLoading;
     }
 
-    private void ShowError(string message)
+    private void ShowError(string message, bool isError = true)
     {
         if (errorMessageText != null)
         {
             errorMessageText.text = message;
-            errorMessageText.color = Color.red;
+            errorMessageText.color = isError ? Color.red : Color.white;
 
-            StartCoroutine(ClearErrorMessageAfterDelay(3f));
+            if (isError)
+            {
+                StartCoroutine(ClearErrorMessageAfterDelay(3f));
+            }
         }
 
-        Debug.LogWarning(message);
+        Debug.Log($"[JoinParty] {message}");
     }
 
     private IEnumerator ClearErrorMessageAfterDelay(float delay)

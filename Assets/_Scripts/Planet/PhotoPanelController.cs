@@ -148,7 +148,7 @@ public class PhotoPanelController : MonoBehaviour
                     bool found = false;
                     foreach (var planet in favoriteResponse.result)
                     {
-                        if (planet.ownerUsername == currentUsername)
+                        if (planet.username == currentUsername)
                         {
                             found = true;
                             break;

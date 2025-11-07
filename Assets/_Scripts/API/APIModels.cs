@@ -74,10 +74,11 @@ public class PlanetData
 [Serializable]
 public class PlanetListItem
 {
-    public string id;
-    public string ownerUsername;
-    public string title;
-    public int visit_count;
+    public string id;               // 행성 ID
+    public string username;         // API 응답: username (ownerUsername이 아님!)
+    public string title;            // 행성 제목 (예: "1234의 행성")
+    public int visit_count;         // visitCount → visit_count (snake_case)
+    public string created_at;       // 생성일 (snake_case)
 }
 
 [Serializable]

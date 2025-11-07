@@ -14,6 +14,10 @@ public class SocketIOManager : MonoBehaviour
 
     private string serverUrl = "ws://13.209.33.42:3000";
 
+    // Connection state tracking
+    private TaskCompletionSource<bool> connectionTcs;
+    private TaskCompletionSource<bool> authenticationTcs;
+
     public event Action OnConnected;
     public event Action OnDisconnected;
     public event Action<string> OnConnectionError;
@@ -28,125 +32,202 @@ public class SocketIOManager : MonoBehaviour
         }
         Instance = this;
         DontDestroyOnLoad(gameObject);
+
+        // Ensure UnityMainThreadDispatcher exists
+        EnsureMainThreadDispatcher();
     }
 
-    public async void Connect()
+    private void EnsureMainThreadDispatcher()
     {
-        if (IsConnected)
+        if (UnityMainThreadDispatcher.Instance() == null)
         {
-            Debug.Log("[SocketIO] Already connected to WebSocket");
-            return;
+            Debug.Log("[SocketIO] Creating UnityMainThreadDispatcher");
+        }
+    }
+
+    /// <summary>
+    /// Connect to WebSocket server with async/await pattern
+    /// Returns true if connection and authentication successful
+    /// </summary>
+    public async Task<bool> ConnectAndAuthenticateAsync()
+    {
+        if (IsConnected && IsAuthenticated)
+        {
+            Debug.Log("[SocketIO] Already connected and authenticated");
+            return true;
+        }
+
+        if (IsConnected && !IsAuthenticated)
+        {
+            Debug.Log("[SocketIO] Already connected, attempting authentication");
+            return await AuthenticateAsync();
         }
 
         Debug.Log("[SocketIO] Starting connection process...");
 
         try
         {
+            // Create new TaskCompletionSource for this connection attempt
+            connectionTcs = new TaskCompletionSource<bool>();
+            authenticationTcs = new TaskCompletionSource<bool>();
+
             var uri = new Uri(serverUrl);
             socket = new SocketIOClient.SocketIO(uri, new SocketIOOptions
             {
-                Transport = SocketIOClient.Transport.TransportProtocol.WebSocket
+                Transport = SocketIOClient.Transport.TransportProtocol.WebSocket,
+                Reconnection = false,
+                ConnectionTimeout = TimeSpan.FromSeconds(10)
             });
 
             Debug.Log("[SocketIO] Socket instance created");
 
-            socket.OnConnected += async (sender, e) =>
-            {
-                IsConnected = true;
-                Debug.Log("[SocketIO] WebSocket connected successfully");
+            // Setup authentication listener BEFORE connecting
+            SetupAuthenticationListener();
 
-                var dispatcher = UnityMainThreadDispatcher.Instance();
-                if (dispatcher != null)
-                {
-                    dispatcher.Enqueue(() =>
-                    {
-                        OnConnected?.Invoke();
-                    });
-                }
+            // Setup connection event handlers
+            socket.OnConnected += OnSocketConnected;
+            socket.OnDisconnected += OnSocketDisconnected;
+            socket.OnError += OnSocketError;
 
-                Debug.Log("[SocketIO] Setting up authentication listener...");
-                SetupAuthenticationListener();
-
-                Debug.Log("[SocketIO] Waiting 100ms before authentication...");
-                await Task.Delay(100);
-
-                Debug.Log("[SocketIO] Starting authentication...");
-                await AuthenticateAsync();
-            };
-
-            socket.OnDisconnected += (sender, e) =>
-            {
-                IsConnected = false;
-                IsAuthenticated = false;
-                Debug.Log("[SocketIO] WebSocket disconnected");
-
-                var dispatcher = UnityMainThreadDispatcher.Instance();
-                if (dispatcher != null)
-                {
-                    dispatcher.Enqueue(() =>
-                    {
-                        OnDisconnected?.Invoke();
-                    });
-                }
-            };
-
-            socket.OnError += (sender, e) =>
-            {
-                Debug.LogError($"[SocketIO] WebSocket error: {e}");
-
-                var dispatcher = UnityMainThreadDispatcher.Instance();
-                if (dispatcher != null)
-                {
-                    dispatcher.Enqueue(() =>
-                    {
-                        OnConnectionError?.Invoke(e);
-                    });
-                }
-            };
-
+            // Connect to server
             Debug.Log("[SocketIO] Attempting to connect to server...");
             await socket.ConnectAsync();
+
+            // Wait for connection to complete (with timeout)
+            var connectionTask = await Task.WhenAny(connectionTcs.Task, Task.Delay(10000));
+
+            if (connectionTask != connectionTcs.Task)
+            {
+                Debug.LogError("[SocketIO] Connection timeout");
+                return false;
+            }
+
+            if (!await connectionTcs.Task)
+            {
+                Debug.LogError("[SocketIO] Connection failed");
+                return false;
+            }
+
+            Debug.Log("[SocketIO] Connection successful, waiting for authentication...");
+
+            // Wait for authentication to complete (with timeout)
+            var authTask = await Task.WhenAny(authenticationTcs.Task, Task.Delay(10000));
+
+            if (authTask != authenticationTcs.Task)
+            {
+                Debug.LogError("[SocketIO] Authentication timeout");
+                return false;
+            }
+
+            bool authResult = await authenticationTcs.Task;
+            Debug.Log($"[SocketIO] Authentication result: {authResult}");
+
+            return authResult;
         }
         catch (Exception e)
         {
-            Debug.LogError($"[SocketIO] WebSocket connection failed: {e.Message}");
-            OnConnectionError?.Invoke(e.Message);
+            Debug.LogError($"[SocketIO] Connection error: {e.Message}");
+            return false;
         }
     }
 
-    private async Task AuthenticateAsync()
+    private async void OnSocketConnected(object sender, EventArgs e)
     {
-        Debug.Log($"[SocketIO] AuthenticateAsync called - IsConnected: {IsConnected}, IsAuthenticated: {IsAuthenticated}");
+        IsConnected = true;
+        Debug.Log("[SocketIO] WebSocket connected successfully");
+
+        var dispatcher = UnityMainThreadDispatcher.Instance();
+        if (dispatcher != null)
+        {
+            dispatcher.Enqueue(() =>
+            {
+                OnConnected?.Invoke();
+            });
+        }
+
+        // Mark connection as successful
+        connectionTcs?.TrySetResult(true);
+
+        // Small delay before authentication
+        await Task.Delay(200);
+
+        // Start authentication
+        Debug.Log("[SocketIO] Starting authentication...");
+        bool authResult = await AuthenticateAsync();
+
+        if (!authResult)
+        {
+            Debug.LogError("[SocketIO] Authentication failed after connection");
+            authenticationTcs?.TrySetResult(false);
+        }
+    }
+
+    private void OnSocketDisconnected(object sender, string e)
+    {
+        IsConnected = false;
+        IsAuthenticated = false;
+        Debug.Log($"[SocketIO] WebSocket disconnected: {e}");
+
+        var dispatcher = UnityMainThreadDispatcher.Instance();
+        if (dispatcher != null)
+        {
+            dispatcher.Enqueue(() =>
+            {
+                OnDisconnected?.Invoke();
+            });
+        }
+
+        // Mark connection as failed if waiting
+        connectionTcs?.TrySetResult(false);
+        authenticationTcs?.TrySetResult(false);
+    }
+
+    private void OnSocketError(object sender, string e)
+    {
+        Debug.LogError($"[SocketIO] WebSocket error: {e}");
+
+        var dispatcher = UnityMainThreadDispatcher.Instance();
+        if (dispatcher != null)
+        {
+            dispatcher.Enqueue(() =>
+            {
+                OnConnectionError?.Invoke(e);
+            });
+        }
+
+        // Mark connection as failed if waiting
+        connectionTcs?.TrySetResult(false);
+        authenticationTcs?.TrySetResult(false);
+    }
+
+    private async Task<bool> AuthenticateAsync()
+    {
+        Debug.Log($"[SocketIO] AuthenticateAsync called - IsConnected: {IsConnected}");
 
         if (!IsConnected)
         {
             Debug.LogError("[SocketIO] Cannot authenticate: Not connected");
-            return;
+            return false;
         }
 
         if (IsAuthenticated)
         {
             Debug.Log("[SocketIO] Already authenticated");
-            return;
+            return true;
         }
 
-        Debug.Log("[SocketIO] Checking for APIManager instance...");
         if (APIManager.Instance == null)
         {
-            Debug.LogError("[SocketIO] APIManager.Instance is NULL!");
-            return;
+            Debug.LogError("[SocketIO] APIManager.Instance is NULL");
+            return false;
         }
 
-        Debug.Log("[SocketIO] Getting token from APIManager...");
         string token = APIManager.Instance.GetToken();
-
-        Debug.Log($"[SocketIO] Token retrieved - IsNull: {token == null}, IsEmpty: {string.IsNullOrEmpty(token)}");
 
         if (string.IsNullOrEmpty(token))
         {
-            Debug.LogError("[SocketIO] Cannot authenticate: No token available");
-            Debug.LogError("[SocketIO] User must be logged in to use multiplayer features");
-            return;
+            Debug.LogError("[SocketIO] No JWT token available");
+            return false;
         }
 
         Debug.Log($"[SocketIO] Sending authentication with token: {token.Substring(0, Math.Min(20, token.Length))}...");
@@ -154,11 +235,14 @@ public class SocketIOManager : MonoBehaviour
         try
         {
             await socket.EmitAsync("authenticate", new { token });
-            Debug.Log("[SocketIO] Authentication request sent successfully, waiting for response...");
+            Debug.Log("[SocketIO] Authentication request sent successfully");
+            return true; // Will be confirmed by listener
         }
         catch (Exception e)
         {
             Debug.LogError($"[SocketIO] Failed to send authentication: {e.Message}");
+            authenticationTcs?.TrySetResult(false);
+            return false;
         }
     }
 
@@ -176,12 +260,12 @@ public class SocketIOManager : MonoBehaviour
 
                 if (authResponse != null)
                 {
-                    Debug.Log($"[SocketIO] Auth response parsed - isSuccess: {authResponse.isSuccess}, code: {authResponse.code}, message: {authResponse.message}");
+                    Debug.Log($"[SocketIO] Auth response parsed - isSuccess: {authResponse.isSuccess}");
 
                     if (authResponse.isSuccess)
                     {
                         IsAuthenticated = true;
-                        Debug.Log("[SocketIO] WebSocket authentication successful!");
+                        Debug.Log("[SocketIO] Authentication successful!");
 
                         var dispatcher = UnityMainThreadDispatcher.Instance();
                         if (dispatcher != null)
@@ -191,20 +275,26 @@ public class SocketIOManager : MonoBehaviour
                                 OnAuthenticated?.Invoke();
                             });
                         }
+
+                        // Mark authentication as successful
+                        authenticationTcs?.TrySetResult(true);
                     }
                     else
                     {
                         Debug.LogError($"[SocketIO] Authentication failed: {authResponse.message}");
+                        authenticationTcs?.TrySetResult(false);
                     }
                 }
                 else
                 {
                     Debug.LogError("[SocketIO] Authentication response is null");
+                    authenticationTcs?.TrySetResult(false);
                 }
             }
             catch (Exception e)
             {
-                Debug.LogError($"[SocketIO] Failed to parse authentication response: {e.Message}\n{e.StackTrace}");
+                Debug.LogError($"[SocketIO] Failed to parse authentication response: {e.Message}");
+                authenticationTcs?.TrySetResult(false);
             }
         });
 
@@ -218,6 +308,7 @@ public class SocketIOManager : MonoBehaviour
             await socket.DisconnectAsync();
             IsConnected = false;
             IsAuthenticated = false;
+            Debug.Log("[SocketIO] Disconnected from WebSocket");
         }
     }
 
@@ -262,6 +353,12 @@ public class SocketIOManager : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (socket != null)
+        {
+            socket.OnConnected -= OnSocketConnected;
+            socket.OnDisconnected -= OnSocketDisconnected;
+            socket.OnError -= OnSocketError;
+        }
         Disconnect();
     }
 

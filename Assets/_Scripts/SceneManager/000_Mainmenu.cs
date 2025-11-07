@@ -5,6 +5,7 @@ using UnityEngine.UI;
 using System.Collections;
 using System.Text;
 using UnityEngine.Networking;
+using System;
 
 public class MainMenuUIController : MonoBehaviour
 {
@@ -50,7 +51,6 @@ public class MainMenuUIController : MonoBehaviour
     public Button exitButton; // 패널 내 Exit 버튼 연결
 
     private Coroutine currentCheckCoroutine;
-    private bool isConnecting = false;
 
 
     private void Start()
@@ -436,34 +436,7 @@ public class MainMenuUIController : MonoBehaviour
 
     public void OnClick_CreateParty()
     {
-        Debug.Log("===== Create Party button clicked =====");
-
-        if (APIManager.Instance != null)
-        {
-            string token = APIManager.Instance.GetToken();
-            if (string.IsNullOrEmpty(token))
-            {
-                Debug.LogWarning("[MainMenu] No JWT token! User needs to login.");
-                ShowError("Please login first to create a party");
-                return;
-            }
-            else
-            {
-                Debug.Log($"[MainMenu] JWT token exists: {token.Substring(0, System.Math.Min(20, token.Length))}...");
-            }
-        }
-
-        if (APIManager.Instance == null)
-        {
-            Debug.LogError("APIManager is null!");
-            return;
-        }
-
-        if (MultiplaySession.Instance == null)
-        {
-            Debug.LogError("MultiplaySession is null!");
-            return;
-        }
+        Debug.Log("[MainMenu] Create Party button clicked");
 
         // Check if user is logged in
         if (UserSession.Instance == null || !UserSession.Instance.IsLoggedIn)
@@ -472,94 +445,178 @@ public class MainMenuUIController : MonoBehaviour
             return;
         }
 
-        Debug.Log("Starting room creation...");
-        SetLoadingState(true);
+        // Check token
+        if (APIManager.Instance == null || string.IsNullOrEmpty(APIManager.Instance.GetToken()))
+        {
+            ShowError("Please login first to create a party");
+            return;
+        }
 
-        // Start WebSocket connection first
-        StartCoroutine(ConnectAndCreateRoom());
+        Debug.Log("[MainMenu] Starting room creation process");
+        StartCoroutine(ConnectAndCreateRoomCoroutine());
     }
 
-    private IEnumerator ConnectAndCreateRoom()
+    private IEnumerator ConnectAndCreateRoomCoroutine()
     {
-        isConnecting = true;
         SetLoadingState(true);
+        ShowStatus("Connecting to server...", false);
 
-        // Check if SocketIOManager exists
+        // Ensure SocketIOManager exists
         if (SocketIOManager.Instance == null)
         {
-            ShowError("SocketIOManager not initialized");
+            ShowStatus("Error: SocketIOManager not initialized", true);
+            yield return new WaitForSeconds(2f);
             SetLoadingState(false);
-            isConnecting = false;
             yield break;
         }
 
         Debug.Log("[MainMenu] Starting WebSocket connection...");
 
-        // Connect to WebSocket if not already connected
-        if (!SocketIOManager.Instance.IsConnected)
+        // Use new async method with proper await
+        var connectionTask = SocketIOManager.Instance.ConnectAndAuthenticateAsync();
+
+        // Wait for connection task to complete
+        while (!connectionTask.IsCompleted)
         {
-            Debug.Log("[MainMenu] Initiating WebSocket connection...");
-            SocketIOManager.Instance.Connect();
-        }
-        else if (SocketIOManager.Instance.IsAuthenticated)
-        {
-            Debug.Log("[MainMenu] Already connected and authenticated");
-            // Already connected and authenticated, proceed to create room
-            SocketIOManager.Instance.RegisterMultiplayEvents();
-            yield return CreateRoomCoroutine();
-            isConnecting = false;
-            yield break;
-        }
-
-        // Wait for connection and authentication (max 10 seconds)
-        float elapsed = 0f;
-        float timeout = 10f;
-
-        Debug.Log("[MainMenu] Waiting for WebSocket connection and authentication...");
-
-        while (elapsed < timeout)
-        {
-            // Check connection status directly from SocketIOManager
-            if (SocketIOManager.Instance.IsConnected && SocketIOManager.Instance.IsAuthenticated)
-            {
-                Debug.Log("[MainMenu] WebSocket connected and authenticated successfully!");
-                break;
-            }
-
-            elapsed += Time.deltaTime;
             yield return null;
         }
 
-        // Check final status
-        if (!SocketIOManager.Instance.IsConnected)
+        bool connected = connectionTask.Result;
+
+        Debug.Log($"[MainMenu] Connection result: {connected}");
+
+        if (!connected)
         {
-            Debug.LogError("[MainMenu] WebSocket connection timeout");
-            ShowError("WebSocket connection timeout");
+            ShowStatus("Error: Failed to connect to server", true);
+            yield return new WaitForSeconds(2f);
             SetLoadingState(false);
-            isConnecting = false;
             yield break;
         }
 
-        if (!SocketIOManager.Instance.IsAuthenticated)
-        {
-            Debug.LogError("[MainMenu] WebSocket authentication timeout");
-            ShowError("WebSocket authentication timeout");
-            SetLoadingState(false);
-            isConnecting = false;
-            yield break;
-        }
-
-        Debug.Log("[MainMenu] WebSocket ready, registering events and creating room...");
+        Debug.Log("[MainMenu] WebSocket connected and authenticated, registering events");
 
         // Register multiplayer events
         SocketIOManager.Instance.RegisterMultiplayEvents();
 
+        ShowStatus("Creating room...", false);
+
         // Create room via API
         yield return CreateRoomCoroutine();
-
-        isConnecting = false;
     }
 
+    private IEnumerator CreateRoomCoroutine()
+    {
+        Debug.Log("[MainMenu] Creating room via API");
+
+        List<string> randomTags = GenerateRandomTags();
+
+        if (UserSession.Instance != null)
+        {
+            UserSession.Instance.Tags = randomTags;
+        }
+
+        CreateRoomRequest request = new CreateRoomRequest
+        {
+            tags = randomTags.ToArray()
+        };
+
+        bool requestCompleted = false;
+        bool requestSuccess = false;
+
+        yield return APIManager.Instance.Post(
+            "/games/multiplay/rooms/create",
+            request,
+            onSuccess: (response) =>
+            {
+                Debug.Log($"[API] Create room response: {response}");
+
+                try
+                {
+                    CreateRoomResponseWrapper wrapper = JsonUtility.FromJson<CreateRoomResponseWrapper>(response);
+
+                    if (wrapper != null && wrapper.result != null)
+                    {
+                        Debug.Log($"[API] Room created - RoomId: {wrapper.result.roomId}, Code: {wrapper.result.gameCode}");
+
+                        // Set room info in MultiplaySession (host)
+                        MultiplaySession.Instance.SetRoomInfo(
+                            wrapper.result.roomId,
+                            wrapper.result.gameCode,
+                            true // Host
+                        );
+
+                        // Store additional room data
+                        if (MultiplaySession.Instance.CurrentRoom != null)
+                        {
+                            MultiplaySession.Instance.CurrentRoom.imageUrl = wrapper.result.imageUrl;
+                            MultiplaySession.Instance.CurrentRoom.tags = wrapper.result.tags;
+                            MultiplaySession.Instance.CurrentRoom.hostUsername = wrapper.result.hostUsername;
+
+                            // Initialize players list with host
+                            MultiplaySession.Instance.CurrentRoom.players = new List<PlayerData>
+                            {
+                            new PlayerData
+                            {
+                                userId = UserSession.Instance.UserID,
+                                username = wrapper.result.hostUsername,
+                                nickname = wrapper.result.hostUsername,
+                                isReady = false,
+                                isHost = true
+                            }
+                            };
+                        }
+
+                        // Send join_room event via WebSocket (host also needs to join)
+                        SocketIOManager.Instance.JoinRoom(wrapper.result.gameCode);
+
+                        Debug.Log($"[MainMenu] Room created successfully! Code: {wrapper.result.gameCode}");
+
+                        requestSuccess = true;
+                    }
+                    else
+                    {
+                        Debug.LogError("[MainMenu] Failed to parse room creation response");
+                    }
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError($"[MainMenu] Error parsing response: {e.Message}");
+                }
+
+                requestCompleted = true;
+            },
+            onError: (error) =>
+            {
+                Debug.LogError($"[MainMenu] Room creation failed: {error}");
+                ShowStatus("Error: Room creation failed - " + error, true);
+                requestCompleted = true;
+            }
+        );
+
+        // Wait for request to complete
+        while (!requestCompleted)
+        {
+            yield return null;
+        }
+
+        if (requestSuccess)
+        {
+            SetLoadingState(false);
+            Debug.Log("[MainMenu] Transitioning to lobby scene");
+            fadeController.FadeToScene("B001_CreateParty");
+        }
+        else
+        {
+            yield return new WaitForSeconds(2f);
+            SetLoadingState(false);
+
+            // Disconnect WebSocket on error
+            if (SocketIOManager.Instance != null)
+            {
+                SocketIOManager.Instance.Disconnect();
+            }
+        }
+    }
 
 
     private void ShowStatus(string message, bool isError = false)
@@ -588,91 +645,6 @@ public class MainMenuUIController : MonoBehaviour
             loadingPanel.SetActive(false);
     }
 
-    private IEnumerator CreateRoomCoroutine()
-    {
-        List<string> randomTags = GenerateRandomTags();
-
-        if (UserSession.Instance != null)
-        {
-            UserSession.Instance.Tags = randomTags;
-        }
-
-        CreateRoomRequest request = new CreateRoomRequest
-        {
-            tags = randomTags.ToArray()
-        };
-
-        yield return APIManager.Instance.Post(
-            "/games/multiplay/rooms/create",
-            request,
-            onSuccess: (response) =>
-            {
-                Debug.Log($"[API] Create room response: {response}");
-
-                CreateRoomResponseWrapper wrapper = JsonUtility.FromJson<CreateRoomResponseWrapper>(response);
-
-                if (wrapper.result != null)
-                {
-                    Debug.Log($"[API] Room created - RoomId: {wrapper.result.roomId}, Code: {wrapper.result.gameCode}");
-
-                    // Set room info in MultiplaySession (host)
-                    MultiplaySession.Instance.SetRoomInfo(
-                        wrapper.result.roomId,
-                        wrapper.result.gameCode,
-                        true // Host
-                    );
-
-                    // Store additional room data
-                    if (MultiplaySession.Instance.CurrentRoom != null)
-                    {
-                        MultiplaySession.Instance.CurrentRoom.imageUrl = wrapper.result.imageUrl;
-                        MultiplaySession.Instance.CurrentRoom.tags = wrapper.result.tags;
-                        MultiplaySession.Instance.CurrentRoom.hostUsername = wrapper.result.hostUsername;
-
-                        // Initialize players list with host
-                        MultiplaySession.Instance.CurrentRoom.players = new List<PlayerData>
-                        {
-                        new PlayerData
-                        {
-                            userId = UserSession.Instance.UserID,
-                            username = wrapper.result.hostUsername,
-                            nickname = wrapper.result.hostUsername,
-                            isReady = false,
-                            isHost = true
-                        }
-                        };
-                    }
-
-                    // Send join_room event via WebSocket (host also needs to join)
-                    SocketIOManager.Instance.JoinRoom(wrapper.result.gameCode);
-
-                    Debug.Log($"Room created successfully! RoomId: {wrapper.result.roomId}, Code: {wrapper.result.gameCode}, ImageUrl: {wrapper.result.imageUrl}");
-
-                    SetLoadingState(false);
-
-                    // Navigate to lobby
-                    fadeController.FadeToScene("B001_CreateParty");
-                }
-                else
-                {
-                    ShowError("Failed to parse room creation response");
-                    SetLoadingState(false);
-                }
-            },
-            onError: (error) =>
-            {
-                ShowStatus("Error: Room creation failed - " + error, true);
-
-
-                // Disconnect WebSocket on error
-                if (SocketIOManager.Instance != null)
-                {
-                    SocketIOManager.Instance.Disconnect();
-                }
-            }
-        );
-    }
-
     private List<string> GenerateRandomTags()
     {
         List<string> tags = new List<string>();
@@ -683,7 +655,7 @@ public class MainMenuUIController : MonoBehaviour
             var options = LoadTagOptions($"TagRandom/{category}");
             if (options.Count > 0)
             {
-                string randomTag = options[Random.Range(0, options.Count)];
+                string randomTag = options[UnityEngine.Random.Range(0, options.Count)];
                 tags.Add(randomTag);
             }
             else

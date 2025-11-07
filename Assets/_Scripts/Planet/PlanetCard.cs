@@ -1,6 +1,7 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections;
 
 public class PlanetCard : MonoBehaviour
 {
@@ -28,11 +29,16 @@ public class PlanetCard : MonoBehaviour
         isBookmarked = isFavorite;
         planetManager = manager;
 
-        // title 필드 사용 (예: "tester3의 행성")
-        // title이 없으면 username을 표시
-        nicknameText.text = string.IsNullOrEmpty(data.title)
-            ? data.ownerUsername
-            : data.title;
+        // username 표시
+        if (nicknameText != null)
+        {
+            nicknameText.text = $"{data.username}'s Planet";
+            Debug.Log($"[PlanetCard] Init: {data.username} - Text: {nicknameText.text}");
+        }
+        else
+        {
+            Debug.LogError("[PlanetCard] nicknameText가 null입니다!");
+        }
 
         visitButton.onClick.RemoveAllListeners();
         visitButton.onClick.AddListener(OnClick_Visit);
@@ -45,75 +51,92 @@ public class PlanetCard : MonoBehaviour
 
     private void OnClick_Visit()
     {
-        string displayName = string.IsNullOrEmpty(planetData.title)
-            ? planetData.ownerUsername
-            : planetData.title;
+        Debug.Log($"[PlanetCard] ========== 행성 방문 시작 ==========");
+        Debug.Log($"[PlanetCard] Username: {planetData.username}");
+        Debug.Log($"[PlanetCard] Planet ID: {planetData.id}");
 
-        Debug.Log($"{displayName} 행성 방문 (username: {planetData.ownerUsername})");
+        // 로딩 패널 표시
+        if (planetManager != null)
+        {
+            Debug.Log($"[PlanetCard] 로딩 패널 표시 요청");
+            planetManager.ShowLoadingPanel(true);
+        }
+        else
+        {
+            Debug.LogError("[PlanetCard] planetManager가 null입니다!");
+        }
 
         // PlanetSession에 저장
         if (PlanetSession.Instance != null)
         {
-            PlanetSession.Instance.CurrentPlanetOwnerID = planetData.ownerUsername;
-            PlanetSession.Instance.CurrentPlanetId = planetData.ownerUsername;
+            PlanetSession.Instance.CurrentPlanetOwnerID = planetData.username;
+            PlanetSession.Instance.CurrentPlanetId = planetData.id;
+            Debug.Log($"[PlanetCard] PlanetSession 저장 완료 - OwnerID: {planetData.username}, PlanetID: {planetData.id}");
+        }
+        else
+        {
+            Debug.LogError("[PlanetCard] PlanetSession.Instance가 null입니다!");
         }
 
         // 행성 방문 기록 후 씬 전환
-        StartCoroutine(RecordVisitAndMove(planetData.ownerUsername));
+        StartCoroutine(RecordVisitAndTransition());
     }
 
-    private System.Collections.IEnumerator RecordVisitAndMove(string ownerUsername)
+    private IEnumerator RecordVisitAndTransition()
     {
-        // 로그인 상태가 아니면 방문 기록 없이 바로 이동
-        if (UserSession.Instance == null || !UserSession.Instance.IsLoggedIn)
-        {
-            Debug.Log("비로그인 상태 - 방문 기록 없이 행성 이동");
-            fadeController.FadeToScene("P002_MyPlanet");
-            yield break;
-        }
-
-        // 자신의 행성이면 방문 기록 없이 바로 이동
-        if (UserSession.Instance.UserID == ownerUsername)
-        {
-            Debug.Log("내 행성 - 방문 기록 없이 행성 이동");
-            fadeController.FadeToScene("P002_MyPlanet");
-            yield break;
-        }
-
-        // 타인의 행성이면 방문 기록 후 이동
         bool visitRecorded = false;
 
+        Debug.Log($"[PlanetCard] API 호출 시작: /planets/{planetData.username}/visit");
+
+        // 행성 방문 기록 API 호출
         yield return APIManager.Instance.Post(
-            $"/planets/{ownerUsername}/visit",
+            $"/planets/{planetData.username}/visit",
             new { },
             onSuccess: (response) =>
             {
-                string displayName = string.IsNullOrEmpty(planetData.title)
-                    ? planetData.ownerUsername
-                    : planetData.title;
-                Debug.Log($"{displayName} 행성 방문 기록 완료");
+                Debug.Log($"[PlanetCard] 방문 기록 성공: {response}");
                 visitRecorded = true;
             },
             onError: (error) =>
             {
-                Debug.LogWarning($"행성 방문 기록 실패: {error}");
-                // 방문 기록 실패해도 이동은 가능
-                visitRecorded = true;
+                Debug.LogWarning($"[PlanetCard] 방문 기록 실패 (계속 진행): {error}");
+                visitRecorded = true; // 실패해도 진행
             }
         );
 
-        // API 응답 대기
+        // API 완료 대기
+        Debug.Log($"[PlanetCard] API 완료 대기 중...");
         yield return new WaitUntil(() => visitRecorded);
+        Debug.Log($"[PlanetCard] API 완료");
 
-        // 씬 전환
-        fadeController.FadeToScene("P002_MyPlanet");
+        // 추가 딜레이 (안정성)
+        Debug.Log($"[PlanetCard] 0.3초 대기 중...");
+        yield return new WaitForSeconds(0.3f);
+
+        // 로딩 패널 숨김
+        if (planetManager != null)
+        {
+            Debug.Log($"[PlanetCard] 로딩 패널 숨김 요청");
+            planetManager.ShowLoadingPanel(false);
+        }
+
+        // P002_MyPlanet으로 이동
+        Debug.Log($"[PlanetCard] 씬 전환 시작: P002_MyPlanet");
+        if (fadeController != null)
+        {
+            fadeController.FadeToScene("P002_MyPlanet");
+        }
+        else
+        {
+            Debug.LogError("[PlanetCard] FadeController를 찾을 수 없습니다!");
+        }
     }
 
     private void OnClick_ToggleBookmark()
     {
         if (planetManager != null)
         {
-            planetManager.ToggleFavorite(planetData.ownerUsername, isBookmarked);
+            planetManager.ToggleFavorite(planetData.username, isBookmarked);
         }
     }
 
@@ -124,8 +147,5 @@ public class PlanetCard : MonoBehaviour
     }
 
     public bool IsBookmarked => isBookmarked;
-
-    public string PlanetOwner => string.IsNullOrEmpty(planetData?.title)
-        ? planetData?.ownerUsername ?? ""
-        : planetData.title;
+    public string PlanetOwner => planetData?.username ?? "";
 }

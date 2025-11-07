@@ -36,26 +36,24 @@ public class B001_CreateParty : MonoBehaviour
         // Subscribe to multiplayer events
         SubscribeMultiplayEvents();
 
-        // Check SocketIOManager
+        // Check SocketIOManager exists
         if (SocketIOManager.Instance == null)
         {
             Debug.LogError("SocketIOManager is not in scene!");
             return;
         }
 
-        // Check WebSocket connection
-        if (!SocketIOManager.Instance.IsConnected)
+        // WebSocket should already be connected from MainMenu
+        if (!SocketIOManager.Instance.IsConnected || !SocketIOManager.Instance.IsAuthenticated)
         {
-            Debug.Log("WebSocket not connected, attempting to connect...");
-            SocketIOManager.Instance.Connect();
-            StartCoroutine(WaitForConnectionAndInitialize());
+            Debug.LogWarning("WebSocket not connected - returning to main menu");
+            OnBackButtonClick();
+            return;
         }
-        else
-        {
-            InitializeLobby();
-        }
-    }
 
+        // Initialize lobby
+        InitializeLobby();
+    }
     private IEnumerator WaitForConnectionAndInitialize()
     {
         float elapsed = 0f;
