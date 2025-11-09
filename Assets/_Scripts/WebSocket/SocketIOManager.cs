@@ -49,6 +49,7 @@ public class SocketIOManager : MonoBehaviour
     /// Connect to WebSocket server with async/await pattern
     /// Returns true if connection and authentication successful
     /// </summary>
+    // ConnectAndAuthenticateAsync 메서드 수정
     public async Task<bool> ConnectAndAuthenticateAsync()
     {
         if (IsConnected && IsAuthenticated)
@@ -76,7 +77,7 @@ public class SocketIOManager : MonoBehaviour
             {
                 Transport = SocketIOClient.Transport.TransportProtocol.WebSocket,
                 Reconnection = false,
-                ConnectionTimeout = TimeSpan.FromSeconds(10)
+                ConnectionTimeout = TimeSpan.FromSeconds(15) // 타임아웃 증가
             });
 
             Debug.Log("[SocketIO] Socket instance created");
@@ -94,11 +95,11 @@ public class SocketIOManager : MonoBehaviour
             await socket.ConnectAsync();
 
             // Wait for connection to complete (with timeout)
-            var connectionTask = await Task.WhenAny(connectionTcs.Task, Task.Delay(10000));
+            var connectionTask = await Task.WhenAny(connectionTcs.Task, Task.Delay(15000)); // 15초 타임아웃
 
             if (connectionTask != connectionTcs.Task)
             {
-                Debug.LogError("[SocketIO] Connection timeout");
+                Debug.LogError("[SocketIO] Connection timeout (15s)");
                 return false;
             }
 
@@ -111,11 +112,11 @@ public class SocketIOManager : MonoBehaviour
             Debug.Log("[SocketIO] Connection successful, waiting for authentication...");
 
             // Wait for authentication to complete (with timeout)
-            var authTask = await Task.WhenAny(authenticationTcs.Task, Task.Delay(10000));
+            var authTask = await Task.WhenAny(authenticationTcs.Task, Task.Delay(15000)); // 15초 타임아웃
 
             if (authTask != authenticationTcs.Task)
             {
-                Debug.LogError("[SocketIO] Authentication timeout");
+                Debug.LogError("[SocketIO] Authentication timeout (15s)");
                 return false;
             }
 
@@ -127,10 +128,10 @@ public class SocketIOManager : MonoBehaviour
         catch (Exception e)
         {
             Debug.LogError($"[SocketIO] Connection error: {e.Message}");
+            Debug.LogError($"[SocketIO] Stack trace: {e.StackTrace}");
             return false;
         }
     }
-
     private async void OnSocketConnected(object sender, EventArgs e)
     {
         IsConnected = true;
@@ -426,7 +427,7 @@ public class SocketIOManager : MonoBehaviour
         {
             try
             {
-                Debug.Log($"[WS] user_joined event: {response}");
+                Debug.Log($"[WS] user_joined event received: {response}");
 
                 string responseStr = response.ToString();
                 WS_UserJoinedEvent evt = null;
@@ -438,6 +439,7 @@ public class SocketIOManager : MonoBehaviour
                     if (firstBracket >= 0 && lastBracket > firstBracket)
                     {
                         string jsonObject = responseStr.Substring(firstBracket, lastBracket - firstBracket);
+                        Debug.Log($"[WS] Extracted JSON: {jsonObject}");
                         evt = JsonUtility.FromJson<WS_UserJoinedEvent>(jsonObject);
                     }
                 }
@@ -448,9 +450,13 @@ public class SocketIOManager : MonoBehaviour
 
                 if (evt != null && evt.result != null && evt.result.participants != null)
                 {
+                    Debug.Log($"[WS] Processing {evt.result.participants.Length} participants");
+
                     var players = new List<PlayerData>();
                     foreach (var p in evt.result.participants)
                     {
+                        Debug.Log($"[WS] Participant: {p.username}, Host: {p.isHost}, Ready: {p.isReady}");
+
                         players.Add(new PlayerData
                         {
                             userId = p.userId,
@@ -464,8 +470,16 @@ public class SocketIOManager : MonoBehaviour
                     if (MultiplaySession.Instance != null && MultiplaySession.Instance.CurrentRoom != null)
                     {
                         MultiplaySession.Instance.CurrentRoom.players = players;
+
+                        // Trigger room data updated to refresh UI
                         MultiplaySession.Instance.TriggerRoomDataUpdated();
+
+                        Debug.Log($"[WS] Room data updated with {players.Count} players");
                     }
+                }
+                else
+                {
+                    Debug.LogError("[WS] Failed to parse user_joined event");
                 }
             }
             catch (Exception e)
@@ -478,7 +492,7 @@ public class SocketIOManager : MonoBehaviour
         {
             try
             {
-                Debug.Log($"[WS] user_left event: {response}");
+                Debug.Log($"[WS] user_left event received: {response}");
 
                 string responseStr = response.ToString();
                 WS_UserLeftEvent evt = null;
@@ -500,6 +514,8 @@ public class SocketIOManager : MonoBehaviour
 
                 if (evt != null && evt.result != null && !string.IsNullOrEmpty(evt.result.userId))
                 {
+                    Debug.Log($"[WS] User left: {evt.result.username} (ID: {evt.result.userId})");
+
                     if (MultiplaySession.Instance != null)
                     {
                         MultiplaySession.Instance.RemovePlayer(evt.result.userId);
@@ -516,7 +532,7 @@ public class SocketIOManager : MonoBehaviour
         {
             try
             {
-                Debug.Log($"[WS] room_updated event: {response}");
+                Debug.Log($"[WS] room_updated event received: {response}");
 
                 string responseStr = response.ToString();
                 WS_RoomUpdatedEvent evt = null;
@@ -538,6 +554,8 @@ public class SocketIOManager : MonoBehaviour
 
                 if (evt != null && evt.result != null && evt.result.participants != null)
                 {
+                    Debug.Log($"[WS] Room updated with {evt.result.participants.Length} participants");
+
                     if (MultiplaySession.Instance != null && MultiplaySession.Instance.CurrentRoom != null)
                     {
                         foreach (var p in evt.result.participants)
@@ -546,6 +564,7 @@ public class SocketIOManager : MonoBehaviour
                             if (player != null)
                             {
                                 player.isReady = p.isReady == 1;
+                                Debug.Log($"[WS] Updated {player.username} ready state: {player.isReady}");
                             }
                         }
 
@@ -563,7 +582,7 @@ public class SocketIOManager : MonoBehaviour
         {
             try
             {
-                Debug.Log($"[WS] game_started event: {response}");
+                Debug.Log($"[WS] game_started event received: {response}");
 
                 if (MultiplaySession.Instance != null)
                 {
@@ -580,7 +599,7 @@ public class SocketIOManager : MonoBehaviour
         {
             try
             {
-                Debug.Log($"[WS] game_completed event: {response}");
+                Debug.Log($"[WS] game_completed event received: {response}");
 
                 string responseStr = response.ToString();
                 WS_GameCompletedEvent evt = null;
@@ -606,6 +625,8 @@ public class SocketIOManager : MonoBehaviour
                     int clearTimeMs = evt.result.winner.clearTimeMs;
                     float clearTime = clearTimeMs / 1000f;
 
+                    Debug.Log($"[WS] Player completed: {evt.result.winner.username}, Time: {clearTime}s");
+
                     if (!string.IsNullOrEmpty(userId) && MultiplaySession.Instance != null)
                     {
                         MultiplaySession.Instance.UpdatePlayerClearTime(userId, clearTime);
@@ -622,7 +643,7 @@ public class SocketIOManager : MonoBehaviour
         {
             try
             {
-                Debug.Log($"[WS] user_disconnected event: {response}");
+                Debug.Log($"[WS] user_disconnected event received: {response}");
 
                 string responseStr = response.ToString();
                 WS_UserDisconnectedEvent evt = null;
@@ -644,12 +665,15 @@ public class SocketIOManager : MonoBehaviour
 
                 if (evt != null && evt.result != null && !string.IsNullOrEmpty(evt.result.userId))
                 {
+                    Debug.Log($"[WS] User disconnected: {evt.result.username}");
+
                     if (MultiplaySession.Instance != null)
                     {
                         MultiplaySession.Instance.RemovePlayer(evt.result.userId);
 
                         if (evt.result.isHost)
                         {
+                            Debug.Log("[WS] Disconnected user was host - triggering host left");
                             MultiplaySession.Instance.TriggerHostLeft();
                         }
                     }
@@ -663,7 +687,6 @@ public class SocketIOManager : MonoBehaviour
 
         Debug.Log("[SocketIO] Multiplayer WebSocket events registered successfully");
     }
-
     public void UnregisterMultiplayEvents()
     {
         Debug.Log("[SocketIO] Unregistering multiplayer WebSocket events");

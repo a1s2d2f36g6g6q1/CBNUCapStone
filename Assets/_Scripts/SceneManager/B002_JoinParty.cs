@@ -46,6 +46,20 @@ public class B002_JoinParty : MonoBehaviour
             return;
         }
 
+        // Check if user is logged in
+        if (UserSession.Instance == null || !UserSession.Instance.IsLoggedIn)
+        {
+            ShowError("You must be logged in to join a party");
+            return;
+        }
+
+        // Check token
+        if (APIManager.Instance == null || string.IsNullOrEmpty(APIManager.Instance.GetToken()))
+        {
+            ShowError("Please login first to join a party");
+            return;
+        }
+
         // Start connection and join
         StartCoroutine(ConnectAndJoinRoomCoroutine(gameCode));
     }
@@ -67,7 +81,7 @@ public class B002_JoinParty : MonoBehaviour
 
         Debug.Log("[JoinParty] Starting WebSocket connection...");
 
-        // Use new async method with proper await
+        // Use async method
         var connectionTask = SocketIOManager.Instance.ConnectAndAuthenticateAsync();
 
         // Wait for connection task to complete
@@ -129,7 +143,7 @@ public class B002_JoinParty : MonoBehaviour
                         MultiplaySession.Instance.SetRoomInfo(
                             wrapper.result.roomId.ToString(),
                             wrapper.result.gameCode,
-                            false // Client
+                            false // Client (not host)
                         );
 
                         // Store image and tags
@@ -198,7 +212,7 @@ public class B002_JoinParty : MonoBehaviour
             SetLoadingState(false);
             Debug.Log("[JoinParty] Transitioning to lobby scene");
 
-            // Navigate to lobby
+            // Navigate to lobby (same scene as CreateParty)
             if (fadeController != null)
                 fadeController.FadeToScene("B001_CreateParty");
             else

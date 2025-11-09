@@ -179,6 +179,8 @@ public class MultiplayRankPopup : MonoBehaviour
             return;
         }
 
+        Debug.Log($"[MultiplayRankPopup] Updating rank display with {players.Count} players");
+
         // Sort players by clear time (cleared players first, then by time)
         var sortedPlayers = new List<PlayerData>(players);
         sortedPlayers.Sort((a, b) =>
@@ -199,10 +201,17 @@ public class MultiplayRankPopup : MonoBehaviour
             {
                 var player = sortedPlayers[i];
 
+                Debug.Log($"[MultiplayRankPopup] Slot {i}: {player.nickname}, Time: {player.clearTime}");
+
                 // Update name
                 if (playerNames != null && playerNames.Length > i && playerNames[i] != null)
                 {
-                    playerNames[i].text = player.nickname;
+                    string displayName = player.nickname;
+                    if (player.isHost)
+                    {
+                        displayName += " [Host]";
+                    }
+                    playerNames[i].text = displayName;
                 }
 
                 // Update time
@@ -223,6 +232,7 @@ public class MultiplayRankPopup : MonoBehaviour
                 {
                     myRank = i + 1;
                     isWinner = (i == 0);
+                    Debug.Log($"[MultiplayRankPopup] My rank: {myRank}, Winner: {isWinner}");
                 }
             }
             else
@@ -246,7 +256,6 @@ public class MultiplayRankPopup : MonoBehaviour
         // Check if all players finished
         CheckAllPlayersFinished(sortedPlayers);
     }
-
     private void UpdateRankResultText()
     {
         if (rankResultText == null) return;

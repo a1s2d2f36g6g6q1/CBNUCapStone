@@ -9,7 +9,7 @@ public class PuzzleManager : MonoBehaviour
     public TMP_Text clickToStartText;
     public FlashEffect flashEffect;
     public ClearPopup clearPopup;
-    public MultiplayRankPopup multiplayRankPopup; // Inspector에서 할당
+    public MultiplayRankPopup multiplayRankPopup;
     public Camera mainCamera;
 
     public GameObject emptyTilePrefab;
@@ -385,21 +385,44 @@ public class PuzzleManager : MonoBehaviour
 
     private IEnumerator HandleMultiplayCompletion()
     {
+        Debug.Log("[PuzzleManager] === MULTIPLAY COMPLETION START ===");
+        Debug.Log($"[PuzzleManager] GameData.isMultiplay: {GameData.isMultiplay}");
+        Debug.Log($"[PuzzleManager] MultiplayRankPopup assigned: {multiplayRankPopup != null}");
+
         // Send completion via WebSocket
         SubmitMultiplayCompletion();
 
-        // Show rank popup immediately
+        // Wait a bit for WebSocket to process
+        yield return new WaitForSeconds(0.5f);
+
+        // Get clear time
+        string clearTime = timerManager != null ? timerManager.GetFormattedTime() : "00:00:000";
+        Debug.Log($"[PuzzleManager] Clear time: {clearTime}");
+
+        // Show rank popup
         if (multiplayRankPopup != null)
         {
-            string clearTime = timerManager != null ? timerManager.GetFormattedTime() : "00:00:000";
+            Debug.Log("[PuzzleManager] Showing MultiplayRankPopup");
             multiplayRankPopup.ShowRankPopup(puzzleImage, clearTime);
         }
         else
         {
-            Debug.LogError("[PuzzleManager] MultiplayRankPopup not assigned!");
+            Debug.LogError("[PuzzleManager] !!! MultiplayRankPopup is NULL !!!");
+            Debug.LogError("[PuzzleManager] Please assign MultiplayRankPopup in Inspector!");
+
+            // Fallback: Show regular clear popup
+            if (clearPopup != null)
+            {
+                Debug.LogWarning("[PuzzleManager] Using ClearPopup as fallback");
+                clearPopup.ShowClearPopup(puzzleImage, clearTime);
+            }
+            else
+            {
+                Debug.LogError("[PuzzleManager] Both popups are NULL!");
+            }
         }
 
-        yield return null;
+        Debug.Log("[PuzzleManager] === MULTIPLAY COMPLETION END ===");
     }
     private IEnumerator SubmitSingleplayCompletion()
     {
@@ -454,15 +477,31 @@ public class PuzzleManager : MonoBehaviour
             return;
         }
 
+        if (MultiplaySession.Instance == null || MultiplaySession.Instance.CurrentRoom == null)
+        {
+            Debug.LogError("[PuzzleManager] MultiplaySession or CurrentRoom is null!");
+            return;
+        }
+
         float clearTime = timerManager != null ? timerManager.GetElapsedTime() : 0f;
 
-        SocketIOManager.Instance.Emit("player-completed", new
-        {
-            roomId = MultiplaySession.Instance.CurrentRoom.roomId,
-            clearTime = clearTime
-        });
+        Debug.Log($"[PuzzleManager] Emitting player-completed event - ClearTime: {clearTime}s");
 
-        Debug.Log($"[PuzzleManager] Sent completion - ClearTime: {clearTime}s");
+        try
+        {
+            SocketIOManager.Instance.Emit("player-completed", new
+            {
+                roomId = MultiplaySession.Instance.CurrentRoom.roomId,
+                gameCode = MultiplaySession.Instance.CurrentRoom.gameCode,
+                clearTime = clearTime
+            });
+
+            Debug.Log($"[PuzzleManager] player-completed event sent successfully");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[PuzzleManager] Failed to emit player-completed: {e.Message}");
+        }
     }
 
     private IEnumerator CameraRotationAnimation()

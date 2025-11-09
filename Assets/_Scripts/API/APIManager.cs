@@ -11,6 +11,9 @@ public class APIManager : MonoBehaviour
     private const string BASE_URL = "http://13.209.33.42:3000";
     private string jwtToken = "";
 
+    [Header("Network Settings")]
+    public int requestTimeout = 30; // 타임아웃 시간 (초)
+
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -23,6 +26,8 @@ public class APIManager : MonoBehaviour
 
         // 저장된 토큰 로드
         LoadToken();
+
+        Debug.Log($"[APIManager] Initialized - Server: {BASE_URL}");
     }
 
     public string GetToken()
@@ -36,11 +41,16 @@ public class APIManager : MonoBehaviour
         jwtToken = token;
         PlayerPrefs.SetString("JWT_TOKEN", token);
         PlayerPrefs.Save();
+        Debug.Log($"[APIManager] Token saved - Length: {token?.Length ?? 0}");
     }
 
     private void LoadToken()
     {
         jwtToken = PlayerPrefs.GetString("JWT_TOKEN", "");
+        if (!string.IsNullOrEmpty(jwtToken))
+        {
+            Debug.Log($"[APIManager] Token loaded - Length: {jwtToken.Length}");
+        }
     }
 
     public void ClearToken()
@@ -48,6 +58,7 @@ public class APIManager : MonoBehaviour
         jwtToken = "";
         PlayerPrefs.DeleteKey("JWT_TOKEN");
         PlayerPrefs.Save();
+        Debug.Log("[APIManager] Token cleared");
     }
 
     public bool HasToken()
@@ -60,18 +71,24 @@ public class APIManager : MonoBehaviour
     public IEnumerator Get(string endpoint, Action<string> onSuccess, Action<string> onError)
     {
         string url = BASE_URL + endpoint;
+        Debug.Log($"[API GET] {url}");
 
         using (UnityWebRequest request = UnityWebRequest.Get(url))
         {
             request.certificateHandler = new BypassCertificate();
             request.disposeCertificateHandlerOnDispose = true;
+            request.timeout = requestTimeout;
 
             if (HasToken())
             {
                 request.SetRequestHeader("Authorization", "Bearer " + jwtToken);
             }
 
+            float startTime = Time.realtimeSinceStartup;
             yield return request.SendWebRequest();
+            float elapsed = Time.realtimeSinceStartup - startTime;
+
+            Debug.Log($"[API GET] Completed in {elapsed:F2}s - Status: {request.responseCode}");
 
             if (request.result == UnityWebRequest.Result.Success)
             {
@@ -88,12 +105,17 @@ public class APIManager : MonoBehaviour
     {
         string url = BASE_URL + endpoint;
         string json = JsonUtility.ToJson(data);
+
+        Debug.Log($"[API POST] {url}");
+        Debug.Log($"[API POST] Request data: {json}");
+
         byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
 
         using (UnityWebRequest request = new UnityWebRequest(url, "POST"))
         {
             request.certificateHandler = new BypassCertificate();
             request.disposeCertificateHandlerOnDispose = true;
+            request.timeout = requestTimeout;
 
             request.uploadHandler = new UploadHandlerRaw(bodyRaw);
             request.downloadHandler = new DownloadHandlerBuffer();
@@ -104,10 +126,15 @@ public class APIManager : MonoBehaviour
                 request.SetRequestHeader("Authorization", "Bearer " + jwtToken);
             }
 
+            float startTime = Time.realtimeSinceStartup;
             yield return request.SendWebRequest();
+            float elapsed = Time.realtimeSinceStartup - startTime;
+
+            Debug.Log($"[API POST] Completed in {elapsed:F2}s - Status: {request.responseCode}");
 
             if (request.result == UnityWebRequest.Result.Success)
             {
+                Debug.Log($"[API POST] Response: {request.downloadHandler.text}");
                 onSuccess?.Invoke(request.downloadHandler.text);
             }
             else
@@ -121,12 +148,17 @@ public class APIManager : MonoBehaviour
     {
         string url = BASE_URL + endpoint;
         string json = JsonUtility.ToJson(data);
+
+        Debug.Log($"[API PUT] {url}");
+        Debug.Log($"[API PUT] Request data: {json}");
+
         byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
 
         using (UnityWebRequest request = new UnityWebRequest(url, "PUT"))
         {
             request.certificateHandler = new BypassCertificate();
             request.disposeCertificateHandlerOnDispose = true;
+            request.timeout = requestTimeout;
 
             request.uploadHandler = new UploadHandlerRaw(bodyRaw);
             request.downloadHandler = new DownloadHandlerBuffer();
@@ -137,7 +169,11 @@ public class APIManager : MonoBehaviour
                 request.SetRequestHeader("Authorization", "Bearer " + jwtToken);
             }
 
+            float startTime = Time.realtimeSinceStartup;
             yield return request.SendWebRequest();
+            float elapsed = Time.realtimeSinceStartup - startTime;
+
+            Debug.Log($"[API PUT] Completed in {elapsed:F2}s - Status: {request.responseCode}");
 
             if (request.result == UnityWebRequest.Result.Success)
             {
@@ -153,18 +189,24 @@ public class APIManager : MonoBehaviour
     public IEnumerator Delete(string endpoint, Action<string> onSuccess, Action<string> onError)
     {
         string url = BASE_URL + endpoint;
+        Debug.Log($"[API DELETE] {url}");
 
         using (UnityWebRequest request = UnityWebRequest.Delete(url))
         {
             request.certificateHandler = new BypassCertificate();
             request.disposeCertificateHandlerOnDispose = true;
+            request.timeout = requestTimeout;
 
             if (HasToken())
             {
                 request.SetRequestHeader("Authorization", "Bearer " + jwtToken);
             }
 
+            float startTime = Time.realtimeSinceStartup;
             yield return request.SendWebRequest();
+            float elapsed = Time.realtimeSinceStartup - startTime;
+
+            Debug.Log($"[API DELETE] Completed in {elapsed:F2}s - Status: {request.responseCode}");
 
             if (request.result == UnityWebRequest.Result.Success)
             {
@@ -186,6 +228,12 @@ public class APIManager : MonoBehaviour
         if (!string.IsNullOrEmpty(request.downloadHandler.text))
         {
             errorMsg += $"\nServer Response: {request.downloadHandler.text}";
+        }
+
+        // Check for timeout
+        if (request.result == UnityWebRequest.Result.ConnectionError)
+        {
+            errorMsg += "\n[Possible timeout or network issue]";
         }
 
         Debug.LogError($"[API Error] {errorMsg}");

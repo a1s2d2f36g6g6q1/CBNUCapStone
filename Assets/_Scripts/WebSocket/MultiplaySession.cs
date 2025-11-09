@@ -83,21 +83,28 @@ public class MultiplaySession : MonoBehaviour
         var player = CurrentRoom.players.Find(p => p.userId == userId);
         if (player != null)
         {
+            bool wasHost = player.isHost;
+            string playerName = player.nickname;
+
             CurrentRoom.players.Remove(player);
             OnPlayerLeft?.Invoke(player);
-            TriggerRoomDataUpdated();
 
-            Debug.Log($"Player left: {player.nickname}");
+            Debug.Log($"Player left: {playerName}");
 
-            // If host left
-            if (userId == CurrentRoom.hostId)
+            // If host left, trigger host left event
+            if (wasHost)
             {
-                Debug.Log("Host has left!");
+                Debug.Log("Host has left - triggering OnHostLeft event");
+                CurrentRoom.hostId = null; // Clear host ID
                 OnHostLeft?.Invoke();
+            }
+            else
+            {
+                // Only update room data if non-host left
+                TriggerRoomDataUpdated();
             }
         }
     }
-
     public void TriggerHostLeft()
     {
         OnHostLeft?.Invoke();

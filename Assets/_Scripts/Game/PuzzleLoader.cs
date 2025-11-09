@@ -116,7 +116,6 @@ public class PuzzleLoader : MonoBehaviour
 
         callback?.Invoke(resultTexture);
     }
-
     private IEnumerator LoadSingleplayImage(System.Action<Texture2D> callback)
     {
         Debug.Log("[PuzzleLoader] Requesting image from server for singleplay...");
@@ -166,6 +165,17 @@ public class PuzzleLoader : MonoBehaviour
             onError: (error) =>
             {
                 Debug.LogError("[PuzzleLoader] Server request failed: " + error);
+
+                // User-friendly error logging
+                if (error.Contains("429"))
+                {
+                    Debug.LogWarning("[PuzzleLoader] Rate limit exceeded - using fallback image");
+                }
+                else if (error.Contains("502") || error.Contains("500"))
+                {
+                    Debug.LogWarning("[PuzzleLoader] Server error - using fallback image");
+                }
+
                 requestCompleted = true;
             }
         );
@@ -180,12 +190,11 @@ public class PuzzleLoader : MonoBehaviour
 
         if (!requestCompleted)
         {
-            Debug.LogWarning("[PuzzleLoader] Server request timeout");
+            Debug.LogWarning("[PuzzleLoader] Server request timeout - using fallback image");
         }
 
         callback?.Invoke(resultTexture);
     }
-
     private IEnumerator LoadMultiplayImage(System.Action<Texture2D> callback)
     {
         Debug.Log("[PuzzleLoader] Loading image for multiplay...");

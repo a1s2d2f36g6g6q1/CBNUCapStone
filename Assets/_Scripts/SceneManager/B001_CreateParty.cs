@@ -10,24 +10,47 @@ public class B001_CreateParty : MonoBehaviour
     public TMP_Text sessionCodeText;
     public Button backButton;
     public Button startGameButton;
-    public TMP_Text[] playerSlots; // 4 fixed slots
     public FadeController fadeController;
+
+    [Header("Player Slots (4 slots)")]
+    public PlayerSlot[] playerSlots; // Inspector에서 4개 할당
 
     [Header("Alert Popup")]
     public GameObject hostLeftPopup;
     public TMP_Text hostLeftMessage;
+    public Button hostLeftConfirmButton;
 
     private bool isHost = false;
     private const int MAX_PLAYERS = 4;
+    private string myUserId = "";
+    private bool hasAutoReadied = false; // 자동 준비 완료 플래그
+
+    [System.Serializable]
+    public class PlayerSlot
+    {
+        public TMP_Text nicknameText;
+        public Image loginImage; // 로그인 이미지
+        public Color occupiedColor = Color.green; // 플레이어 있음 (초록색)
+        public Color emptyColor = Color.white; // 빈 슬롯 (흰색)
+    }
 
     private void Start()
     {
+        // Get my userId
+        if (UserSession.Instance != null)
+        {
+            myUserId = UserSession.Instance.UserID;
+        }
+
         // Register button listeners
         if (backButton != null)
             backButton.onClick.AddListener(OnBackButtonClick);
 
         if (startGameButton != null)
             startGameButton.onClick.AddListener(OnStartGameClick);
+
+        if (hostLeftConfirmButton != null)
+            hostLeftConfirmButton.onClick.AddListener(OnHostLeftConfirm);
 
         // Hide host left popup
         if (hostLeftPopup != null)
@@ -54,27 +77,6 @@ public class B001_CreateParty : MonoBehaviour
         // Initialize lobby
         InitializeLobby();
     }
-    private IEnumerator WaitForConnectionAndInitialize()
-    {
-        float elapsed = 0f;
-        while (!SocketIOManager.Instance.IsConnected && elapsed < 5f)
-        {
-            elapsed += Time.deltaTime;
-            yield return null;
-        }
-
-        if (SocketIOManager.Instance.IsConnected)
-        {
-            Debug.Log("WebSocket connected successfully");
-            InitializeLobby();
-        }
-        else
-        {
-            Debug.LogWarning("WebSocket connection failed, but lobby will continue");
-            // Continue with lobby initialization even without WebSocket
-            InitializeLobby();
-        }
-    }
 
     private void InitializeLobby()
     {
@@ -93,6 +95,13 @@ public class B001_CreateParty : MonoBehaviour
 
         // Update player list (for both host and client)
         UpdatePlayerList();
+
+        // Auto ready if not host
+        if (!isHost && !hasAutoReadied)
+        {
+            Debug.Log("[Lobby] I'm not host - auto readying...");
+            StartCoroutine(AutoReadyCoroutine());
+        }
     }
 
     private void UpdateUI()
@@ -114,40 +123,168 @@ public class B001_CreateParty : MonoBehaviour
             startGameButton.gameObject.SetActive(isHost);
     }
 
+    #region Auto Ready
+    private IEnumerator AutoReadyCoroutine()
+    {
+        if (hasAutoReadied)
+        {
+            Debug.Log("[AutoReady] Already readied - skipping");
+            yield break;
+        }
+
+        // Wait a bit for room to stabilize after joining
+        yield return new WaitForSeconds(1f);
+
+        Debug.Log("[AutoReady] Sending ready request...");
+
+        ReadyToggleRequest request = new ReadyToggleRequest
+        {
+            gameCode = MultiplaySession.Instance.CurrentRoom.gameCode
+        };
+
+        bool requestCompleted = false;
+
+        yield return APIManager.Instance.Post(
+            "/games/multiplay/rooms/ready",
+            request,
+            onSuccess: (response) =>
+            {
+                Debug.Log($"[AutoReady] Success response: {response}");
+
+                try
+                {
+                    ReadyToggleResponseWrapper wrapper = JsonUtility.FromJson<ReadyToggleResponseWrapper>(response);
+
+                    if (wrapper != null && wrapper.result != null)
+                    {
+                        Debug.Log($"[AutoReady] Ready state: {wrapper.result.isReady}");
+                        hasAutoReadied = true;
+
+                        // Update local player ready state
+                        if (MultiplaySession.Instance != null && MultiplaySession.Instance.CurrentRoom != null)
+                        {
+                            var myPlayer = MultiplaySession.Instance.CurrentRoom.players?.Find(p => p.userId == myUserId);
+                            if (myPlayer != null)
+                            {
+                                myPlayer.isReady = wrapper.result.isReady == 1;
+                                Debug.Log($"[AutoReady] My ready state updated: {myPlayer.isReady}");
+                            }
+                        }
+                    }
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogError($"[AutoReady] Failed to parse response: {e.Message}");
+                }
+
+                requestCompleted = true;
+            },
+            onError: (error) =>
+            {
+                Debug.LogError($"[AutoReady] Failed: {error}");
+                requestCompleted = true;
+            }
+        );
+
+        while (!requestCompleted)
+        {
+            yield return null;
+        }
+    }
+    #endregion
+
     #region Player List UI
     private void UpdatePlayerList()
     {
-        if (MultiplaySession.Instance.CurrentRoom == null) return;
+        if (MultiplaySession.Instance == null || MultiplaySession.Instance.CurrentRoom == null)
+        {
+            Debug.LogWarning("[UpdatePlayerList] CurrentRoom is null");
+            return;
+        }
 
         var players = MultiplaySession.Instance.CurrentRoom.players;
+
+        if (players == null)
+        {
+            Debug.LogWarning("[UpdatePlayerList] Players list is null");
+            return;
+        }
+
+        Debug.Log($"[UpdatePlayerList] Updating with {players.Count} players");
+
+        // Sort players: Host first, then others
+        if (players.Count > 0)
+        {
+            players.Sort((a, b) =>
+            {
+                if (a.isHost && !b.isHost) return -1;
+                if (!a.isHost && b.isHost) return 1;
+                return 0;
+            });
+
+            // Log all players
+            foreach (var p in players)
+            {
+                Debug.Log($"[UpdatePlayerList] Player: {p.nickname}, Host: {p.isHost}, Ready: {p.isReady}");
+            }
+        }
 
         // Update all 4 slots
         for (int i = 0; i < MAX_PLAYERS; i++)
         {
             if (playerSlots == null || playerSlots.Length <= i || playerSlots[i] == null)
-                continue;
-
-            if (players != null && i < players.Count)
             {
-                // If player exists, display nickname
-                string displayName = string.IsNullOrEmpty(players[i].username) ? "Guest" : players[i].username;
+                Debug.LogWarning($"[UpdatePlayerList] PlayerSlot {i} is not assigned");
+                continue;
+            }
 
-                // Add ready indicator for non-host players
-                if (!players[i].isHost)
-                {
-                    displayName += players[i].isReady ? " [Ready]" : " [Not Ready]";
-                }
-                else
-                {
-                    displayName += " [Host]";
-                }
-
-                playerSlots[i].text = displayName;
+            if (i < players.Count)
+            {
+                // Slot occupied
+                var player = players[i];
+                SetPlayerSlot(i, player.nickname, true, player.isHost);
             }
             else
             {
-                // Empty slot displays "Empty"
-                playerSlots[i].text = "Empty";
+                // Empty slot
+                SetPlayerSlot(i, "", false, false);
+            }
+        }
+
+        Debug.Log($"[UpdatePlayerList] UI update complete");
+    }
+    private void SetPlayerSlot(int slotIndex, string nickname, bool isOccupied, bool isHost)
+    {
+        if (playerSlots == null || slotIndex >= playerSlots.Length || playerSlots[slotIndex] == null)
+            return;
+
+        var slot = playerSlots[slotIndex];
+
+        // Update nickname text
+        if (slot.nicknameText != null)
+        {
+            if (isOccupied)
+            {
+                slot.nicknameText.text = nickname + (isHost ? " [Host]" : "");
+            }
+            else
+            {
+                slot.nicknameText.text = ""; // Empty slot
+            }
+        }
+
+        // Update login image color
+        if (slot.loginImage != null)
+        {
+            if (isOccupied)
+            {
+                // Occupied: Green (모든 플레이어 자동 준비 상태이므로 항상 초록색)
+                slot.loginImage.color = slot.occupiedColor;
+            }
+            else
+            {
+                // Empty: White
+                slot.loginImage.color = slot.emptyColor;
             }
         }
     }
@@ -190,38 +327,25 @@ public class B001_CreateParty : MonoBehaviour
 
     public void OnStartGameClick()
     {
-        if (!isHost) return;
+        if (!isHost)
+        {
+            Debug.LogWarning("Only host can start game");
+            return;
+        }
 
         // Check max 4 players
         var players = MultiplaySession.Instance.CurrentRoom?.players;
         if (players != null && players.Count > 4)
         {
             Debug.LogWarning("Exceeded maximum player count");
+            ShowError("Maximum 4 players allowed");
             return;
         }
 
-        // Check if all non-host players are ready
-        if (players != null)
-        {
-            bool allReady = true;
-            foreach (var player in players)
-            {
-                if (!player.isHost && !player.isReady)
-                {
-                    allReady = false;
-                    break;
-                }
-            }
+        // Host can start with any number of players (1-4)
+        int playerCount = players?.Count ?? 0;
+        Debug.Log($"Starting game with {playerCount} player(s)...");
 
-            if (!allReady)
-            {
-                Debug.LogWarning("Not all players are ready");
-                ShowError("All players must be ready before starting");
-                return;
-            }
-        }
-
-        Debug.Log("Starting game via API...");
         StartCoroutine(StartGameCoroutine());
     }
 
@@ -241,7 +365,7 @@ public class B001_CreateParty : MonoBehaviour
 
                 StartGameResponseWrapper wrapper = JsonUtility.FromJson<StartGameResponseWrapper>(response);
 
-                if (wrapper.result != null)
+                if (wrapper != null && wrapper.result != null)
                 {
                     Debug.Log($"[API] Game started successfully");
 
@@ -255,14 +379,28 @@ public class B001_CreateParty : MonoBehaviour
             },
             onError: (error) =>
             {
-                ShowError("Failed to start game: " + error);
+                Debug.LogError($"[StartGame] Error: {error}");
+
+                // Parse error message
+                string errorMessage = "Failed to start game";
+
+                if (error.Contains("준비 상태가 아닙니다") || error.Contains("not ready"))
+                {
+                    errorMessage = "Not all players are ready.\nPlease wait a moment and try again.";
+                }
+                else if (error.Contains("400"))
+                {
+                    errorMessage = "Cannot start game.\nPlease check all players are ready.";
+                }
+
+                ShowError(errorMessage);
             }
         );
     }
 
     private void ShowError(string message)
     {
-        Debug.LogWarning(message);
+        Debug.LogWarning($"[Error] {message}");
         // TODO: Show error popup to user
     }
     #endregion
@@ -369,18 +507,28 @@ public class B001_CreateParty : MonoBehaviour
 
     private void OnRoomDataUpdated(RoomData roomData)
     {
+        Debug.Log("[Event] Room data updated");
         UpdatePlayerList();
     }
 
     private void OnPlayerJoined(PlayerData player)
     {
-        Debug.Log($"{player.username} joined");
+        Debug.Log($"[Event] {player.username} joined");
         UpdatePlayerList();
     }
 
     private void OnPlayerLeft(PlayerData player)
     {
-        Debug.Log($"{player.username} left");
+        Debug.Log($"[Event] {player.username} left");
+
+        // Check if the leaving player is the host
+        if (player.isHost && player.userId != myUserId)
+        {
+            Debug.Log("[Event] Host has left - triggering host left event");
+            OnHostLeft();
+            return;
+        }
+
         UpdatePlayerList();
     }
 
@@ -388,32 +536,69 @@ public class B001_CreateParty : MonoBehaviour
     {
         if (!isHost) // Client only
         {
+            Debug.Log("[Event] Game started by host");
             StartMultiplayGame();
         }
     }
 
     private void OnHostLeft()
     {
-        // Show host left popup
+        // Don't show popup if I am the host leaving
+        if (isHost)
+        {
+            Debug.Log("[Event] I am the host - ignoring host left event");
+            return;
+        }
+
+        Debug.Log("[Event] Host has left the room");
+        ShowHostLeftPopup();
+    }
+
+    private void ShowHostLeftPopup()
+    {
         if (hostLeftPopup != null)
         {
             hostLeftPopup.SetActive(true);
 
             if (hostLeftMessage != null)
                 hostLeftMessage.text = "Host has left the room.\nThe room has been closed.";
-
-            StartCoroutine(ReturnToMainMenuAfterDelay(3f));
         }
         else
         {
-            OnBackButtonClick();
+            // No popup - return to main menu immediately
+            ForceReturnToMainMenu();
         }
     }
 
-    private IEnumerator ReturnToMainMenuAfterDelay(float delay)
+    private void OnHostLeftConfirm()
     {
-        yield return new WaitForSeconds(delay);
-        OnBackButtonClick();
+        // Hide popup and return to main menu
+        if (hostLeftPopup != null)
+            hostLeftPopup.SetActive(false);
+
+        ForceReturnToMainMenu();
+    }
+
+    private void ForceReturnToMainMenu()
+    {
+        // Clear session
+        if (MultiplaySession.Instance != null)
+        {
+            MultiplaySession.Instance.ClearRoomData();
+        }
+
+        // Disconnect WebSocket
+        if (SocketIOManager.Instance != null && SocketIOManager.Instance.IsConnected)
+        {
+            SocketIOManager.Instance.UnregisterMultiplayEvents();
+            SocketIOManager.Instance.Disconnect();
+        }
+
+        // Navigate to main menu
+        if (fadeController != null)
+            fadeController.FadeToScene("000_MainMenu");
+        else
+            UnityEngine.SceneManagement.SceneManager.LoadScene("000_MainMenu");
     }
     #endregion
 
@@ -428,5 +613,8 @@ public class B001_CreateParty : MonoBehaviour
 
         if (startGameButton != null)
             startGameButton.onClick.RemoveAllListeners();
+
+        if (hostLeftConfirmButton != null)
+            hostLeftConfirmButton.onClick.RemoveAllListeners();
     }
 }

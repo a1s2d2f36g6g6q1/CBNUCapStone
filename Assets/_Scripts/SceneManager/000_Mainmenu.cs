@@ -99,8 +99,18 @@ public class MainMenuUIController : MonoBehaviour
     private void Update()
     {
         if (Input.GetKeyDown(KeyCode.Escape)) CloseAllPanels();
-    }
+        {
+            if (debugText != null && Input.GetKeyDown(KeyCode.F12))
+            {
+                debugText.gameObject.SetActive(!debugText.gameObject.activeSelf);
 
+                if (debugText.gameObject.activeSelf)
+                {
+                    UpdateDebugInfo();
+                }
+            }
+        }
+    }
     private void OnIDInputChanged(string newText)
     {
         SetIDCheckState_Default();
@@ -461,6 +471,10 @@ public class MainMenuUIController : MonoBehaviour
         SetLoadingState(true);
         ShowStatus("Connecting to server...", false);
 
+        // Debug build info
+        Debug.Log($"[MainMenu] Build: {Application.version}, Platform: {Application.platform}");
+        Debug.Log($"[MainMenu] Internet reachability: {Application.internetReachability}");
+
         // Ensure SocketIOManager exists
         if (SocketIOManager.Instance == null)
         {
@@ -475,10 +489,28 @@ public class MainMenuUIController : MonoBehaviour
         // Use new async method with proper await
         var connectionTask = SocketIOManager.Instance.ConnectAndAuthenticateAsync();
 
-        // Wait for connection task to complete
-        while (!connectionTask.IsCompleted)
+        // Wait for connection task to complete (with visual feedback)
+        float elapsed = 0f;
+        while (!connectionTask.IsCompleted && elapsed < 20f)
         {
+            elapsed += Time.deltaTime;
+
+            // Update status every 2 seconds
+            if ((int)elapsed % 2 == 0 && elapsed > 0)
+            {
+                ShowStatus($"Connecting... ({elapsed:F0}s)", false);
+            }
+
             yield return null;
+        }
+
+        if (!connectionTask.IsCompleted)
+        {
+            Debug.LogError("[MainMenu] Connection task timeout");
+            ShowStatus("Error: Connection timeout", true);
+            yield return new WaitForSeconds(2f);
+            SetLoadingState(false);
+            yield break;
         }
 
         bool connected = connectionTask.Result;
@@ -503,7 +535,6 @@ public class MainMenuUIController : MonoBehaviour
         // Create room via API
         yield return CreateRoomCoroutine();
     }
-
     private IEnumerator CreateRoomCoroutine()
     {
         Debug.Log("[MainMenu] Creating room via API");
@@ -588,7 +619,24 @@ public class MainMenuUIController : MonoBehaviour
             onError: (error) =>
             {
                 Debug.LogError($"[MainMenu] Room creation failed: {error}");
-                ShowStatus("Error: Room creation failed - " + error, true);
+
+                // Parse error message
+                string errorMessage = "Failed to create room";
+
+                if (error.Contains("429"))
+                {
+                    errorMessage = "AI image generation rate limit exceeded.\nPlease try again in a moment.";
+                }
+                else if (error.Contains("500") || error.Contains("502"))
+                {
+                    errorMessage = "Server error occurred.\nPlease try again later.";
+                }
+                else if (error.Contains("이미지 생성에 실패"))
+                {
+                    errorMessage = "Image generation failed.\nPlease try again.";
+                }
+
+                ShowStatus(errorMessage, true);
                 requestCompleted = true;
             }
         );
@@ -607,7 +655,8 @@ public class MainMenuUIController : MonoBehaviour
         }
         else
         {
-            yield return new WaitForSeconds(2f);
+            // Show error for 3 seconds, then hide loading
+            yield return new WaitForSeconds(3f);
             SetLoadingState(false);
 
             // Disconnect WebSocket on error
@@ -617,7 +666,6 @@ public class MainMenuUIController : MonoBehaviour
             }
         }
     }
-
 
     private void ShowStatus(string message, bool isError = false)
     {
@@ -744,4 +792,23 @@ public class MainMenuUIController : MonoBehaviour
         OpenPanel(settingsPanel);
     }
     #endregion
+
+    [Header("Debug")]
+    public TMP_Text debugText;
+
+
+    private void UpdateDebugInfo()
+    {
+        if (debugText == null) return;
+
+        string info = $"Build: {Application.version}\n";
+        info += $"Platform: {Application.platform}\n";
+        info += $"Internet: {Application.internetReachability}\n";
+        info += $"Token: {(APIManager.Instance?.HasToken() ?? false)}\n";
+        info += $"WebSocket: {(SocketIOManager.Instance?.IsConnected ?? false)}\n";
+        info += $"Authenticated: {(SocketIOManager.Instance?.IsAuthenticated ?? false)}\n";
+
+        debugText.text = info;
+    }
 }
+
