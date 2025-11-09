@@ -22,15 +22,39 @@ public class Game : MonoBehaviour
             Debug.Log("[Game] Replay data cleared");
         }
 
-        // Always go back to MainMenu (not TagInput)
-        // This works for: Singleplay, Multiplay, Gallery Replay
+        // If in multiplayer, clean up WebSocket connection
+        if (GameData.isMultiplay)
+        {
+            Debug.Log("[Game] Leaving multiplayer game");
+
+            if (MultiplaySession.Instance != null && MultiplaySession.Instance.CurrentRoom != null)
+            {
+                string gameCode = MultiplaySession.Instance.CurrentRoom.gameCode;
+
+                // Send leave event if still connected
+                if (SocketIOManager.Instance != null && SocketIOManager.Instance.IsConnected)
+                {
+                    SocketIOManager.Instance.LeaveRoom(gameCode);
+                    SocketIOManager.Instance.UnregisterMultiplayEvents();
+                    SocketIOManager.Instance.Disconnect();
+                }
+
+                // Clear session data
+                MultiplaySession.Instance.ClearRoomData();
+            }
+
+            // Reset GameData
+            GameData.Reset();
+        }
+
+        // Navigate to MainMenu
         if (fadeController != null)
         {
             fadeController.FadeToScene("000_MainMenu");
         }
         else
         {
-            Debug.LogWarning("FadeController가 연결되지 않았습니다.");
+            Debug.LogWarning("[Game] FadeController not assigned");
             UnityEngine.SceneManagement.SceneManager.LoadScene("000_MainMenu");
         }
     }

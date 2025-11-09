@@ -256,11 +256,67 @@ public class SocketIOManager : MonoBehaviour
             {
                 Debug.Log($"[SocketIO] Received authentication response: {response}");
 
-                var authResponse = response.GetValue<WS_AuthResponse>();
+                string responseStr = response.ToString();
+                Debug.Log($"[SocketIO] Response string: {responseStr}");
+
+                WS_AuthResponse authResponse = null;
+
+                // Check if response is array format
+                if (responseStr.StartsWith("["))
+                {
+                    try
+                    {
+                        // Find the complete JSON object within array
+                        int firstBracket = responseStr.IndexOf('{');
+                        int bracketCount = 0;
+                        int lastBracket = -1;
+
+                        // Count brackets to find matching closing bracket
+                        for (int i = firstBracket; i < responseStr.Length; i++)
+                        {
+                            if (responseStr[i] == '{')
+                                bracketCount++;
+                            else if (responseStr[i] == '}')
+                            {
+                                bracketCount--;
+                                if (bracketCount == 0)
+                                {
+                                    lastBracket = i;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (firstBracket >= 0 && lastBracket > firstBracket)
+                        {
+                            string jsonObject = responseStr.Substring(firstBracket, lastBracket - firstBracket + 1);
+                            Debug.Log($"[SocketIO] Extracted JSON: {jsonObject}");
+                            authResponse = JsonUtility.FromJson<WS_AuthResponse>(jsonObject);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError($"[SocketIO] Failed to extract from array: {ex.Message}");
+                    }
+                }
+
+                // Fallback: try direct parsing
+                if (authResponse == null)
+                {
+                    try
+                    {
+                        authResponse = response.GetValue<WS_AuthResponse>();
+                        Debug.Log($"[SocketIO] Parsed directly (not array)");
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError($"[SocketIO] Direct parse failed: {ex.Message}");
+                    }
+                }
 
                 if (authResponse != null)
                 {
-                    Debug.Log($"[SocketIO] Auth response parsed - isSuccess: {authResponse.isSuccess}");
+                    Debug.Log($"[SocketIO] Auth response parsed - isSuccess: {authResponse.isSuccess}, code: {authResponse.code}, message: {authResponse.message}");
 
                     if (authResponse.isSuccess)
                     {
@@ -276,24 +332,24 @@ public class SocketIOManager : MonoBehaviour
                             });
                         }
 
-                        // Mark authentication as successful
                         authenticationTcs?.TrySetResult(true);
                     }
                     else
                     {
-                        Debug.LogError($"[SocketIO] Authentication failed: {authResponse.message}");
+                        Debug.LogError($"[SocketIO] Authentication failed: {authResponse.message} (code: {authResponse.code})");
                         authenticationTcs?.TrySetResult(false);
                     }
                 }
                 else
                 {
-                    Debug.LogError("[SocketIO] Authentication response is null");
+                    Debug.LogError("[SocketIO] Authentication response is null after parsing");
                     authenticationTcs?.TrySetResult(false);
                 }
             }
             catch (Exception e)
             {
                 Debug.LogError($"[SocketIO] Failed to parse authentication response: {e.Message}");
+                Debug.LogError($"[SocketIO] Stack trace: {e.StackTrace}");
                 authenticationTcs?.TrySetResult(false);
             }
         });
@@ -372,7 +428,23 @@ public class SocketIOManager : MonoBehaviour
             {
                 Debug.Log($"[WS] user_joined event: {response}");
 
-                var evt = response.GetValue<WS_UserJoinedEvent>();
+                string responseStr = response.ToString();
+                WS_UserJoinedEvent evt = null;
+
+                if (responseStr.StartsWith("["))
+                {
+                    int firstBracket = responseStr.IndexOf('{');
+                    int lastBracket = responseStr.LastIndexOf('}') + 1;
+                    if (firstBracket >= 0 && lastBracket > firstBracket)
+                    {
+                        string jsonObject = responseStr.Substring(firstBracket, lastBracket - firstBracket);
+                        evt = JsonUtility.FromJson<WS_UserJoinedEvent>(jsonObject);
+                    }
+                }
+                else
+                {
+                    evt = response.GetValue<WS_UserJoinedEvent>();
+                }
 
                 if (evt != null && evt.result != null && evt.result.participants != null)
                 {
@@ -408,7 +480,23 @@ public class SocketIOManager : MonoBehaviour
             {
                 Debug.Log($"[WS] user_left event: {response}");
 
-                var evt = response.GetValue<WS_UserLeftEvent>();
+                string responseStr = response.ToString();
+                WS_UserLeftEvent evt = null;
+
+                if (responseStr.StartsWith("["))
+                {
+                    int firstBracket = responseStr.IndexOf('{');
+                    int lastBracket = responseStr.LastIndexOf('}') + 1;
+                    if (firstBracket >= 0 && lastBracket > firstBracket)
+                    {
+                        string jsonObject = responseStr.Substring(firstBracket, lastBracket - firstBracket);
+                        evt = JsonUtility.FromJson<WS_UserLeftEvent>(jsonObject);
+                    }
+                }
+                else
+                {
+                    evt = response.GetValue<WS_UserLeftEvent>();
+                }
 
                 if (evt != null && evt.result != null && !string.IsNullOrEmpty(evt.result.userId))
                 {
@@ -430,7 +518,23 @@ public class SocketIOManager : MonoBehaviour
             {
                 Debug.Log($"[WS] room_updated event: {response}");
 
-                var evt = response.GetValue<WS_RoomUpdatedEvent>();
+                string responseStr = response.ToString();
+                WS_RoomUpdatedEvent evt = null;
+
+                if (responseStr.StartsWith("["))
+                {
+                    int firstBracket = responseStr.IndexOf('{');
+                    int lastBracket = responseStr.LastIndexOf('}') + 1;
+                    if (firstBracket >= 0 && lastBracket > firstBracket)
+                    {
+                        string jsonObject = responseStr.Substring(firstBracket, lastBracket - firstBracket);
+                        evt = JsonUtility.FromJson<WS_RoomUpdatedEvent>(jsonObject);
+                    }
+                }
+                else
+                {
+                    evt = response.GetValue<WS_RoomUpdatedEvent>();
+                }
 
                 if (evt != null && evt.result != null && evt.result.participants != null)
                 {
@@ -478,7 +582,23 @@ public class SocketIOManager : MonoBehaviour
             {
                 Debug.Log($"[WS] game_completed event: {response}");
 
-                var evt = response.GetValue<WS_GameCompletedEvent>();
+                string responseStr = response.ToString();
+                WS_GameCompletedEvent evt = null;
+
+                if (responseStr.StartsWith("["))
+                {
+                    int firstBracket = responseStr.IndexOf('{');
+                    int lastBracket = responseStr.LastIndexOf('}') + 1;
+                    if (firstBracket >= 0 && lastBracket > firstBracket)
+                    {
+                        string jsonObject = responseStr.Substring(firstBracket, lastBracket - firstBracket);
+                        evt = JsonUtility.FromJson<WS_GameCompletedEvent>(jsonObject);
+                    }
+                }
+                else
+                {
+                    evt = response.GetValue<WS_GameCompletedEvent>();
+                }
 
                 if (evt != null && evt.result != null && evt.result.winner != null)
                 {
@@ -504,7 +624,23 @@ public class SocketIOManager : MonoBehaviour
             {
                 Debug.Log($"[WS] user_disconnected event: {response}");
 
-                var evt = response.GetValue<WS_UserDisconnectedEvent>();
+                string responseStr = response.ToString();
+                WS_UserDisconnectedEvent evt = null;
+
+                if (responseStr.StartsWith("["))
+                {
+                    int firstBracket = responseStr.IndexOf('{');
+                    int lastBracket = responseStr.LastIndexOf('}') + 1;
+                    if (firstBracket >= 0 && lastBracket > firstBracket)
+                    {
+                        string jsonObject = responseStr.Substring(firstBracket, lastBracket - firstBracket);
+                        evt = JsonUtility.FromJson<WS_UserDisconnectedEvent>(jsonObject);
+                    }
+                }
+                else
+                {
+                    evt = response.GetValue<WS_UserDisconnectedEvent>();
+                }
 
                 if (evt != null && evt.result != null && !string.IsNullOrEmpty(evt.result.userId))
                 {
