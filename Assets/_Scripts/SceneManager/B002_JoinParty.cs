@@ -68,7 +68,10 @@ public class B002_JoinParty : MonoBehaviour
     {
         isConnecting = true;
         SetLoadingState(true);
-        ShowError("Connecting to server...", false);
+
+        // STEP 1/5: Initialize
+        ShowError("(1/5) Initializing connection...", false);
+        yield return new WaitForSeconds(0.3f);
 
         // Check if SocketIOManager exists
         if (SocketIOManager.Instance == null)
@@ -79,15 +82,38 @@ public class B002_JoinParty : MonoBehaviour
             yield break;
         }
 
+        // STEP 2/5: WebSocket Connection
+        ShowError("(2/5) Connecting to WebSocket server...", false);
         Debug.Log("[JoinParty] Starting WebSocket connection...");
 
         // Use async method
         var connectionTask = SocketIOManager.Instance.ConnectAndAuthenticateAsync();
 
-        // Wait for connection task to complete
-        while (!connectionTask.IsCompleted)
+        // Wait for connection task to complete (with visual feedback)
+        float elapsed = 0f;
+        int lastSecond = 0;
+        while (!connectionTask.IsCompleted && elapsed < 20f)
         {
+            elapsed += Time.deltaTime;
+            int currentSecond = (int)elapsed;
+
+            // Update status every second
+            if (currentSecond != lastSecond && currentSecond > 0)
+            {
+                ShowError($"(2/5) Connecting to WebSocket... ({currentSecond}s)", false);
+                lastSecond = currentSecond;
+            }
+
             yield return null;
+        }
+
+        if (!connectionTask.IsCompleted)
+        {
+            Debug.LogError("[JoinParty] Connection task timeout");
+            ShowError("Error: Connection timeout (20s)");
+            SetLoadingState(false);
+            isConnecting = false;
+            yield break;
         }
 
         bool connected = connectionTask.Result;
@@ -102,12 +128,19 @@ public class B002_JoinParty : MonoBehaviour
             yield break;
         }
 
+        // STEP 3/5: Authentication Complete
+        ShowError("(3/5) Authentication successful!", false);
+        yield return new WaitForSeconds(0.5f);
+
         Debug.Log("[JoinParty] WebSocket connected and authenticated, registering events");
 
-        // Register multiplayer events
+        // STEP 4/5: Register Events
+        ShowError("(4/5) Registering multiplayer events...", false);
         SocketIOManager.Instance.RegisterMultiplayEvents();
+        yield return new WaitForSeconds(0.3f);
 
-        ShowError("Joining room...", false);
+        // STEP 5/5: Join Room
+        ShowError("(5/5) Joining room...", false);
 
         // Call room join API
         yield return JoinRoomCoroutine(gameCode);
@@ -209,6 +242,9 @@ public class B002_JoinParty : MonoBehaviour
 
         if (requestSuccess)
         {
+            ShowError("(5/5) Successfully joined room!", false);
+            yield return new WaitForSeconds(0.8f);
+
             SetLoadingState(false);
             Debug.Log("[JoinParty] Transitioning to lobby scene");
 

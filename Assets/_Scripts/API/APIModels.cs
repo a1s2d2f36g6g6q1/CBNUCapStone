@@ -539,3 +539,35 @@ public class SaveToPlanetResponse
     public string message;
     public SaveToPlanetResult result;
 }
+
+// ==========================================
+// Multiplay Complete Response
+// ==========================================
+
+[Serializable]
+public class MultiplayCompleteParticipant
+{
+    public string userId;
+    public string username;
+    public bool isWinner;
+}
+
+[Serializable]
+public class MultiplayCompleteResult
+{
+    public string gameId;
+    public string gameCode;
+    public bool isWinner;
+    public int totalParticipants;
+    public string gameStatus;
+    public MultiplayCompleteParticipant[] participants;
+}
+
+[Serializable]
+public class MultiplayCompleteResponse
+{
+    public bool isSuccess;
+    public string code;
+    public string message;
+    public MultiplayCompleteResult result;
+}

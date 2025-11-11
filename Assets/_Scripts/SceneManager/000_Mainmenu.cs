@@ -469,7 +469,10 @@ public class MainMenuUIController : MonoBehaviour
     private IEnumerator ConnectAndCreateRoomCoroutine()
     {
         SetLoadingState(true);
-        ShowStatus("Connecting to server...", false);
+
+        // STEP 1/6: Initialize
+        ShowStatus("(1/6) Initializing connection...", false);
+        yield return new WaitForSeconds(0.3f);
 
         // Debug build info
         Debug.Log($"[MainMenu] Build: {Application.version}, Platform: {Application.platform}");
@@ -484,6 +487,8 @@ public class MainMenuUIController : MonoBehaviour
             yield break;
         }
 
+        // STEP 2/6: WebSocket Connection
+        ShowStatus("(2/6) Connecting to WebSocket server...", false);
         Debug.Log("[MainMenu] Starting WebSocket connection...");
 
         // Use new async method with proper await
@@ -491,14 +496,17 @@ public class MainMenuUIController : MonoBehaviour
 
         // Wait for connection task to complete (with visual feedback)
         float elapsed = 0f;
+        int lastSecond = 0;
         while (!connectionTask.IsCompleted && elapsed < 20f)
         {
             elapsed += Time.deltaTime;
+            int currentSecond = (int)elapsed;
 
-            // Update status every 2 seconds
-            if ((int)elapsed % 2 == 0 && elapsed > 0)
+            // Update status every second
+            if (currentSecond != lastSecond && currentSecond > 0)
             {
-                ShowStatus($"Connecting... ({elapsed:F0}s)", false);
+                ShowStatus($"(2/6) Connecting to WebSocket... ({currentSecond}s)", false);
+                lastSecond = currentSecond;
             }
 
             yield return null;
@@ -507,7 +515,7 @@ public class MainMenuUIController : MonoBehaviour
         if (!connectionTask.IsCompleted)
         {
             Debug.LogError("[MainMenu] Connection task timeout");
-            ShowStatus("Error: Connection timeout", true);
+            ShowStatus("Error: Connection timeout (20s)", true);
             yield return new WaitForSeconds(2f);
             SetLoadingState(false);
             yield break;
@@ -525,16 +533,24 @@ public class MainMenuUIController : MonoBehaviour
             yield break;
         }
 
+        // STEP 3/6: Authentication Complete
+        ShowStatus("(3/6) Authentication successful!", false);
+        yield return new WaitForSeconds(0.5f);
+
         Debug.Log("[MainMenu] WebSocket connected and authenticated, registering events");
 
-        // Register multiplayer events
+        // STEP 4/6: Register Events
+        ShowStatus("(4/6) Registering multiplayer events...", false);
         SocketIOManager.Instance.RegisterMultiplayEvents();
+        yield return new WaitForSeconds(0.3f);
 
-        ShowStatus("Creating room...", false);
+        // STEP 5/6: Generate AI Image & Create Room
+        ShowStatus("(5/6) Generating AI image...", false);
 
         // Create room via API
         yield return CreateRoomCoroutine();
     }
+
     private IEnumerator CreateRoomCoroutine()
     {
         Debug.Log("[MainMenu] Creating room via API");
@@ -649,6 +665,10 @@ public class MainMenuUIController : MonoBehaviour
 
         if (requestSuccess)
         {
+            // STEP 6/6: Room Created Successfully
+            ShowStatus("(6/6) Room created successfully!", false);
+            yield return new WaitForSeconds(0.8f);
+
             SetLoadingState(false);
             Debug.Log("[MainMenu] Transitioning to lobby scene");
             fadeController.FadeToScene("B001_CreateParty");

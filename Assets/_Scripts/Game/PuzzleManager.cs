@@ -390,7 +390,7 @@ public class PuzzleManager : MonoBehaviour
         Debug.Log($"[PuzzleManager] MultiplayRankPopup assigned: {multiplayRankPopup != null}");
 
         // Send completion via WebSocket
-        SubmitMultiplayCompletion();
+        SubmitMultiplayCompletion();  // ← 이 부분이 문제!
 
         // Wait a bit for WebSocket to process
         yield return new WaitForSeconds(0.5f);
@@ -424,6 +424,7 @@ public class PuzzleManager : MonoBehaviour
 
         Debug.Log("[PuzzleManager] === MULTIPLAY COMPLETION END ===");
     }
+
     private IEnumerator SubmitSingleplayCompletion()
     {
         Debug.Log("[PuzzleManager] Submitting singleplay completion...");
@@ -469,13 +470,7 @@ public class PuzzleManager : MonoBehaviour
 
     private void SubmitMultiplayCompletion()
     {
-        Debug.Log("[PuzzleManager] Submitting multiplay completion...");
-
-        if (SocketIOManager.Instance == null || !SocketIOManager.Instance.IsConnected)
-        {
-            Debug.LogError("[PuzzleManager] WebSocket not connected!");
-            return;
-        }
+        Debug.Log("[PuzzleManager] Submitting multiplay completion via API...");
 
         if (MultiplaySession.Instance == null || MultiplaySession.Instance.CurrentRoom == null)
         {
@@ -483,24 +478,66 @@ public class PuzzleManager : MonoBehaviour
             return;
         }
 
-        float clearTime = timerManager != null ? timerManager.GetElapsedTime() : 0f;
+        StartCoroutine(SubmitMultiplayCompletionCoroutine());
+    }
 
-        Debug.Log($"[PuzzleManager] Emitting player-completed event - ClearTime: {clearTime}s");
+    private IEnumerator SubmitMultiplayCompletionCoroutine()
+    {
+        string gameCode = MultiplaySession.Instance.CurrentRoom.gameCode;
+        float myTime = timerManager != null ? timerManager.GetElapsedTime() : 0f;
 
-        try
-        {
-            SocketIOManager.Instance.Emit("player-completed", new
+        Debug.Log($"[PuzzleManager] Submitting completion for gameCode: {gameCode}, Time: {myTime}s");
+
+        // Create request with gameCode only
+        var request = new { gameCode = gameCode };
+
+        bool requestCompleted = false;
+
+        yield return APIManager.Instance.Post(
+            "/games/multiplay/rooms/complete",
+            request,
+            onSuccess: (response) =>
             {
-                roomId = MultiplaySession.Instance.CurrentRoom.roomId,
-                gameCode = MultiplaySession.Instance.CurrentRoom.gameCode,
-                clearTime = clearTime
-            });
+                Debug.Log($"[PuzzleManager] Multiplay completion API response: {response}");
 
-            Debug.Log($"[PuzzleManager] player-completed event sent successfully");
-        }
-        catch (System.Exception e)
+                try
+                {
+                    MultiplayCompleteResponse jsonResponse = JsonUtility.FromJson<MultiplayCompleteResponse>(response);
+
+                    if (jsonResponse != null && jsonResponse.result != null)
+                    {
+                        Debug.Log($"[PuzzleManager] Completion success - IsWinner: {jsonResponse.result.isWinner}");
+
+                        // Update my player's clear time immediately
+                        string myUserId = UserSession.Instance.UserID;
+                        MultiplaySession.Instance.UpdatePlayerClearTime(myUserId, myTime);
+
+                        Debug.Log($"[PuzzleManager] My clear time set: {myTime}s");
+                    }
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogError($"[PuzzleManager] Failed to parse completion response: {e.Message}");
+                }
+
+                requestCompleted = true;
+            },
+            onError: (error) =>
+            {
+                Debug.LogError($"[PuzzleManager] Failed to submit completion: {error}");
+
+                // Even on error, update local time for display
+                string myUserId = UserSession.Instance.UserID;
+                MultiplaySession.Instance.UpdatePlayerClearTime(myUserId, myTime);
+
+                requestCompleted = true;
+            }
+        );
+
+        // Wait for API call to complete
+        while (!requestCompleted)
         {
-            Debug.LogError($"[PuzzleManager] Failed to emit player-completed: {e.Message}");
+            yield return null;
         }
     }
 

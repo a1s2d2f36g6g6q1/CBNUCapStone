@@ -276,20 +276,33 @@ public class MultiplayRankPopup : MonoBehaviour
 
     private void CheckAllPlayersFinished(List<PlayerData> players)
     {
+        Debug.Log("[MultiplayRankPopup] Checking if all players finished...");
+
         bool allFinished = true;
+        int finishedCount = 0;
+
         foreach (var player in players)
         {
-            if (player.clearTime <= 0)
+            Debug.Log($"[MultiplayRankPopup] Player {player.nickname}: clearTime={player.clearTime}");
+
+            if (player.clearTime > 0)
+            {
+                finishedCount++;
+            }
+            else
             {
                 allFinished = false;
-                break;
             }
         }
 
-        if (allFinished)
+        Debug.Log($"[MultiplayRankPopup] {finishedCount}/{players.Count} players finished");
+
+        if (allFinished && finishedCount > 0)
         {
-            // All players finished - enable upload for winner
-            if (isWinner)
+            Debug.Log("[MultiplayRankPopup] All players finished!");
+
+            // Enable upload for winner
+            if (isWinner && myRank == 1)
             {
                 if (uploadButton != null)
                 {
@@ -298,6 +311,7 @@ public class MultiplayRankPopup : MonoBehaviour
                     if (buttonText != null)
                         buttonText.text = "Upload to Planet";
                 }
+                Debug.Log("[MultiplayRankPopup] Upload button enabled for winner");
             }
             else
             {
@@ -308,12 +322,22 @@ public class MultiplayRankPopup : MonoBehaviour
                     if (buttonText != null)
                         buttonText.text = "Only Winner Can Upload";
                 }
+                Debug.Log("[MultiplayRankPopup] Upload button disabled (not winner)");
             }
+        }
+        else
+        {
+            Debug.Log("[MultiplayRankPopup] Waiting for other players...");
 
-            Debug.Log("[MultiplayRankPopup] All players finished!");
+            if (uploadButton != null)
+            {
+                uploadButton.interactable = false;
+                var buttonText = uploadButton.GetComponentInChildren<TMP_Text>();
+                if (buttonText != null)
+                    buttonText.text = $"Waiting... ({finishedCount}/{players.Count})";
+            }
         }
     }
-
     private string FormatTime(float timeInSeconds)
     {
         int minutes = (int)(timeInSeconds / 60f);
