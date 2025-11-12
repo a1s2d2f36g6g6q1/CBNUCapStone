@@ -6,23 +6,26 @@ using System.Threading.Tasks;
 
 public class SocketIOManager : MonoBehaviour
 {
+    // ===== Singleton =====
     public static SocketIOManager Instance { get; private set; }
 
-    private SocketIOClient.SocketIO socket;
+    // ===== Properties =====
     public bool IsConnected { get; private set; }
     public bool IsAuthenticated { get; private set; }
 
+    // ===== Private Fields =====
+    private SocketIOClient.SocketIO socket;
     private string serverUrl = "ws://13.209.33.42:3000";
-
-    // Connection state tracking
     private TaskCompletionSource<bool> connectionTcs;
     private TaskCompletionSource<bool> authenticationTcs;
 
+    // ===== Events =====
     public event Action OnConnected;
     public event Action OnDisconnected;
     public event Action<string> OnConnectionError;
     public event Action OnAuthenticated;
 
+    // ===== Unity Lifecycle =====
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -33,23 +36,20 @@ public class SocketIOManager : MonoBehaviour
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
-        // Ensure UnityMainThreadDispatcher exists
         EnsureMainThreadDispatcher();
     }
 
-    private void EnsureMainThreadDispatcher()
+    private void OnDestroy()
     {
-        if (UnityMainThreadDispatcher.Instance() == null)
+        Debug.Log("[SocketIO] OnDestroy - Cleaning up socket connection");
+
+        if (socket != null && IsConnected)
         {
-            Debug.Log("[SocketIO] Creating UnityMainThreadDispatcher");
+            socket.DisconnectAsync().Wait();
         }
     }
 
-    /// <summary>
-    /// Connect to WebSocket server with async/await pattern
-    /// Returns true if connection and authentication successful
-    /// </summary>
-    // ConnectAndAuthenticateAsync 메서드 수정
+    // ===== Public Methods - Connection =====
     public async Task<bool> ConnectAndAuthenticateAsync()
     {
         if (IsConnected && IsAuthenticated)
@@ -60,7 +60,7 @@ public class SocketIOManager : MonoBehaviour
 
         if (IsConnected && !IsAuthenticated)
         {
-            Debug.Log("[SocketIO] Already connected, attempting authentication");
+            Debug.Log("[SocketIO] Already connected - Attempting authentication");
             return await AuthenticateAsync();
         }
 
@@ -68,7 +68,6 @@ public class SocketIOManager : MonoBehaviour
 
         try
         {
-            // Create new TaskCompletionSource for this connection attempt
             connectionTcs = new TaskCompletionSource<bool>();
             authenticationTcs = new TaskCompletionSource<bool>();
 
@@ -77,25 +76,21 @@ public class SocketIOManager : MonoBehaviour
             {
                 Transport = SocketIOClient.Transport.TransportProtocol.WebSocket,
                 Reconnection = false,
-                ConnectionTimeout = TimeSpan.FromSeconds(15) // 타임아웃 증가
+                ConnectionTimeout = TimeSpan.FromSeconds(15)
             });
 
             Debug.Log("[SocketIO] Socket instance created");
 
-            // Setup authentication listener BEFORE connecting
             SetupAuthenticationListener();
 
-            // Setup connection event handlers
             socket.OnConnected += OnSocketConnected;
             socket.OnDisconnected += OnSocketDisconnected;
             socket.OnError += OnSocketError;
 
-            // Connect to server
-            Debug.Log("[SocketIO] Attempting to connect to server...");
+            Debug.Log("[SocketIO] Connecting to server...");
             await socket.ConnectAsync();
 
-            // Wait for connection to complete (with timeout)
-            var connectionTask = await Task.WhenAny(connectionTcs.Task, Task.Delay(15000)); // 15초 타임아웃
+            var connectionTask = await Task.WhenAny(connectionTcs.Task, Task.Delay(15000));
 
             if (connectionTask != connectionTcs.Task)
             {
@@ -109,10 +104,9 @@ public class SocketIOManager : MonoBehaviour
                 return false;
             }
 
-            Debug.Log("[SocketIO] Connection successful, waiting for authentication...");
+            Debug.Log("[SocketIO] Connection successful - Waiting for authentication");
 
-            // Wait for authentication to complete (with timeout)
-            var authTask = await Task.WhenAny(authenticationTcs.Task, Task.Delay(15000)); // 15초 타임아웃
+            var authTask = await Task.WhenAny(authenticationTcs.Task, Task.Delay(15000));
 
             if (authTask != authenticationTcs.Task)
             {
@@ -132,293 +126,55 @@ public class SocketIOManager : MonoBehaviour
             return false;
         }
     }
-    private async void OnSocketConnected(object sender, EventArgs e)
-    {
-        IsConnected = true;
-        Debug.Log("[SocketIO] WebSocket connected successfully");
-
-        var dispatcher = UnityMainThreadDispatcher.Instance();
-        if (dispatcher != null)
-        {
-            dispatcher.Enqueue(() =>
-            {
-                OnConnected?.Invoke();
-            });
-        }
-
-        // Mark connection as successful
-        connectionTcs?.TrySetResult(true);
-
-        // Small delay before authentication
-        await Task.Delay(200);
-
-        // Start authentication
-        Debug.Log("[SocketIO] Starting authentication...");
-        bool authResult = await AuthenticateAsync();
-
-        if (!authResult)
-        {
-            Debug.LogError("[SocketIO] Authentication failed after connection");
-            authenticationTcs?.TrySetResult(false);
-        }
-    }
-
-    private void OnSocketDisconnected(object sender, string e)
-    {
-        IsConnected = false;
-        IsAuthenticated = false;
-        Debug.Log($"[SocketIO] WebSocket disconnected: {e}");
-
-        var dispatcher = UnityMainThreadDispatcher.Instance();
-        if (dispatcher != null)
-        {
-            dispatcher.Enqueue(() =>
-            {
-                OnDisconnected?.Invoke();
-            });
-        }
-
-        // Mark connection as failed if waiting
-        connectionTcs?.TrySetResult(false);
-        authenticationTcs?.TrySetResult(false);
-    }
-
-    private void OnSocketError(object sender, string e)
-    {
-        Debug.LogError($"[SocketIO] WebSocket error: {e}");
-
-        var dispatcher = UnityMainThreadDispatcher.Instance();
-        if (dispatcher != null)
-        {
-            dispatcher.Enqueue(() =>
-            {
-                OnConnectionError?.Invoke(e);
-            });
-        }
-
-        // Mark connection as failed if waiting
-        connectionTcs?.TrySetResult(false);
-        authenticationTcs?.TrySetResult(false);
-    }
-
-    private async Task<bool> AuthenticateAsync()
-    {
-        Debug.Log($"[SocketIO] AuthenticateAsync called - IsConnected: {IsConnected}");
-
-        if (!IsConnected)
-        {
-            Debug.LogError("[SocketIO] Cannot authenticate: Not connected");
-            return false;
-        }
-
-        if (IsAuthenticated)
-        {
-            Debug.Log("[SocketIO] Already authenticated");
-            return true;
-        }
-
-        if (APIManager.Instance == null)
-        {
-            Debug.LogError("[SocketIO] APIManager.Instance is NULL");
-            return false;
-        }
-
-        string token = APIManager.Instance.GetToken();
-
-        if (string.IsNullOrEmpty(token))
-        {
-            Debug.LogError("[SocketIO] No JWT token available");
-            return false;
-        }
-
-        Debug.Log($"[SocketIO] Sending authentication with token: {token.Substring(0, Math.Min(20, token.Length))}...");
-
-        try
-        {
-            await socket.EmitAsync("authenticate", new { token });
-            Debug.Log("[SocketIO] Authentication request sent successfully");
-            return true; // Will be confirmed by listener
-        }
-        catch (Exception e)
-        {
-            Debug.LogError($"[SocketIO] Failed to send authentication: {e.Message}");
-            authenticationTcs?.TrySetResult(false);
-            return false;
-        }
-    }
-
-    private void SetupAuthenticationListener()
-    {
-        Debug.Log("[SocketIO] Setting up authentication listener");
-
-        socket.On("authenticated", (response) =>
-        {
-            try
-            {
-                Debug.Log($"[SocketIO] Received authentication response: {response}");
-
-                string responseStr = response.ToString();
-                Debug.Log($"[SocketIO] Response string: {responseStr}");
-
-                WS_AuthResponse authResponse = null;
-
-                // Check if response is array format
-                if (responseStr.StartsWith("["))
-                {
-                    try
-                    {
-                        // Find the complete JSON object within array
-                        int firstBracket = responseStr.IndexOf('{');
-                        int bracketCount = 0;
-                        int lastBracket = -1;
-
-                        // Count brackets to find matching closing bracket
-                        for (int i = firstBracket; i < responseStr.Length; i++)
-                        {
-                            if (responseStr[i] == '{')
-                                bracketCount++;
-                            else if (responseStr[i] == '}')
-                            {
-                                bracketCount--;
-                                if (bracketCount == 0)
-                                {
-                                    lastBracket = i;
-                                    break;
-                                }
-                            }
-                        }
-
-                        if (firstBracket >= 0 && lastBracket > firstBracket)
-                        {
-                            string jsonObject = responseStr.Substring(firstBracket, lastBracket - firstBracket + 1);
-                            Debug.Log($"[SocketIO] Extracted JSON: {jsonObject}");
-                            authResponse = JsonUtility.FromJson<WS_AuthResponse>(jsonObject);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogError($"[SocketIO] Failed to extract from array: {ex.Message}");
-                    }
-                }
-
-                // Fallback: try direct parsing
-                if (authResponse == null)
-                {
-                    try
-                    {
-                        authResponse = response.GetValue<WS_AuthResponse>();
-                        Debug.Log($"[SocketIO] Parsed directly (not array)");
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogError($"[SocketIO] Direct parse failed: {ex.Message}");
-                    }
-                }
-
-                if (authResponse != null)
-                {
-                    Debug.Log($"[SocketIO] Auth response parsed - isSuccess: {authResponse.isSuccess}, code: {authResponse.code}, message: {authResponse.message}");
-
-                    if (authResponse.isSuccess)
-                    {
-                        IsAuthenticated = true;
-                        Debug.Log("[SocketIO] Authentication successful!");
-
-                        var dispatcher = UnityMainThreadDispatcher.Instance();
-                        if (dispatcher != null)
-                        {
-                            dispatcher.Enqueue(() =>
-                            {
-                                OnAuthenticated?.Invoke();
-                            });
-                        }
-
-                        authenticationTcs?.TrySetResult(true);
-                    }
-                    else
-                    {
-                        Debug.LogError($"[SocketIO] Authentication failed: {authResponse.message} (code: {authResponse.code})");
-                        authenticationTcs?.TrySetResult(false);
-                    }
-                }
-                else
-                {
-                    Debug.LogError("[SocketIO] Authentication response is null after parsing");
-                    authenticationTcs?.TrySetResult(false);
-                }
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"[SocketIO] Failed to parse authentication response: {e.Message}");
-                Debug.LogError($"[SocketIO] Stack trace: {e.StackTrace}");
-                authenticationTcs?.TrySetResult(false);
-            }
-        });
-
-        Debug.Log("[SocketIO] Authentication listener set up successfully");
-    }
 
     public async void Disconnect()
     {
         if (socket != null && IsConnected)
         {
+            Debug.Log("[SocketIO] Disconnecting...");
             await socket.DisconnectAsync();
-            IsConnected = false;
-            IsAuthenticated = false;
-            Debug.Log("[SocketIO] Disconnected from WebSocket");
         }
     }
 
+    // ===== Public Methods - Event Management =====
     public void On(string eventName, Action<SocketIOResponse> callback)
     {
-        if (socket == null) return;
+        if (socket == null)
+        {
+            Debug.LogError("[SocketIO] Cannot register event: Socket is null");
+            return;
+        }
 
         socket.On(eventName, (response) =>
         {
             var dispatcher = UnityMainThreadDispatcher.Instance();
             if (dispatcher != null)
             {
-                dispatcher.Enqueue(() =>
-                {
-                    callback?.Invoke(response);
-                });
-            }
-            else
-            {
-                callback?.Invoke(response);
+                dispatcher.Enqueue(() => callback?.Invoke(response));
             }
         });
+
+        Debug.Log($"[SocketIO] Registered event listener: {eventName}");
     }
 
     public void Off(string eventName)
     {
-        if (socket == null) return;
-        socket.Off(eventName);
+        socket?.Off(eventName);
     }
 
     public async void Emit(string eventName, object data)
     {
         if (socket == null || !IsConnected)
         {
-            Debug.LogWarning("[SocketIO] WebSocket is not connected");
+            Debug.LogError("[SocketIO] Cannot emit: Not connected");
             return;
         }
 
-        Debug.Log($"[SocketIO] Emitting event: {eventName}");
         await socket.EmitAsync(eventName, data);
+        Debug.Log($"[SocketIO] Emitted event: {eventName}");
     }
 
-    private void OnDestroy()
-    {
-        if (socket != null)
-        {
-            socket.OnConnected -= OnSocketConnected;
-            socket.OnDisconnected -= OnSocketDisconnected;
-            socket.OnError -= OnSocketError;
-        }
-        Disconnect();
-    }
-
+    // ===== Public Methods - Multiplayer =====
     public void RegisterMultiplayEvents()
     {
         Debug.Log("[SocketIO] Registering multiplayer WebSocket events");
@@ -439,7 +195,6 @@ public class SocketIOManager : MonoBehaviour
                     if (firstBracket >= 0 && lastBracket > firstBracket)
                     {
                         string jsonObject = responseStr.Substring(firstBracket, lastBracket - firstBracket);
-                        Debug.Log($"[WS] Extracted JSON: {jsonObject}");
                         evt = JsonUtility.FromJson<WS_UserJoinedEvent>(jsonObject);
                     }
                 }
@@ -450,36 +205,27 @@ public class SocketIOManager : MonoBehaviour
 
                 if (evt != null && evt.result != null && evt.result.participants != null)
                 {
-                    Debug.Log($"[WS] Processing {evt.result.participants.Length} participants");
-
-                    var players = new List<PlayerData>();
-                    foreach (var p in evt.result.participants)
-                    {
-                        Debug.Log($"[WS] Participant: {p.username}, Host: {p.isHost}, Ready: {p.isReady}");
-
-                        players.Add(new PlayerData
-                        {
-                            userId = p.userId,
-                            username = p.username,
-                            nickname = p.username,
-                            isReady = p.isReady == 1,
-                            isHost = p.isHost
-                        });
-                    }
+                    Debug.Log($"[WS] New user joined: {evt.result.username}");
 
                     if (MultiplaySession.Instance != null && MultiplaySession.Instance.CurrentRoom != null)
                     {
-                        MultiplaySession.Instance.CurrentRoom.players = players;
-
-                        // Trigger room data updated to refresh UI
-                        MultiplaySession.Instance.TriggerRoomDataUpdated();
-
-                        Debug.Log($"[WS] Room data updated with {players.Count} players");
+                        foreach (var p in evt.result.participants)
+                        {
+                            var existingPlayer = MultiplaySession.Instance.CurrentRoom.players?.Find(pl => pl.userId == p.userId);
+                            if (existingPlayer == null)
+                            {
+                                var newPlayer = new PlayerData
+                                {
+                                    userId = p.userId,
+                                    username = p.username,
+                                    nickname = p.username,
+                                    isReady = p.isReady == 1,
+                                    isHost = p.isHost
+                                };
+                                MultiplaySession.Instance.AddPlayer(newPlayer);
+                            }
+                        }
                     }
-                }
-                else
-                {
-                    Debug.LogError("[WS] Failed to parse user_joined event");
                 }
             }
             catch (Exception e)
@@ -673,7 +419,7 @@ public class SocketIOManager : MonoBehaviour
 
                         if (evt.result.isHost)
                         {
-                            Debug.Log("[WS] Disconnected user was host - triggering host left");
+                            Debug.Log("[WS] Disconnected user was host - Triggering host left event");
                             MultiplaySession.Instance.TriggerHostLeft();
                         }
                     }
@@ -687,6 +433,7 @@ public class SocketIOManager : MonoBehaviour
 
         Debug.Log("[SocketIO] Multiplayer WebSocket events registered successfully");
     }
+
     public void UnregisterMultiplayEvents()
     {
         Debug.Log("[SocketIO] Unregistering multiplayer WebSocket events");
@@ -722,72 +469,183 @@ public class SocketIOManager : MonoBehaviour
         Debug.Log($"[SocketIO] Leaving room with gameCode: {gameCode}");
         await socket.EmitAsync("leave_room", new { gameCode });
     }
-}
 
-[Serializable]
-public class WS_AuthResponse
-{
-    public bool isSuccess;
-    public string code;
-    public string message;
-}
+    // ===== Private Methods - Connection Handlers =====
+    private async void OnSocketConnected(object sender, EventArgs e)
+    {
+        IsConnected = true;
+        Debug.Log("[SocketIO] WebSocket connected successfully");
 
-[Serializable]
-public class WS_UserLeftResult
-{
-    public string userId;
-    public string username;
-    public string gameCode;
-}
+        var dispatcher = UnityMainThreadDispatcher.Instance();
+        if (dispatcher != null)
+        {
+            dispatcher.Enqueue(() =>
+            {
+                OnConnected?.Invoke();
+            });
+        }
 
-[Serializable]
-public class WS_UserLeftEvent
-{
-    public bool isSuccess;
-    public string code;
-    public string message;
-    public WS_UserLeftResult result;
-}
+        connectionTcs?.TrySetResult(true);
 
-[Serializable]
-public class WS_WinnerData
-{
-    public string userId;
-    public string username;
-    public int clearTimeMs;
-}
+        await Task.Delay(200);
 
-[Serializable]
-public class WS_GameCompletedResult
-{
-    public string gameId;
-    public string gameCode;
-    public WS_WinnerData winner;
-    public string gameStatus;
-}
+        Debug.Log("[SocketIO] Starting authentication...");
+        bool authResult = await AuthenticateAsync();
 
-[Serializable]
-public class WS_GameCompletedEvent
-{
-    public bool isSuccess;
-    public string code;
-    public string message;
-    public WS_GameCompletedResult result;
-}
+        if (!authResult)
+        {
+            Debug.LogError("[SocketIO] Authentication failed after connection");
+            authenticationTcs?.TrySetResult(false);
+        }
+    }
 
-[Serializable]
-public class WS_UserDisconnectedResult
-{
-    public string userId;
-    public string username;
-    public bool isHost;
-}
+    private void OnSocketDisconnected(object sender, string e)
+    {
+        IsConnected = false;
+        IsAuthenticated = false;
+        Debug.Log($"[SocketIO] WebSocket disconnected: {e}");
 
-[Serializable]
-public class WS_UserDisconnectedEvent
-{
-    public bool isSuccess;
-    public string code;
-    public string message;
-    public WS_UserDisconnectedResult result;
+        var dispatcher = UnityMainThreadDispatcher.Instance();
+        if (dispatcher != null)
+        {
+            dispatcher.Enqueue(() =>
+            {
+                OnDisconnected?.Invoke();
+            });
+        }
+
+        connectionTcs?.TrySetResult(false);
+        authenticationTcs?.TrySetResult(false);
+    }
+
+    private void OnSocketError(object sender, string e)
+    {
+        Debug.LogError($"[SocketIO] WebSocket error: {e}");
+
+        var dispatcher = UnityMainThreadDispatcher.Instance();
+        if (dispatcher != null)
+        {
+            dispatcher.Enqueue(() =>
+            {
+                OnConnectionError?.Invoke(e);
+            });
+        }
+
+        connectionTcs?.TrySetResult(false);
+        authenticationTcs?.TrySetResult(false);
+    }
+
+    // ===== Private Methods - Authentication =====
+    private async Task<bool> AuthenticateAsync()
+    {
+        Debug.Log($"[SocketIO] AuthenticateAsync called - IsConnected: {IsConnected}");
+
+        if (!IsConnected)
+        {
+            Debug.LogError("[SocketIO] Cannot authenticate: Not connected");
+            return false;
+        }
+
+        if (IsAuthenticated)
+        {
+            Debug.Log("[SocketIO] Already authenticated");
+            return true;
+        }
+
+        if (APIManager.Instance == null)
+        {
+            Debug.LogError("[SocketIO] APIManager.Instance is NULL");
+            return false;
+        }
+
+        string token = APIManager.Instance.GetToken();
+
+        if (string.IsNullOrEmpty(token))
+        {
+            Debug.LogError("[SocketIO] No JWT token available");
+            return false;
+        }
+
+        Debug.Log($"[SocketIO] Sending authentication with token: {token.Substring(0, Math.Min(20, token.Length))}...");
+
+        try
+        {
+            await socket.EmitAsync("authenticate", new { token });
+            Debug.Log("[SocketIO] Authentication request sent successfully");
+            return true;
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[SocketIO] Failed to send authentication: {e.Message}");
+            authenticationTcs?.TrySetResult(false);
+            return false;
+        }
+    }
+
+    private void SetupAuthenticationListener()
+    {
+        Debug.Log("[SocketIO] Setting up authentication listener");
+
+        On("authenticated", (response) =>
+        {
+            try
+            {
+                Debug.Log($"[SocketIO] Authentication response received: {response}");
+
+                string responseStr = response.ToString();
+                WS_AuthResponse authResponse = null;
+
+                if (responseStr.StartsWith("["))
+                {
+                    int firstBracket = responseStr.IndexOf('{');
+                    int lastBracket = responseStr.LastIndexOf('}') + 1;
+                    if (firstBracket >= 0 && lastBracket > firstBracket)
+                    {
+                        string jsonObject = responseStr.Substring(firstBracket, lastBracket - firstBracket);
+                        authResponse = JsonUtility.FromJson<WS_AuthResponse>(jsonObject);
+                    }
+                }
+                else
+                {
+                    authResponse = response.GetValue<WS_AuthResponse>();
+                }
+
+                if (authResponse != null && authResponse.isSuccess)
+                {
+                    IsAuthenticated = true;
+                    Debug.Log("[SocketIO] Authentication successful");
+
+                    var dispatcher = UnityMainThreadDispatcher.Instance();
+                    if (dispatcher != null)
+                    {
+                        dispatcher.Enqueue(() =>
+                        {
+                            OnAuthenticated?.Invoke();
+                        });
+                    }
+
+                    authenticationTcs?.TrySetResult(true);
+                }
+                else
+                {
+                    Debug.LogError($"[SocketIO] Authentication failed: {authResponse?.message ?? "Unknown error"}");
+                    authenticationTcs?.TrySetResult(false);
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[SocketIO] Failed to parse authentication response: {e.Message}");
+                authenticationTcs?.TrySetResult(false);
+            }
+        });
+    }
+
+    // ===== Private Methods - Utility =====
+    private void EnsureMainThreadDispatcher()
+    {
+        if (UnityMainThreadDispatcher.Instance() == null)
+        {
+            Debug.Log("[SocketIO] Creating UnityMainThreadDispatcher");
+        }
+    }
 }

@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-// ==========================================
-// User Related
-// ==========================================
+// ===== User Related =====
 
 [Serializable]
 public class LoginRequest
@@ -59,9 +57,8 @@ public class CheckUsernameResponse
     public bool available;
 }
 
-// ==========================================
-// Planet Related
-// ==========================================
+
+// ===== Planet Related =====
 
 [Serializable]
 public class PlanetData
@@ -71,14 +68,15 @@ public class PlanetData
     public string title;
     public int visitCount;
 }
+
 [Serializable]
 public class PlanetListItem
 {
-    public string id;               // 행성 ID
-    public string username;         // API 응답: username (ownerUsername이 아님!)
-    public string title;            // 행성 제목 (예: "1234의 행성")
-    public int visit_count;         // visitCount → visit_count (snake_case)
-    public string created_at;       // 생성일 (snake_case)
+    public string id;
+    public string username;
+    public string title;
+    public int visit_count;
+    public string created_at;
 }
 
 [Serializable]
@@ -127,25 +125,23 @@ public class VisitResponse
     public int visitCount;
 }
 
-// ==========================================
-// Gallery Related - FIXED
-// ==========================================
+// ===== Gallery Related =====
 
 [Serializable]
 public class GalleryItem
 {
-    public string galleryId;        // API 응답: galleryId (string UUID)
-    public string imageId;          // API 응답: imageId (string UUID) - 상세 조회 시 사용
-    public string title;            // API 명세서: title
-    public string image_url;        // API 명세서: image_url
-    public string created_at;       // API 명세서: created_at (생성 날짜)
+    public string galleryId;
+    public string imageId;
+    public string title;
+    public string image_url;
+    public string created_at;
 }
 
 [Serializable]
 public class GalleryResult
 {
     public string username;
-    public GalleryItem[] galleries; // Array로 수정
+    public GalleryItem[] galleries;
 }
 
 [Serializable]
@@ -157,7 +153,6 @@ public class GalleryListResponse
     public GalleryResult result;
 }
 
-// 갤러리 상세 조회용 모델 추가
 [Serializable]
 public class GalleryMetadata
 {
@@ -186,9 +181,7 @@ public class GalleryDetailResponse
     public GalleryDetailItem result;
 }
 
-// ==========================================
-// Guestbook Related
-// ==========================================
+// ===== Guestbook Related =====
 
 [Serializable]
 public class GuestbookEntry
@@ -222,9 +215,7 @@ public class GuestbookWriteRequest
     public string content;
 }
 
-// ==========================================
-// Friend Related
-// ==========================================
+// ===== Friend Related =====
 
 [Serializable]
 public class FriendItem
@@ -240,16 +231,14 @@ public class FriendListResponse
     public FriendItem[] result;
 }
 
-// ==========================================
-// Multiplayer Related
-// ==========================================
+// ===== Multiplayer Related =====
 
 [Serializable]
 public class ParticipantData
 {
     public string userId;
     public string username;
-    public int isReady; // 0 or 1
+    public int isReady;
     public bool isHost;
 }
 
@@ -378,16 +367,24 @@ public class StartGameResponseWrapper
     public StartGameResult result;
 }
 
-// ==========================================
-// WebSocket Event Models
-// ==========================================
+// ===== WebSocket Event Models =====
 
+// Authentication
 [Serializable]
 public class WS_AuthenticateRequest
 {
     public string token;
 }
 
+[Serializable]
+public class WS_AuthResponse
+{
+    public bool isSuccess;
+    public string code;
+    public string message;
+}
+
+// Room Management
 [Serializable]
 public class WS_JoinRoomRequest
 {
@@ -400,6 +397,7 @@ public class WS_LeaveRoomRequest
     public string gameCode;
 }
 
+// User Joined Event
 [Serializable]
 public class WS_UserJoinedEvent
 {
@@ -418,6 +416,43 @@ public class WS_UserJoinedResult
     public ParticipantData[] participants;
 }
 
+// User Left Event
+[Serializable]
+public class WS_UserLeftEvent
+{
+    public bool isSuccess;
+    public string code;
+    public string message;
+    public WS_UserLeftResult result;
+}
+
+[Serializable]
+public class WS_UserLeftResult
+{
+    public string userId;
+    public string username;
+    public string gameCode;
+}
+
+// User Disconnected Event
+[Serializable]
+public class WS_UserDisconnectedEvent
+{
+    public bool isSuccess;
+    public string code;
+    public string message;
+    public WS_UserDisconnectedResult result;
+}
+
+[Serializable]
+public class WS_UserDisconnectedResult
+{
+    public string userId;
+    public string username;
+    public bool isHost;
+}
+
+// Room Updated Event
 [Serializable]
 public class WS_RoomUpdatedEvent
 {
@@ -434,6 +469,7 @@ public class WS_RoomUpdatedResult
     public ParticipantData[] participants;
 }
 
+// Game Started Event
 [Serializable]
 public class WS_GameStartedEvent
 {
@@ -451,9 +487,34 @@ public class WS_GameStartedResult
     public ParticipantData[] participants;
 }
 
-// ==========================================
-// Common Response
-// ==========================================
+// Game Completed Event
+[Serializable]
+public class WS_GameCompletedEvent
+{
+    public bool isSuccess;
+    public string code;
+    public string message;
+    public WS_GameCompletedResult result;
+}
+
+[Serializable]
+public class WS_GameCompletedResult
+{
+    public string gameId;
+    public string gameCode;
+    public WS_WinnerData winner;
+    public string gameStatus;
+}
+
+[Serializable]
+public class WS_WinnerData
+{
+    public string userId;
+    public string username;
+    public int clearTimeMs;
+}
+
+// ===== Common Response =====
 
 [Serializable]
 public class ApiResponse
@@ -462,9 +523,7 @@ public class ApiResponse
     public string message;
 }
 
-// ==========================================
-// Single Game API Models
-// ==========================================
+// ===== Single Game API Models =====
 
 [Serializable]
 public class SingleGameStartRequest
@@ -540,9 +599,7 @@ public class SaveToPlanetResponse
     public SaveToPlanetResult result;
 }
 
-// ==========================================
-// Multiplay Complete Response
-// ==========================================
+// ===== Multiplay Complete Response =====
 
 [Serializable]
 public class MultiplayCompleteParticipant

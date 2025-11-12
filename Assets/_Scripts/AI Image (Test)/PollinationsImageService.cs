@@ -6,13 +6,16 @@ using System.Collections.Generic;
 
 public class PollinationsImageService : MonoBehaviour
 {
+    // ===== Singleton =====
     public static PollinationsImageService Instance { get; private set; }
 
+    // ===== Inspector Fields =====
     [Header("API Settings")]
     public string baseUrl = "https://image.pollinations.ai/prompt/";
     public int imageWidth = 512;
     public int imageHeight = 512;
 
+    // ===== Unity Lifecycle =====
     private void Awake()
     {
         if (Instance == null)
@@ -25,30 +28,31 @@ public class PollinationsImageService : MonoBehaviour
         }
     }
 
-    // 태그 리스트로 다운로드 요청
+    // ===== Public Methods =====
+    // Download image with tag list
     public void DownloadImage(List<string> tags, System.Action<Texture2D> callback)
     {
         string prompt = string.Join(", ", tags);
         StartCoroutine(GenerateImage(prompt, callback));
     }
 
-    // 실제 이미지 생성 및 다운로드
+    // Generate and download image
     public IEnumerator GenerateImage(string prompt, System.Action<Texture2D> callback)
     {
-        Debug.Log($"이미지 생성 요청: {prompt}");
+        Debug.Log($"[PollinationsImageService] Generating image: {prompt}");
 
         string encodedPrompt = HttpUtility.UrlEncode(prompt);
         string fullUrl = $"{baseUrl}{encodedPrompt}?width={imageWidth}&height={imageHeight}&seed={Random.Range(1, 10000)}";
 
-        Debug.Log($"요청 URL: {fullUrl}");
+        Debug.Log($"[PollinationsImageService] Request URL: {fullUrl}");
 
         UnityWebRequest request = UnityWebRequestTexture.GetTexture(fullUrl);
         yield return request.SendWebRequest();
 
         if (request.result != UnityWebRequest.Result.Success)
         {
-            Debug.LogError($"HTTP Error: {request.responseCode}");
-            Debug.LogError($"Error: {request.error}");
+            Debug.LogError($"[PollinationsImageService] HTTP Error: {request.responseCode}");
+            Debug.LogError($"[PollinationsImageService] Error: {request.error}");
             callback?.Invoke(null);
         }
         else
@@ -56,12 +60,12 @@ public class PollinationsImageService : MonoBehaviour
             Texture2D texture = DownloadHandlerTexture.GetContent(request);
             if (texture != null)
             {
-                Debug.Log($"이미지 생성 완료: {texture.width}x{texture.height}");
+                Debug.Log($"[PollinationsImageService] Image generated: {texture.width}x{texture.height}");
                 callback?.Invoke(texture);
             }
             else
             {
-                Debug.LogError("텍스처 생성 실패");
+                Debug.LogError("[PollinationsImageService] Texture creation failed");
                 callback?.Invoke(null);
             }
         }

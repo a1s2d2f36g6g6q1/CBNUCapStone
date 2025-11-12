@@ -3,49 +3,52 @@ using UnityEngine.UI;
 
 public class TestImageLoader : MonoBehaviour
 {
+    // ===== Inspector Fields =====
     [Header("Service Reference")]
-    public PollinationsImageService imageService; // PollinationsImageService로 변경
-    
+    public PollinationsImageService imageService;
+
     [Header("UI Reference")]
     public Image displayImage;
-    
+
+    // ===== Private Fields =====
     private readonly string[] randomTags = { "space", "flower", "castle", "cat", "robot", "mountain", "ocean" };
-    
+
+    // ===== Unity Lifecycle =====
     void Start()
     {
-        // Null 체크 추가
         if (imageService == null)
         {
-            Debug.LogError("PollinationsImageService가 할당되지 않았습니다! Inspector에서 할당해주세요.");
+            Debug.LogError("[TestImageLoader] PollinationsImageService is not assigned! Please assign in Inspector.");
             return;
         }
-        
+
         if (displayImage == null)
         {
-            Debug.LogError("Display Image가 할당되지 않았습니다! Inspector에서 할당해주세요.");
+            Debug.LogError("[TestImageLoader] Display Image is not assigned! Please assign in Inspector.");
             return;
         }
-        
+
         string prompt = randomTags[Random.Range(0, randomTags.Length)];
-        Debug.Log($"선택된 태그: {prompt}");
-        
+        Debug.Log($"[TestImageLoader] Selected tag: {prompt}");
+
         StartCoroutine(imageService.GenerateImage(prompt, OnImageGenerated));
     }
-    
+
+    // ===== Private Methods =====
     private void OnImageGenerated(Texture2D texture)
     {
         if (texture != null)
         {
-            Debug.Log("이미지 생성 성공!");
+            Debug.Log("[TestImageLoader] Image generated successfully");
             displayImage.sprite = Sprite.Create(
-                texture, 
-                new Rect(0, 0, texture.width, texture.height), 
+                texture,
+                new Rect(0, 0, texture.width, texture.height),
                 Vector2.one * 0.5f
             );
         }
         else
         {
-            Debug.LogError("이미지 생성 실패");
+            Debug.LogError("[TestImageLoader] Image generation failed");
         }
     }
 }

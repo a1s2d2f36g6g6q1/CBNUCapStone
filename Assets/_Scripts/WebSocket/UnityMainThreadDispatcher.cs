@@ -5,9 +5,13 @@ using System;
 
 public class UnityMainThreadDispatcher : MonoBehaviour
 {
+    // ===== Singleton =====
     private static UnityMainThreadDispatcher _instance;
+
+    // ===== Private Fields =====
     private static Queue<Action> _executionQueue = new Queue<Action>();
 
+    // ===== Public Methods =====
     public static UnityMainThreadDispatcher Instance()
     {
         if (!_instance)
@@ -31,6 +35,7 @@ public class UnityMainThreadDispatcher : MonoBehaviour
         }
     }
 
+    // ===== Unity Lifecycle =====
     private void Update()
     {
         lock (_executionQueue)

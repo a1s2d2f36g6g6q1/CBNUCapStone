@@ -6,14 +6,20 @@ using UnityEngine.Networking;
 
 public class APIManager : MonoBehaviour
 {
+    // ===== Singleton =====
     public static APIManager Instance { get; private set; }
 
+    // ===== Constants =====
     private const string BASE_URL = "http://13.209.33.42:3000";
+
+    // ===== Inspector Fields =====
+    [Header("Network Settings")]
+    public int requestTimeout = 30;
+
+    // ===== Private Fields =====
     private string jwtToken = "";
 
-    [Header("Network Settings")]
-    public int requestTimeout = 30; // 타임아웃 시간 (초)
-
+    // ===== Unity Lifecycle =====
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -24,18 +30,23 @@ public class APIManager : MonoBehaviour
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
-        // 저장된 토큰 로드
         LoadToken();
 
         Debug.Log($"[APIManager] Initialized - Server: {BASE_URL}");
     }
 
+    // ===== Public Methods =====
     public string GetToken()
     {
         return jwtToken;
     }
 
-    #region Token Management
+    public bool HasToken()
+    {
+        return !string.IsNullOrEmpty(jwtToken);
+    }
+
+    // ===== Token Management =====
     public void SetToken(string token)
     {
         jwtToken = token;
@@ -61,17 +72,11 @@ public class APIManager : MonoBehaviour
         Debug.Log("[APIManager] Token cleared");
     }
 
-    public bool HasToken()
-    {
-        return !string.IsNullOrEmpty(jwtToken);
-    }
-    #endregion
-
-    #region HTTP Methods
+    // ===== HTTP Methods =====
     public IEnumerator Get(string endpoint, Action<string> onSuccess, Action<string> onError)
     {
         string url = BASE_URL + endpoint;
-        Debug.Log($"[API GET] {url}");
+        Debug.Log($"[APIManager GET] {url}");
 
         using (UnityWebRequest request = UnityWebRequest.Get(url))
         {
@@ -88,7 +93,7 @@ public class APIManager : MonoBehaviour
             yield return request.SendWebRequest();
             float elapsed = Time.realtimeSinceStartup - startTime;
 
-            Debug.Log($"[API GET] Completed in {elapsed:F2}s - Status: {request.responseCode}");
+            Debug.Log($"[APIManager GET] Completed in {elapsed:F2}s - Status: {request.responseCode}");
 
             if (request.result == UnityWebRequest.Result.Success)
             {
@@ -106,8 +111,8 @@ public class APIManager : MonoBehaviour
         string url = BASE_URL + endpoint;
         string json = JsonUtility.ToJson(data);
 
-        Debug.Log($"[API POST] {url}");
-        Debug.Log($"[API POST] Request data: {json}");
+        Debug.Log($"[APIManager POST] {url}");
+        Debug.Log($"[APIManager POST] Request data: {json}");
 
         byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
 
@@ -130,11 +135,11 @@ public class APIManager : MonoBehaviour
             yield return request.SendWebRequest();
             float elapsed = Time.realtimeSinceStartup - startTime;
 
-            Debug.Log($"[API POST] Completed in {elapsed:F2}s - Status: {request.responseCode}");
+            Debug.Log($"[APIManager POST] Completed in {elapsed:F2}s - Status: {request.responseCode}");
 
             if (request.result == UnityWebRequest.Result.Success)
             {
-                Debug.Log($"[API POST] Response: {request.downloadHandler.text}");
+                Debug.Log($"[APIManager POST] Response: {request.downloadHandler.text}");
                 onSuccess?.Invoke(request.downloadHandler.text);
             }
             else
@@ -149,8 +154,8 @@ public class APIManager : MonoBehaviour
         string url = BASE_URL + endpoint;
         string json = JsonUtility.ToJson(data);
 
-        Debug.Log($"[API PUT] {url}");
-        Debug.Log($"[API PUT] Request data: {json}");
+        Debug.Log($"[APIManager PUT] {url}");
+        Debug.Log($"[APIManager PUT] Request data: {json}");
 
         byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
 
@@ -173,7 +178,7 @@ public class APIManager : MonoBehaviour
             yield return request.SendWebRequest();
             float elapsed = Time.realtimeSinceStartup - startTime;
 
-            Debug.Log($"[API PUT] Completed in {elapsed:F2}s - Status: {request.responseCode}");
+            Debug.Log($"[APIManager PUT] Completed in {elapsed:F2}s - Status: {request.responseCode}");
 
             if (request.result == UnityWebRequest.Result.Success)
             {
@@ -189,7 +194,7 @@ public class APIManager : MonoBehaviour
     public IEnumerator Delete(string endpoint, Action<string> onSuccess, Action<string> onError)
     {
         string url = BASE_URL + endpoint;
-        Debug.Log($"[API DELETE] {url}");
+        Debug.Log($"[APIManager DELETE] {url}");
 
         using (UnityWebRequest request = UnityWebRequest.Delete(url))
         {
@@ -206,7 +211,7 @@ public class APIManager : MonoBehaviour
             yield return request.SendWebRequest();
             float elapsed = Time.realtimeSinceStartup - startTime;
 
-            Debug.Log($"[API DELETE] Completed in {elapsed:F2}s - Status: {request.responseCode}");
+            Debug.Log($"[APIManager DELETE] Completed in {elapsed:F2}s - Status: {request.responseCode}");
 
             if (request.result == UnityWebRequest.Result.Success)
             {
@@ -218,9 +223,8 @@ public class APIManager : MonoBehaviour
             }
         }
     }
-    #endregion
 
-    #region Error Handling
+    // ===== Private Methods - Error Handling =====
     private void HandleError(UnityWebRequest request, Action<string> onError)
     {
         string errorMsg = $"Error {request.responseCode}: {request.error}";
@@ -230,28 +234,25 @@ public class APIManager : MonoBehaviour
             errorMsg += $"\nServer Response: {request.downloadHandler.text}";
         }
 
-        // Check for timeout
         if (request.result == UnityWebRequest.Result.ConnectionError)
         {
             errorMsg += "\n[Possible timeout or network issue]";
         }
 
-        Debug.LogError($"[API Error] {errorMsg}");
+        Debug.LogError($"[APIManager] {errorMsg}");
 
-        // 401 Unauthorized - 토큰 만료
         if (request.responseCode == 401)
         {
-            Debug.LogWarning("Token expired. Logging out...");
+            Debug.LogWarning("[APIManager] Token expired - Logging out");
             ClearToken();
             UserSession.Instance?.Logout();
         }
 
         onError?.Invoke(errorMsg);
     }
-    #endregion
 }
 
-// HTTP 인증서 우회 클래스
+// ===== Certificate Handler =====
 public class BypassCertificate : CertificateHandler
 {
     protected override bool ValidateCertificate(byte[] certificateData)
