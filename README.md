@@ -61,7 +61,7 @@
 3. 저장소 클론:
 
 ```bash
-   git clone https://github.com/사용자명/저장소명.git
+   git clone https://github.com/a1s2d2f36g6g6q1/CBNUCapStone.git
 ```
 
 4. Unity Hub에서 "Add" → 클론한 프로젝트 폴더 선택
